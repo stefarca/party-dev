@@ -14,8 +14,9 @@ Cloudflare's free tier (Worker + Static Assets + Durable Objects + D1). See
 
 ```bash
 npm install
+cp .dev.vars.example .dev.vars   # sets a dummy SESSION_SECRET for local identity cookies
 npm run cf-typegen        # generates worker-configuration.d.ts (already committed; re-run if bindings change)
-npm run db:migrate:local  # creates the local D1 sqlite file and applies migrations/0001_init.sql
+npm run db:migrate:local  # creates the local D1 sqlite file and applies migrations/000*.sql
 npm run dev                # starts vite + workerd; prints the local URL
 ```
 
@@ -41,8 +42,10 @@ account, which the implementer does not have. To deploy for real:
 1. `wrangler login`
 2. `wrangler d1 create party` — copy the `database_id` from the output.
 3. Paste that `database_id` into `wrangler.jsonc` under `d1_databases[0].database_id`.
-4. `npm run db:migrate:remote` — applies `migrations/0001_init.sql` to the real D1 database.
-5. `npm run deploy` — builds the client and runs `wrangler deploy`.
+4. `npm run db:migrate:remote` — applies `migrations/*.sql` to the real D1 database.
+5. `wrangler secret put SESSION_SECRET` — sets the HMAC key used to sign identity cookies
+   (PLAN.md §10.7). Generate a long random value; never reuse the `.dev.vars` dummy.
+6. `npm run deploy` — builds the client and runs `wrangler deploy`.
 
 Do not commit the real `database_id` if you'd rather keep it private; it is not a secret, but the
 `REPLACE_ME_SEE_README` placeholder in this repo intentionally does not point at anything.
