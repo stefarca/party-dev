@@ -3,6 +3,7 @@ import { Hono } from "hono";
 import { GAME_CATALOG, getGameMeta } from "../games/catalog";
 import { MATCH_CODE_RE, generateMatchCode, normalizeMatchCode } from "../shared/ids";
 import {
+  ActionRequestSchema,
   CreateMatchRequestSchema,
   IdentityRequestSchema,
   JoinMatchRequestSchema,
@@ -209,6 +210,58 @@ api.get("/matches/:code", requireSession(), async (c) => {
   const res = await stub.fetch("http://do/snapshot");
   if (res.status === 404) return c.json({ error: "not_found" }, 404);
   if (!res.ok) return c.json({ error: "snapshot_failed" }, 500);
+
+  return c.json(await res.json());
+});
+
+// HTTP fallbacks for the live match transport (PLAN.md §7: "treat WS as an
+// optimization over 'fetch state on load', never as the only path"). Both
+// return/accept exactly the same shapes as the WS `snapshot`/`action`
+// messages (shared/protocol.ts's MatchSnapshot) — plan 05's client can use
+// either transport interchangeably.
+api.get("/matches/:id/snapshot", requireSession(), async (c) => {
+  const session = c.get("session") as Session;
+  const code = normalizeMatchCode(c.req.param("id"));
+  if (!MATCH_CODE_RE.test(code)) {
+    return c.json({ error: "not_found" }, 404);
+  }
+
+  const id = c.env.MATCH.idFromName(code);
+  const stub = c.env.MATCH.get(id);
+  const res = await stub.fetch(
+    `http://do/view?playerId=${encodeURIComponent(session.pid)}`
+  );
+  if (res.status === 404) return c.json(await res.json(), 404);
+  if (res.status === 403) return c.json(await res.json(), 403);
+  if (!res.ok) return c.json({ error: "snapshot_failed" }, 500);
+
+  return c.json(await res.json());
+});
+
+api.post("/matches/:id/actions", requireSession(), async (c) => {
+  const session = c.get("session") as Session;
+  const code = normalizeMatchCode(c.req.param("id"));
+  if (!MATCH_CODE_RE.test(code)) {
+    return c.json({ error: "not_found" }, 404);
+  }
+
+  const body = await readJsonBody(c.req.raw);
+  const parsed = ActionRequestSchema.safeParse(body);
+  if (!parsed.success) {
+    return c.json({ error: "invalid_body" }, 400);
+  }
+
+  const id = c.env.MATCH.idFromName(code);
+  const stub = c.env.MATCH.get(id);
+  const res = await stub.fetch("http://do/action", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ playerId: session.pid, action: parsed.data.action }),
+  });
+  if (res.status === 404) return c.json(await res.json(), 404);
+  if (res.status === 409) return c.json(await res.json(), 409);
+  if (res.status === 400) return c.json(await res.json(), 400);
+  if (!res.ok) return c.json({ error: "action_failed" }, 500);
 
   return c.json(await res.json());
 });

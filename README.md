@@ -33,6 +33,35 @@ Other useful scripts:
 - `npm run build` — builds the client (`dist/client`) and the Worker bundle.
 - `npm run preview` — serves the production build locally.
 
+## Engine
+
+Every game is a `GameModule` (`shared/game.ts`, PLAN.md §5) run inside `MatchDO`. After every
+mutation — a player joining, the host starting, a submitted action, or an alarm firing —
+`MatchDO.commit()` runs the same pipeline, in this order:
+
+1. persist the new state (+ `updatedAt`) to the DO's own SQLite,
+2. append the mutation's events to the append-only event log,
+3. recompute `waitingOn(state)` and `deadline(state)`,
+4. reconcile the DO alarm against that deadline (`setAlarm`/`deleteAlarm`),
+5. broadcast a per-player `snapshot` (each socket's own `view(state, playerId)`, never raw state)
+   plus any new events to every connected WebSocket,
+6. update the D1 index (`matches`/`match_players` — derived, dashboard-only),
+7. nudge newly-waited-on players who are not connected (a no-op stub until Slack nudges land).
+
+Four rules every `GameModule` must follow (PLAN.md §5):
+
+- **Server-authoritative.** Clients send intents (`action`), never state; every inbound message is
+  zod-validated (including via the module's own `actionSchema`).
+- **`view()` is mandatory, not optional.** Broadcasting full state leaks hidden information — project
+  per player and send tailored messages.
+- **Seeded PRNG in state, never `Math.random()` inside `reduce`.** Use `shared/prng.ts` and store the
+  advanced seed in the game's own state.
+- **`onDeadline` must be idempotent.** Alarms are at-least-once with retries; key resolution on the
+  round/phase number so re-running it on an already-resolved round is a no-op.
+
+A new game is a folder under `games/` plus one line each in `games/registry.ts`'s `serverGames`
+(server rules) and `gameUi` (lazily-imported client UI) — nothing else.
+
 ## Deploying (operator, requires a Cloudflare account)
 
 This repo's `wrangler.jsonc` commits a **placeholder** `d1_databases[0].database_id`
