@@ -1,0 +1,23 @@
+{
+  "name": "party-dev",
+  "compatibility_date": "2026-09-01",
+  "main": "worker/index.ts",
+  "assets": {
+    // Deviation from PLAN.md §9: `directory` is intentionally omitted here.
+    // @cloudflare/vite-plugin populates it automatically with the client build
+    // output path (dist/client) when it generates dist/party-dev/wrangler.json.
+    "not_found_handling": "single-page-application"
+  },
+  "durable_objects": {
+    "bindings": [{ "name": "MATCH", "class_name": "MatchDO" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["MatchDO"] }],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "party",
+      "database_id": "REPLACE_ME_SEE_README"
+    }
+  ],
+  "observability": { "enabled": true }
+}

@@ -1,0 +1,36 @@
+{
+  "name": "party-dev",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "deploy": "npm run build && wrangler deploy",
+    "typecheck": "tsc -b --noEmit",
+    "test": "vitest run",
+    "cf-typegen": "wrangler types",
+    "db:migrate:local": "wrangler d1 migrations apply party --local",
+    "db:migrate:remote": "wrangler d1 migrations apply party --remote"
+  },
+  "dependencies": {
+    "hono": "^4.13.0",
+    "zod": "^4.6.0",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0"
+  },
+  "devDependencies": {
+    "vite": "^8.3.0",
+    "@vitejs/plugin-react": "^6.1.0",
+    "@cloudflare/vite-plugin": "^1.54.0",
+    "wrangler": "^4.131.0",
+    "typescript": "^5.9.0",
+    "vitest": "^5.0.0",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0"
+  },
+  "allowScripts": {
+    "workerd@1.20260911.1": true,
+    "esbuild@0.28.1": true
+  }
+}

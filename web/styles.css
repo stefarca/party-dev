@@ -1,0 +1,33 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family:
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    Roboto,
+    sans-serif;
+  color: #1a1a1a;
+  background: #fafafa;
+}
+
+main {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+}
+
+pre {
+  background: #f0f0f0;
+  padding: 1rem;
+  overflow-x: auto;
+  border-radius: 4px;
+}
+
+.error {
+  color: #b00020;
+  background: #fdecea;
+}
