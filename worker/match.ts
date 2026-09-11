@@ -110,6 +110,7 @@ export class MatchDO extends DurableObject<Env> {
       gameId: record.gameId,
       status: record.status,
       players: record.players.map((p) => ({ id: p.id, nickname: p.nickname })),
+      hostId: record.hostId,
       waiting: false, // no engine yet — plan 04 computes waitingOn per player
       updatedAt: record.updatedAt,
       deadline: null,

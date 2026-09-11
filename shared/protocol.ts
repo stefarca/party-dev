@@ -19,6 +19,7 @@ export interface MatchSummary {
   gameId: string;
   status: MatchStatus;
   players: PlayerInfo[];
+  hostId: PlayerId;
   waiting: boolean;
   updatedAt: number;
   deadline: number | null;

@@ -190,10 +190,34 @@ api.post("/matches/:code/join", async (c) => {
   return c.json(await res.json());
 });
 
+// Not covered by plan 02 (which only ever routed to the DO's own
+// GET /snapshot internally) — plan 03's MatchPage needs a REST-reachable
+// equivalent to render the lobby, so it is added here rather than left as a
+// gap. Unlike the join route above, auth is checked first (via
+// requireSession() middleware) — an unauthenticated caller gets 401
+// regardless of whether the code is valid, which is intentionally more
+// conservative than join's not-found-before-auth ordering. No per-player
+// view yet (see MatchDO.handleSnapshot).
+api.get("/matches/:code", requireSession(), async (c) => {
+  const code = normalizeMatchCode(c.req.param("code"));
+  if (!MATCH_CODE_RE.test(code)) {
+    return c.json({ error: "not_found" }, 404);
+  }
+
+  const id = c.env.MATCH.idFromName(code);
+  const stub = c.env.MATCH.get(id);
+  const res = await stub.fetch("http://do/snapshot");
+  if (res.status === 404) return c.json({ error: "not_found" }, 404);
+  if (!res.ok) return c.json({ error: "snapshot_failed" }, 500);
+
+  return c.json(await res.json());
+});
+
 interface MatchIndexRow {
   id: string;
   game_id: string;
   status: MatchSummary["status"];
+  host_id: string | null;
   updated_at: number;
   deadline: number | null;
   my_waiting: number;
@@ -209,7 +233,7 @@ api.get("/matches", requireSession(), async (c) => {
   // to pull every player row for those matches, so the dashboard needs no
   // per-match follow-up query.
   const { results } = await c.env.DB.prepare(
-    `SELECT m.id AS id, m.game_id AS game_id, m.status AS status,
+    `SELECT m.id AS id, m.game_id AS game_id, m.status AS status, m.host_id AS host_id,
             m.updated_at AS updated_at, m.deadline AS deadline,
             mine.waiting AS my_waiting,
             p.player_id AS player_id, p.nickname AS nickname
@@ -233,6 +257,7 @@ api.get("/matches", requireSession(), async (c) => {
         gameId: row.game_id,
         status: row.status,
         players: [],
+        hostId: row.host_id ?? "",
         waiting: Boolean(row.my_waiting),
         updatedAt: row.updated_at,
         deadline: row.deadline,

@@ -14,10 +14,189 @@ body {
   background: #fafafa;
 }
 
-main {
+.container {
   max-width: 640px;
   margin: 0 auto;
-  padding: 2rem 1rem;
+  padding: 1rem;
+}
+
+.container.gate {
+  padding-top: 3rem;
+}
+
+h1 {
+  font-size: 1.5rem;
+  margin: 0 0 0.5rem;
+}
+
+h2 {
+  font-size: 1.1rem;
+  margin: 1.5rem 0 0.5rem;
+}
+
+.card {
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.card form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #444;
+}
+
+input,
+select {
+  font-size: 1rem;
+  padding: 0.5rem;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  width: 100%;
+}
+
+button {
+  font-size: 1rem;
+  padding: 0.5rem 1rem;
+  border: 1px solid #1a1a1a;
+  border-radius: 6px;
+  background: #1a1a1a;
+  color: #fff;
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+button[type="button"] {
+  background: #fff;
+  color: #1a1a1a;
+}
+
+.error {
+  color: #b00020;
+  background: #fdecea;
+  padding: 0.5rem;
+  border-radius: 6px;
+  margin: 0.25rem 0;
+}
+
+.empty-state {
+  color: #666;
+  font-style: italic;
+}
+
+.match-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.match-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 0.75rem;
+  text-decoration: none;
+  color: inherit;
+}
+
+.match-row-main {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.match-row-players {
+  color: #555;
+}
+
+.match-row-meta {
+  display: flex;
+  gap: 0.75rem;
+  font-size: 0.8rem;
+  color: #777;
+}
+
+.your-turn .match-row {
+  border-left: 4px solid #d97706;
+}
+
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  background: #fff;
+  border-bottom: 1px solid #ddd;
+  flex-wrap: wrap;
+}
+
+.app-title {
+  font-weight: 700;
+  text-decoration: none;
+  color: #1a1a1a;
+}
+
+.nickname-badge {
+  background: #f0f0f0;
+  color: #1a1a1a;
+  border: 1px solid #ccc;
+}
+
+.rename-form {
+  display: flex;
+  gap: 0.25rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.rename-form input {
+  width: auto;
+  min-width: 8rem;
+}
+
+.match-code {
+  font-size: 1.75rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-align: center;
+  margin-bottom: 0.5rem;
+}
+
+.player-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.badge {
+  display: inline-block;
+  margin-left: 0.5rem;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  color: #555;
+  background: #f0f0f0;
+  border-radius: 4px;
+  padding: 0.1rem 0.4rem;
 }
 
 pre {
@@ -25,9 +204,4 @@ pre {
   padding: 1rem;
   overflow-x: auto;
   border-radius: 4px;
-}
-
-.error {
-  color: #b00020;
-  background: #fdecea;
 }
