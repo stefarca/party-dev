@@ -1,6 +1,7 @@
 import type { ComponentType } from "react";
 
 import { connect4Game } from "./connect4/game";
+import { triviaGame } from "./trivia/game";
 import type { GameModule } from "../shared/game";
 import type { GameUiProps } from "../shared/protocol";
 
@@ -15,7 +16,7 @@ import type { GameUiProps } from "../shared/protocol";
 // into the Worker bundle.
 export const serverGames: Record<string, GameModule<any, any>> = {
   connect4: connect4Game,
-  // trivia: triviaGame,     (plan 07)
+  trivia: triviaGame,
 };
 
 // `gameUi` is dynamically imported so the client bundle does not grow
@@ -23,7 +24,7 @@ export const serverGames: Record<string, GameModule<any, any>> = {
 // actually looking at is ever fetched.
 export const gameUi: Record<string, () => Promise<{ default: ComponentType<GameUiProps> }>> = {
   connect4: () => import("./connect4/ui"),
-  // trivia: () => import("./trivia/ui"),     (plan 07)
+  trivia: () => import("./trivia/ui"),
 };
 
 export function getGame(id: string): GameModule<any, any> | undefined {

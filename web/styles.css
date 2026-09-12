@@ -386,3 +386,92 @@ pre {
   margin: 0.75rem 0 0;
   color: #555;
 }
+
+/* Plan 07: Trivia. */
+
+.trivia-round {
+  margin: 0 0 0.25rem;
+  font-size: 0.85rem;
+  color: #555;
+}
+
+.trivia-question {
+  margin: 0 0 0.75rem;
+}
+
+.trivia-choices {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.trivia-choice {
+  font-size: 1rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  background: #fff;
+  color: #1a1a1a;
+  text-align: left;
+  cursor: pointer;
+}
+
+button.trivia-choice:disabled {
+  cursor: not-allowed;
+}
+
+.trivia-choice-selected {
+  border-color: #1d4ed8;
+  background: #eef2ff;
+  font-weight: 700;
+}
+
+.trivia-choice-reveal {
+  cursor: default;
+}
+
+.trivia-choice-correct {
+  border-color: #15803d;
+  background: #dcfce7;
+  font-weight: 700;
+}
+
+.trivia-correct-badge {
+  color: #15803d;
+  font-weight: 700;
+}
+
+.trivia-progress {
+  margin: 0 0 0.75rem;
+  color: #555;
+}
+
+.trivia-picks {
+  margin: 0 0 0.75rem;
+  padding-left: 1.25rem;
+}
+
+.trivia-scoreboard {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.trivia-scoreboard li {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.9rem;
+}
+
+.trivia-score-you {
+  font-weight: 700;
+}
+
+.trivia-score-winner {
+  font-weight: 700;
+  color: #15803d;
+}

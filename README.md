@@ -62,6 +62,10 @@ Four rules every `GameModule` must follow (PLAN.md §5):
 A new game is a folder under `games/` plus one line each in `games/registry.ts`'s `serverGames`
 (server rules) and `gameUi` (lazily-imported client UI) — nothing else.
 
+Two reference implementations of PLAN.md §4's phase types live under `games/`: Connect 4
+(`games/connect4`, sequential turns — plan 06) and Trivia (`games/trivia`, simultaneous answers +
+deadline, with a reveal phase in between — plan 07).
+
 ## Deploying (operator, requires a Cloudflare account)
 
 This repo's `wrangler.jsonc` commits a **placeholder** `d1_databases[0].database_id`

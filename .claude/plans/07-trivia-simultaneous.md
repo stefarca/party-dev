@@ -1,7 +1,7 @@
 ---
 plan: 07-trivia-simultaneous
 goal: Implement PLAN.md — async turn-based party games on Cloudflare (Worker + Static Assets + Hono + Durable Objects with SQLite + D1 index + Slack nudges)
-status: pending
+status: done
 depends_on: [04-engine-core, 05-client-match-transport, 06-connect4-sequential]
 ---
 
