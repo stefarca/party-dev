@@ -1,7 +1,7 @@
 ---
 plan: 01-prettier-baseline
 goal: Add Prettier + ESLint and a GitHub Actions PR workflow that runs lint, format check, and build
-status: pending
+status: done
 depends_on: []
 ---
 
