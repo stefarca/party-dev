@@ -205,3 +205,106 @@ pre {
   overflow-x: auto;
   border-radius: 4px;
 }
+
+/* Plan 05: live match transport UI. */
+
+.turn-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.turn-indicator-mine {
+  border-color: #d97706;
+  background: #fff7ed;
+}
+
+.turn-indicator-done {
+  border-color: #1a1a1a;
+}
+
+.turn-countdown {
+  font-family: ui-monospace, monospace;
+  font-size: 0.9rem;
+  color: #555;
+  background: #f0f0f0;
+  border-radius: 4px;
+  padding: 0.15rem 0.5rem;
+}
+
+.history-panel summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.history-list {
+  list-style: none;
+  margin: 0.75rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-height: 16rem;
+  overflow-y: auto;
+}
+
+.history-item-head {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.8rem;
+  color: #777;
+}
+
+.history-item pre {
+  margin: 0.25rem 0 0;
+  padding: 0.5rem;
+  font-size: 0.85rem;
+}
+
+.match-footer {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 1rem;
+}
+
+.connection-badge {
+  font-size: 0.75rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid transparent;
+}
+
+.connection-live {
+  background: #e6f4ea;
+  color: #1e7a34;
+  border-color: #b7e1c3;
+}
+
+.connection-connecting {
+  background: #fff7e6;
+  color: #92600b;
+  border-color: #f3d99a;
+}
+
+.connection-offline {
+  background: #fdecea;
+  color: #b00020;
+  border-color: #f5c2be;
+}
+
+.debug-game-view-note {
+  color: #666;
+  font-style: italic;
+}
+
+.debug-game-view textarea {
+  font-family: ui-monospace, monospace;
+  font-size: 0.9rem;
+  padding: 0.5rem;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  width: 100%;
+  resize: vertical;
+  margin-bottom: 0.5rem;
+}

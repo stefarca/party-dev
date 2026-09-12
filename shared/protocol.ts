@@ -64,6 +64,14 @@ export type JoinMatchRequest = z.infer<typeof JoinMatchRequestSchema>;
 export const ActionRequestSchema = z.object({ action: z.unknown() });
 export type ActionRequest = z.infer<typeof ActionRequestSchema>;
 
+// Body of the HTTP start fallback (POST /api/matches/:id/start, plan 05) —
+// mirrors the WS `{ t: "start" }` message, which itself carries no payload.
+// Takes no body, same reasoning as JoinMatchRequestSchema above: still run
+// through a schema so an unexpected/extra payload gets a 400 rather than
+// being silently ignored.
+export const StartMatchRequestSchema = z.object({}).strict();
+export type StartMatchRequest = z.infer<typeof StartMatchRequestSchema>;
+
 // ---------------------------------------------------------------------------
 // Live match wire protocol (PLAN.md §5, §7). Used by both the WebSocket at
 // `/ws/:id` and the HTTP fallbacks (`GET /api/matches/:id/snapshot`,

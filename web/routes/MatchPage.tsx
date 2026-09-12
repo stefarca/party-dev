@@ -1,9 +1,17 @@
-import { useCallback, useEffect, useState } from "react";
+import { Component, Suspense, lazy, useCallback, useEffect, useState } from "react";
+import type { ComponentType, LazyExoticComponent, ReactNode } from "react";
 
 import { getGameMeta } from "../../games/catalog";
-import type { MatchSummary } from "../../shared/protocol";
+import { gameUi } from "../../games/registry";
+import type { GameUiProps, MatchEvent, MatchSnapshot, MatchSummary } from "../../shared/protocol";
 import { ApiError, getMatch } from "../api";
+import { ConnectionBadge } from "../components/ConnectionBadge";
+import { DebugGameView } from "../components/DebugGameView";
+import { HistoryPanel } from "../components/HistoryPanel";
+import { TurnIndicator } from "../components/TurnIndicator";
 import { useSession } from "../session";
+import type { ConnectionState, MatchError } from "../useMatch";
+import { useMatch } from "../useMatch";
 
 function CopyCode({ code }: { code: string }) {
   const [copied, setCopied] = useState(false);
@@ -35,40 +43,173 @@ function CopyCode({ code }: { code: string }) {
   );
 }
 
-// Seam for plan 05: once there's a live transport, it mounts here in place
+// Caches the `React.lazy` wrapper per gameId (module-level, not per render):
+// `lazy()` must be called exactly once for a given loader — calling it again
+// on every render would remount the underlying component (and re-trigger
+// Suspense) every time this component re-renders, not just once per game.
+const lazyUiCache = new Map<string, LazyExoticComponent<ComponentType<GameUiProps>>>();
+
+function getLazyUi(gameId: string): LazyExoticComponent<ComponentType<GameUiProps>> | undefined {
+  const loader = gameUi[gameId];
+  if (!loader) return undefined;
+  let cached = lazyUiCache.get(gameId);
+  if (!cached) {
+    cached = lazy(loader);
+    lazyUiCache.set(gameId, cached);
+  }
+  return cached;
+}
+
+// Catches a throw from a broken game module's render so it degrades to
+// `fallback` instead of white-screening the whole app (plan 05 step 5).
+// `key`d by match code from the caller so navigating to a different match
+// always starts with a clean (non-tripped) boundary.
+class GameErrorBoundary extends Component<{ children: ReactNode; fallback: ReactNode }, { hasError: boolean }> {
+  state = { hasError: false };
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: unknown, info: unknown) {
+    console.error("game UI crashed", error, info);
+  }
+
+  render() {
+    return this.state.hasError ? this.props.fallback : this.props.children;
+  }
+}
+
+function GameUiHost({
+  code,
+  gameId,
+  snapshot,
+  me,
+  send,
+}: {
+  code: string;
+  gameId: string;
+  snapshot: MatchSnapshot;
+  me: string;
+  send: (action: unknown) => void;
+}) {
+  const props: GameUiProps = {
+    view: snapshot.view,
+    me,
+    players: snapshot.players,
+    waitingOn: snapshot.waitingOn,
+    deadline: snapshot.deadline,
+    result: snapshot.result,
+    send,
+  };
+
+  const Lazy = getLazyUi(gameId);
+  if (!Lazy) return <DebugGameView {...props} />;
+
+  return (
+    <GameErrorBoundary key={code} fallback={<DebugGameView {...props} />}>
+      <Suspense fallback={<div className="card">Loading game…</div>}>
+        <Lazy {...props} />
+      </Suspense>
+    </GameErrorBoundary>
+  );
+}
+
+// The plan 03 seam: once there's a live transport, it mounts here in place
 // of the static lobby/placeholder body, keyed off `match.status`. Keep this
 // component thin — no game-specific logic belongs in MatchPage.
-function MatchBody({ match, myPlayerId }: { match: MatchSummary; myPlayerId: string }) {
+//
+// `match` (the plan 02/03 lobby summary) is still the source of `hostId`
+// and `gameId`, neither of which appears in `MatchSnapshot` — they never
+// change for the lifetime of a match, so there is no freshness concern in
+// reading them from the one-shot `getMatch()` load. Everything that *does*
+// change live (status, players, whose turn it is) is read from `snapshot`
+// once it exists, falling back to `match`'s own copy before the first
+// snapshot arrives.
+function MatchBody({
+  match,
+  snapshot,
+  events,
+  connection,
+  transportError,
+  send,
+  start,
+  myPlayerId,
+}: {
+  match: MatchSummary;
+  snapshot: MatchSnapshot | null;
+  events: MatchEvent[];
+  connection: ConnectionState;
+  transportError: MatchError | null;
+  send: (action: unknown) => void;
+  start: () => void;
+  myPlayerId: string;
+}) {
   const meta = getGameMeta(match.gameId);
+  const status = snapshot?.status ?? match.status;
+  const players = snapshot?.players ?? match.players;
 
-  if (match.status !== "lobby") {
+  if (status === "lobby") {
+    const isHost = myPlayerId === match.hostId;
+    const count = players.length;
+    const canStart = isHost && meta !== undefined && count >= meta.minPlayers && count <= meta.maxPlayers;
+
     return (
       <div className="card">
-        <p>This match is in progress — gameplay lands in a later step.</p>
+        <h2>Players</h2>
+        <ul className="player-list">
+          {players.map((p) => (
+            <li key={p.id}>
+              {p.nickname}
+              {p.id === match.hostId && <span className="badge">host</span>}
+              {p.id === myPlayerId && <span className="badge">you</span>}
+            </li>
+          ))}
+        </ul>
+        {meta && (
+          <p>
+            {meta.name} needs {meta.minPlayers}
+            {meta.maxPlayers !== meta.minPlayers ? `-${meta.maxPlayers}` : ""} players.
+            {isHost ? "" : " Waiting for the host to start."}
+          </p>
+        )}
+        {isHost && (
+          <button onClick={start} disabled={!canStart}>
+            Start match
+          </button>
+        )}
+        {transportError && <p className="error">{transportError.message}</p>}
+      </div>
+    );
+  }
+
+  // active / done — the game itself needs the live snapshot, which may
+  // still be in flight for a brief instant right after the lobby summary
+  // (loaded first) reports the match has already started elsewhere.
+  if (!snapshot) {
+    return (
+      <div className="card">
+        <p>Loading match…</p>
       </div>
     );
   }
 
   return (
-    <div className="card">
-      <h2>Players</h2>
-      <ul className="player-list">
-        {match.players.map((p) => (
-          <li key={p.id}>
-            {p.nickname}
-            {p.id === match.hostId && <span className="badge">host</span>}
-            {p.id === myPlayerId && <span className="badge">you</span>}
-          </li>
-        ))}
-      </ul>
-      {meta && (
-        <p>
-          {meta.name} needs {meta.minPlayers}
-          {meta.maxPlayers !== meta.minPlayers ? `-${meta.maxPlayers}` : ""} players. Waiting for the
-          host to start.
-        </p>
-      )}
-    </div>
+    <>
+      <TurnIndicator
+        me={myPlayerId}
+        players={snapshot.players}
+        waitingOn={snapshot.waitingOn}
+        deadline={snapshot.deadline}
+        result={snapshot.result}
+      />
+      <GameUiHost code={match.id} gameId={match.gameId} snapshot={snapshot} me={myPlayerId} send={send} />
+      {transportError && <p className="error">{transportError.message}</p>}
+      <HistoryPanel events={events} />
+      <div className="match-footer">
+        <ConnectionBadge connection={connection} />
+      </div>
+    </>
   );
 }
 
@@ -103,6 +244,8 @@ export function MatchPage({ code }: { code: string }) {
     load();
   }, [load]);
 
+  const { snapshot, events, connection, error: transportError, send, start } = useMatch(code, notifyUnauthorized);
+
   const meta = match ? getGameMeta(match.gameId) : undefined;
 
   return (
@@ -125,11 +268,19 @@ export function MatchPage({ code }: { code: string }) {
               Game: <strong>{meta?.name ?? match.gameId}</strong>
             </p>
             <p>
-              Status: <strong>{match.status}</strong>
+              Status: <strong>{snapshot?.status ?? match.status}</strong>
             </p>
           </div>
-          <MatchBody match={match} myPlayerId={player?.playerId ?? ""} />
-          <button onClick={() => load()}>Refresh</button>
+          <MatchBody
+            match={match}
+            snapshot={snapshot}
+            events={events}
+            connection={connection}
+            transportError={transportError}
+            send={send}
+            start={start}
+            myPlayerId={player?.playerId ?? ""}
+          />
         </>
       )}
     </main>

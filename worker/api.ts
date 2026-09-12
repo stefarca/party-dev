@@ -7,6 +7,7 @@ import {
   CreateMatchRequestSchema,
   IdentityRequestSchema,
   JoinMatchRequestSchema,
+  StartMatchRequestSchema,
 } from "../shared/protocol";
 import type { MatchSummary } from "../shared/protocol";
 import type { Session, SessionBindings } from "./auth";
@@ -234,6 +235,41 @@ api.get("/matches/:id/snapshot", requireSession(), async (c) => {
   if (res.status === 404) return c.json(await res.json(), 404);
   if (res.status === 403) return c.json(await res.json(), 403);
   if (!res.ok) return c.json({ error: "snapshot_failed" }, 500);
+
+  return c.json(await res.json());
+});
+
+// HTTP fallback for starting a match (plan 05, §7): the DO's `/start` route
+// already existed from plan 04 (used internally by the WS `{ t: "start" }`
+// handler) but was never wired to a REST route — without this, a blocked
+// WebSocket would leave the host with no way to start a match at all,
+// contradicting §7's "WS is an optimization ... never the only path".
+// Mirrors the /actions route immediately below one-for-one.
+api.post("/matches/:id/start", requireSession(), async (c) => {
+  const session = c.get("session") as Session;
+  const code = normalizeMatchCode(c.req.param("id"));
+  if (!MATCH_CODE_RE.test(code)) {
+    return c.json({ error: "not_found" }, 404);
+  }
+
+  const body = await readJsonBody(c.req.raw);
+  const parsed = StartMatchRequestSchema.safeParse(body);
+  if (!parsed.success) {
+    return c.json({ error: "invalid_body" }, 400);
+  }
+
+  const id = c.env.MATCH.idFromName(code);
+  const stub = c.env.MATCH.get(id);
+  const res = await stub.fetch("http://do/start", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ playerId: session.pid }),
+  });
+  if (res.status === 404) return c.json(await res.json(), 404);
+  if (res.status === 409) return c.json(await res.json(), 409);
+  if (res.status === 403) return c.json(await res.json(), 403);
+  if (res.status === 400) return c.json(await res.json(), 400);
+  if (!res.ok) return c.json({ error: "start_failed" }, 500);
 
   return c.json(await res.json());
 });

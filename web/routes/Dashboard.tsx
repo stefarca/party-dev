@@ -103,6 +103,13 @@ export function Dashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [notifyUnauthorized]);
 
+  // Plan 05 step 8 ("invalidate the cached dashboard list so a return to /
+  // shows fresh buckets"): there is no cache to invalidate — this component
+  // holds no state across mounts, and App.tsx's route switch unmounts it
+  // entirely whenever the route is not "dashboard" (see RouteContent). Every
+  // navigation back to `/` therefore mounts a brand new Dashboard, which
+  // this effect refetches from scratch — "refetch on route change to /" is
+  // already what happens, with no extra plumbing needed.
   useEffect(() => {
     refresh();
   }, [refresh]);
