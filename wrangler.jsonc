@@ -26,5 +26,14 @@
       "database_id": "REPLACE_ME_SEE_README"
     }
   ],
+  // Plan 08 (§8): the base URL nudge messages link back to
+  // (`<PUBLIC_BASE_URL>/m/<code>`). This committed value is a localhost
+  // default for local dev only — production MUST override it (edit this
+  // value before deploying, or pass `wrangler deploy --var
+  // PUBLIC_BASE_URL:https://your-real-domain`), or real nudges will link to
+  // localhost. `SLACK_WEBHOOK_URL` is deliberately not here: it is a secret
+  // (see `.dev.vars.example` for local dev and the README operator
+  // checklist for `wrangler secret put SLACK_WEBHOOK_URL`).
+  "vars": { "PUBLIC_BASE_URL": "http://localhost:5173" },
   "observability": { "enabled": true }
 }

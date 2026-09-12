@@ -6,6 +6,7 @@ import { normalizeMatchCode } from "../../shared/ids";
 import type { MatchSummary } from "../../shared/protocol";
 import { ApiError, createMatch, getGames, joinMatch, listMatches } from "../api";
 import type { MatchBuckets } from "../api";
+import { setDashboardYourTurn } from "../badge";
 import { formatDeadline, relativeTime } from "../format";
 import { navigate } from "../router";
 import { useSession } from "../session";
@@ -88,6 +89,9 @@ export function Dashboard() {
       setBuckets(nextBuckets);
       setGames(nextGames);
       setError(null);
+      // The tab badge (§8 item 2): the dashboard's "your turn" bucket is the
+      // full, authoritative set of matches awaiting this player.
+      setDashboardYourTurn(nextBuckets.yourTurn.map((m) => m.id));
       if (!selectedGame && nextGames.length > 0) setSelectedGame(nextGames[0].id);
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) {

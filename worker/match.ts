@@ -13,6 +13,7 @@ import type {
   PlayerId,
   ServerMessage,
 } from "../shared/protocol";
+import { sendSlackNudge, shouldNudge } from "./nudge";
 
 // PLAN.md §10 gotchas that apply to every method added to this class:
 // - Hibernation API only: use `ctx.acceptWebSocket()` / `webSocketMessage()`
@@ -47,6 +48,12 @@ interface MatchRecord {
   updatedAt: number;
   seed: number; // rolled once at create time, never re-rolled (PLAN.md §5 rule 3)
   state: unknown | null;
+  // Plan 08's Slack nudge rate limit (§8): the epoch ms each player was last
+  // actually nudged, keyed by playerId. Lives on the DO record rather than a
+  // D1 column — see the deviation comment on `nudgeHook` below. Never
+  // cleared/deleted (see `shouldNudge` in worker/nudge.ts for why); absent
+  // entries simply mean "never nudged".
+  nudgedAt: Record<PlayerId, number>;
 }
 
 // Per-connection attachment (PLAN.md §10.3): hibernation wipes in-memory
@@ -404,17 +411,74 @@ export class MatchDO extends DurableObject<Env> {
     current = this.readMatch() ?? record;
     derived = this.deriveWaitingAndDeadline(module, current);
 
-    // 7. Nudge players newly waited-on who are not connected. No-op stub
-    // for now; plan 08 fills this in. `newlyWaiting` is already correct so
-    // that plan is a one-method change.
+    // 7. Nudge players newly waited-on who are not connected (plan 08).
+    // `newlyWaiting` is computed from `current`/`derived` above — the
+    // freshest truth after every prior stage's await — and from
+    // `previousWaiting` captured before this commit touched anything, so a
+    // player who left and came back to `waitingOn` during this same commit
+    // (however unlikely) is correctly treated as newly-waiting too. This
+    // also covers the alarm-driven `deadline_resolved` path (e.g. trivia's
+    // next-round transition): `alarm()` funnels through this same `commit()`
+    // (see its own comment), so a round of new waiters created there nudges
+    // exactly like a normal move would.
     const newlyWaiting = derived.waitingOn.filter((id) => !previousWaiting.includes(id));
     await this.nudgeHook(current, newlyWaiting);
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- plan 08 fills this in.
-  private async nudgeHook(_record: MatchRecord, _newlyWaiting: PlayerId[]): Promise<void> {
-    /* plan 08 */
-    return;
+  // Plan 08 (§8): Slack-nudge every player in `newlyWaiting` who is not
+  // currently connected, rate-limited to one nudge per player per match per
+  // turn plus a hard floor backstop — see `shouldNudge` in worker/nudge.ts
+  // for the exact rule. Several players becoming newly-waited-on in the same
+  // commit (e.g. a trivia round start) produce exactly one batched Slack
+  // message, never one per player.
+  //
+  // Deviation from §8, noted as the plan requires: §8 says track `nudged_at`
+  // "on the match row", which reads as a D1 column. It lives on this DO's
+  // own record instead, because the DO is authoritative (§6) and this avoids
+  // a read-modify-write against derived state on every single move. No D1
+  // migration is needed.
+  private async nudgeHook(record: MatchRecord, newlyWaiting: PlayerId[]): Promise<void> {
+    if (newlyWaiting.length === 0) return;
+
+    const disconnected = newlyWaiting.filter((id) => !this.isConnected(id));
+    if (disconnected.length === 0) return;
+
+    // `newlyWaiting` members all transitioned into `waitingOn` in this very
+    // commit, so "now" doubles as every one of their `becameWaitingAt`.
+    const now = Date.now();
+    const eligible = disconnected.filter((id) => shouldNudge(record.nudgedAt[id], id, now, now));
+    if (eligible.length === 0) return;
+
+    // Persist the updated `nudgedAt` entries as part of this same,
+    // synchronous write — nothing has been `await`ed between the fresh
+    // `record` this method was handed (re-read right before this call, see
+    // commit()'s stage 7) and this line, so it carries none of the
+    // interleaving risk commit()'s own later re-reads guard against.
+    for (const id of eligible) record.nudgedAt[id] = now;
+    this.writeMatch(record);
+
+    const players = eligible
+      .map((id) => record.players.find((p) => p.id === id))
+      .filter((p): p is MatchPlayerRecord => p !== undefined);
+    if (players.length === 0) return;
+
+    const meta = getGameMeta(record.gameId);
+    const url = `${this.env.PUBLIC_BASE_URL}/m/${record.id}`;
+
+    // Fire-and-forget via ctx.waitUntil() so the move's own response is
+    // never blocked on Slack, and never let a Slack outage escape this
+    // pipeline (sendSlackNudge itself never throws; the .catch here is
+    // belt-and-suspenders against a future regression there).
+    this.ctx.waitUntil(
+      sendSlackNudge(this.env, {
+        matchId: record.id,
+        gameName: meta?.name ?? record.gameId,
+        players: players.map((p) => ({ id: p.id, nickname: p.nickname })),
+        url,
+      }).catch((err) => {
+        console.error("nudgeHook: sendSlackNudge rejected unexpectedly", err);
+      })
+    );
   }
 
   // ---------------------------------------------------------------------
@@ -443,6 +507,7 @@ export class MatchDO extends DurableObject<Env> {
       updatedAt: now,
       seed: Math.floor(Math.random() * 2 ** 31),
       state: null,
+      nudgedAt: {},
     };
     await this.commit(record, [
       { type: "player_joined", id: host.id, nickname: host.nickname },

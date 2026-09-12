@@ -5,6 +5,7 @@ import { getGameMeta } from "../../games/catalog";
 import { gameUi } from "../../games/registry";
 import type { GameUiProps, MatchEvent, MatchSnapshot, MatchSummary } from "../../shared/protocol";
 import { ApiError, getMatch } from "../api";
+import { clearMatchWaiting, setMatchWaiting } from "../badge";
 import { ConnectionBadge } from "../components/ConnectionBadge";
 import { DebugGameView } from "../components/DebugGameView";
 import { HistoryPanel } from "../components/HistoryPanel";
@@ -246,6 +247,22 @@ export function MatchPage({ code }: { code: string }) {
 
   const { snapshot, events, connection, error: transportError, send, start } = useMatch(code, notifyUnauthorized);
 
+  const myPlayerId = player?.playerId ?? "";
+
+  // Tab badge (§8 item 2): keep it live from this match's own snapshot
+  // stream between dashboard visits — a WS push that makes it this player's
+  // turn updates the badge immediately, rather than waiting for the next
+  // time the dashboard is mounted/polled. `setDashboardYourTurn` (called
+  // from Dashboard on every fetch) remains the authoritative resync.
+  useEffect(() => {
+    if (!snapshot || !myPlayerId) return;
+    setMatchWaiting(code, snapshot.waitingOn.includes(myPlayerId));
+  }, [code, snapshot, myPlayerId]);
+
+  useEffect(() => {
+    return () => clearMatchWaiting(code);
+  }, [code]);
+
   const meta = match ? getGameMeta(match.gameId) : undefined;
 
   return (
@@ -279,7 +296,7 @@ export function MatchPage({ code }: { code: string }) {
             transportError={transportError}
             send={send}
             start={start}
-            myPlayerId={player?.playerId ?? ""}
+            myPlayerId={myPlayerId}
           />
         </>
       )}

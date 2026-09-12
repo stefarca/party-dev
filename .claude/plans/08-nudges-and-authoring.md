@@ -1,7 +1,7 @@
 ---
 plan: 08-nudges-and-authoring
 goal: Implement PLAN.md — async turn-based party games on Cloudflare (Worker + Static Assets + Hono + Durable Objects with SQLite + D1 index + Slack nudges)
-status: pending
+status: done
 depends_on: [06-connect4-sequential, 07-trivia-simultaneous]
 ---
 

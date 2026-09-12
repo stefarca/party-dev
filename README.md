@@ -4,6 +4,12 @@ A collection of small async, turn-based party games for playing with coworkers, 
 Cloudflare's free tier (Worker + Static Assets + Durable Objects + D1). See
 [`PLAN.md`](./PLAN.md) for the full technical plan.
 
+**What works today:** nickname-only identity (no passwords), a dashboard that buckets your
+matches into "your turn" / "waiting on others" / "finished", two full games (Connect 4 and
+Trivia) playable over a live WebSocket (with an HTTP fallback for every action), and Slack nudges
+for players who are newly up and not currently connected. See [`games/README.md`](./games/README.md)
+for how to add a third game.
+
 ## Prerequisites
 
 - Node.js (v22+; developed against v26) and npm.
@@ -14,11 +20,15 @@ Cloudflare's free tier (Worker + Static Assets + Durable Objects + D1). See
 
 ```bash
 npm install
-cp .dev.vars.example .dev.vars   # sets a dummy SESSION_SECRET for local identity cookies
+cp .dev.vars.example .dev.vars   # sets a dummy SESSION_SECRET (and SLACK_WEBHOOK_URL) for local dev
 npm run cf-typegen        # generates worker-configuration.d.ts (already committed; re-run if bindings change)
 npm run db:migrate:local  # creates the local D1 sqlite file and applies migrations/000*.sql
 npm run dev                # starts vite + workerd; prints the local URL
 ```
+
+`SLACK_WEBHOOK_URL` is optional even locally: delete the line (or leave it blank) in `.dev.vars`
+and nudges no-op cleanly (`worker/nudge.ts` logs once and returns) — nothing else in the app
+depends on it.
 
 Local D1 and Durable Object storage both persist under `.wrangler/state`, which
 `wrangler d1 migrations apply --local` and `@cloudflare/vite-plugin` share by default. If you ever
@@ -46,7 +56,10 @@ mutation — a player joining, the host starting, a submitted action, or an alar
 5. broadcast a per-player `snapshot` (each socket's own `view(state, playerId)`, never raw state)
    plus any new events to every connected WebSocket,
 6. update the D1 index (`matches`/`match_players` — derived, dashboard-only),
-7. nudge newly-waited-on players who are not connected (a no-op stub until Slack nudges land).
+7. nudge newly-waited-on players who are not connected, via a Slack incoming webhook
+   (`worker/nudge.ts`), rate-limited to one nudge per player per match per turn plus a hard
+   10-minute floor per player as a backstop (§8). Several players becoming waited-on in the same
+   commit (e.g. a trivia round start) produce one batched Slack message, never one per player.
 
 Four rules every `GameModule` must follow (PLAN.md §5):
 
@@ -78,7 +91,14 @@ account, which the implementer does not have. To deploy for real:
 4. `npm run db:migrate:remote` — applies `migrations/*.sql` to the real D1 database.
 5. `wrangler secret put SESSION_SECRET` — sets the HMAC key used to sign identity cookies
    (PLAN.md §10.7). Generate a long random value; never reuse the `.dev.vars` dummy.
-6. `npm run deploy` — builds the client and runs `wrangler deploy`.
+6. `wrangler secret put SLACK_WEBHOOK_URL` — optional. Sets the Slack incoming-webhook URL for
+   §8's nudges; if you skip this, `worker/nudge.ts` no-ops cleanly and the rest of the app is
+   unaffected. Never commit a real value anywhere — it belongs only in this secret.
+7. Override `PUBLIC_BASE_URL` in `wrangler.jsonc`'s `vars` (or via `wrangler deploy --var
+   PUBLIC_BASE_URL:https://your-real-domain`) before deploying. The committed value
+   (`http://localhost:5173`) is a local-dev default — leaving it as-is in production means every
+   Slack nudge links to localhost.
+8. `npm run deploy` — builds the client and runs `wrangler deploy`.
 
 Do not commit the real `database_id` if you'd rather keep it private; it is not a secret, but the
 `REPLACE_ME_SEE_README` placeholder in this repo intentionally does not point at anything.
