@@ -39,9 +39,15 @@ options.
 Other useful scripts:
 
 - `npm run typecheck` — `tsc -b --noEmit` across the worker/client/node project references.
+- `npm run lint` — runs ESLint over the repo.
+- `npm run format` — formats the repo with Prettier.
+- `npm run format:check` — checks Prettier formatting without writing changes.
 - `npm test` — runs the Vitest suite (pure modules only; no Durable Object integration tests).
 - `npm run build` — builds the client (`dist/client`) and the Worker bundle.
 - `npm run preview` — serves the production build locally.
+
+`.github/workflows/ci.yml` runs `lint`, `format:check`, `typecheck`, `test` and `build` on every
+pull request.
 
 ## Engine
 
