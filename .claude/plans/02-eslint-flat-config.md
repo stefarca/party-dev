@@ -1,7 +1,7 @@
 ---
 plan: 02-eslint-flat-config
 goal: Add Prettier + ESLint and a GitHub Actions PR workflow that runs lint, format check, and build
-status: pending
+status: done
 depends_on: [01-prettier-baseline]
 ---
 
