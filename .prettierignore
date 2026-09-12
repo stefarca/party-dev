@@ -1,0 +1,9 @@
+# Generated and historical files are excluded from formatting.
+node_modules/
+dist/
+.wrangler/
+*.tsbuildinfo
+package-lock.json
+worker-configuration.d.ts
+PLAN.md
+.claude/

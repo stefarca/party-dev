@@ -70,7 +70,9 @@ export function TurnIndicator({ me, players, waitingOn, deadline, result }: Turn
   return (
     <div className={`turn-indicator card${myTurn ? " turn-indicator-mine" : ""}`}>
       <strong>{label}</strong>
-      {remainingMs !== null && <span className="turn-countdown">{formatCountdown(remainingMs)}</span>}
+      {remainingMs !== null && (
+        <span className="turn-countdown">{formatCountdown(remainingMs)}</span>
+      )}
     </div>
   );
 }

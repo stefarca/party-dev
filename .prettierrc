@@ -1,0 +1,11 @@
+{
+  "printWidth": 100,
+  "overrides": [
+    {
+      "files": ["**/*.jsonc", "wrangler.jsonc"],
+      "options": {
+        "trailingComma": "none"
+      }
+    }
+  ]
+}

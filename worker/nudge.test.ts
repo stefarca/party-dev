@@ -22,14 +22,16 @@ describe("sendSlackNudge", () => {
         gameName: "Connect 4",
         players: [{ id: "bob", nickname: "Bob" }],
         url: "http://localhost:5173/m/M1",
-      })
+      }),
     ).resolves.toBeUndefined();
     expect(fetchSpy).not.toHaveBeenCalled();
     fetchSpy.mockRestore();
   });
 
   it("sends one POST with a single-player message naming the game and match URL", async () => {
-    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(null, { status: 200 }));
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(new Response(null, { status: 200 }));
     await sendSlackNudge(fakeEnv("http://example.test/hook"), {
       matchId: "m1",
       gameName: "Connect 4",
@@ -48,7 +50,9 @@ describe("sendSlackNudge", () => {
   });
 
   it("batches several players into exactly one POST, not one per player", async () => {
-    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(null, { status: 200 }));
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(new Response(null, { status: 200 }));
     await sendSlackNudge(fakeEnv("http://example.test/hook"), {
       matchId: "m2",
       gameName: "Trivia",
@@ -76,7 +80,7 @@ describe("sendSlackNudge", () => {
         gameName: "Connect 4",
         players: [{ id: "bob", nickname: "Bob" }],
         url: "http://localhost:5173/m/M1",
-      })
+      }),
     ).resolves.toBeUndefined();
     fetchSpy.mockRestore();
   });

@@ -23,13 +23,12 @@ vi.mock("cloudflare:workers", () => ({
 // The constructor also reaches for `WebSocketRequestResponsePair`, a global
 // workerd runtime class not present under plain node. A no-op stand-in is
 // enough — this test never exercises the auto-response ping/pong path.
-(globalThis as { WebSocketRequestResponsePair?: unknown }).WebSocketRequestResponsePair ??=
-  class {
-    constructor(
-      public request: string,
-      public response: string
-    ) {}
-  };
+(globalThis as { WebSocketRequestResponsePair?: unknown }).WebSocketRequestResponsePair ??= class {
+  constructor(
+    public request: string,
+    public response: string,
+  ) {}
+};
 
 const { counterGame } = await import("../games/__fixtures__/counter");
 const { serverGames } = await import("../games/registry");
@@ -118,7 +117,7 @@ function createPauseController() {
         name,
         new Promise<void>((resolve) => {
           markReached = resolve;
-        })
+        }),
       );
       const blocked = new Promise<void>((resolve) => {
         releasers.set(name, resolve);
@@ -223,7 +222,7 @@ function createFakeDB(pauses: ReturnType<typeof createPauseController>) {
 
 function createFakeCtx(
   alarmController: ReturnType<typeof createAlarmController>,
-  sockets: FakeSocket[]
+  sockets: FakeSocket[],
 ) {
   const db = new DatabaseSync(":memory:");
   const sql = {
@@ -298,7 +297,7 @@ describe("MatchDO.commit() race across every await boundary", () => {
     // Must be exactly one `matchDo.fetch()` call — not a sequence — or a
     // later, unpaused call in the same sequence would silently re-read
     // fresh state on its own and mask staleness left behind by the first.
-    dispatchPausedAction: (matchDo: InstanceType<typeof MatchDO>) => Promise<Response>
+    dispatchPausedAction: (matchDo: InstanceType<typeof MatchDO>) => Promise<Response>,
   ) {
     const pauses = createPauseController();
     const alarmController = createAlarmController(pauses);
@@ -314,7 +313,7 @@ describe("MatchDO.commit() race across every await boundary", () => {
         matchId: "m1",
         gameId: "counter",
         host: { id: "alice", nickname: "Alice" },
-      })
+      }),
     );
     await matchDo.fetch(jsonRequest("/lobby/join", { id: "bob", nickname: "Bob" }));
     await matchDo.fetch(jsonRequest("/start", { playerId: "alice" }));
@@ -386,7 +385,9 @@ describe("MatchDO.commit() race across every await boundary", () => {
     // broadcast is correct by construction, so this only fails if the
     // *other* (paused) commit's broadcast is the stale one.
     const aliceSnapshotsAfterRejoin = (
-      alice.sent.filter((m) => m.t === "snapshot") as { players: { id: string; nickname: string }[] }[]
+      alice.sent.filter((m) => m.t === "snapshot") as {
+        players: { id: string; nickname: string }[];
+      }[]
     ).slice(snapshotCountBeforeRejoin);
     expect(aliceSnapshotsAfterRejoin.length).toBeGreaterThan(0);
     for (const snapshot of aliceSnapshotsAfterRejoin) {
@@ -396,7 +397,7 @@ describe("MatchDO.commit() race across every await boundary", () => {
 
     const allStatements = db.batches.flat();
     const bobIndexRows = allStatements.filter(
-      (s) => s.sql.includes("INSERT INTO match_players") && s.args[1] === "bob"
+      (s) => s.sql.includes("INSERT INTO match_players") && s.args[1] === "bob",
     );
     expect(bobIndexRows.length).toBeGreaterThan(0);
     const lastBobIndexRow = bobIndexRows[bobIndexRows.length - 1];
@@ -414,11 +415,10 @@ describe("MatchDO.commit() race across every await boundary", () => {
   it("re-validates freshness after the getAlarm await", async () => {
     // getAlarm fires unconditionally on every commit — alice's first pick
     // (simultaneous phase, deadline already armed) is enough to reach it.
-    await expectRejoinDuringPauseIsNotLost(
-      "getAlarm",
-      setUpSimultaneousPhase,
-      (matchDo) =>
-        matchDo.fetch(jsonRequest("/action", { playerId: "alice", action: { t: "pick", value: 10 } }))
+    await expectRejoinDuringPauseIsNotLost("getAlarm", setUpSimultaneousPhase, (matchDo) =>
+      matchDo.fetch(
+        jsonRequest("/action", { playerId: "alice", action: { t: "pick", value: 10 } }),
+      ),
     );
   });
 
@@ -434,7 +434,7 @@ describe("MatchDO.commit() race across every await boundary", () => {
           .fetch(jsonRequest("/action", { playerId: "alice", action: { t: "increment" } }))
           .then(() => undefined),
       (matchDo) =>
-        matchDo.fetch(jsonRequest("/action", { playerId: "bob", action: { t: "increment" } }))
+        matchDo.fetch(jsonRequest("/action", { playerId: "bob", action: { t: "increment" } })),
     );
   });
 
@@ -448,22 +448,23 @@ describe("MatchDO.commit() race across every await boundary", () => {
       async (matchDo) => {
         await setUpSimultaneousPhase(matchDo);
         await matchDo.fetch(
-          jsonRequest("/action", { playerId: "alice", action: { t: "pick", value: 10 } })
+          jsonRequest("/action", { playerId: "alice", action: { t: "pick", value: 10 } }),
         );
       },
       (matchDo) =>
-        matchDo.fetch(jsonRequest("/action", { playerId: "bob", action: { t: "pick", value: 20 } }))
+        matchDo.fetch(
+          jsonRequest("/action", { playerId: "bob", action: { t: "pick", value: 20 } }),
+        ),
     );
   });
 
   it("re-validates freshness after the dbBatch await inside syncIndex", async () => {
     // syncIndex's env.DB.batch() call fires unconditionally on every
     // commit, same as getAlarm — reuse the same setup.
-    await expectRejoinDuringPauseIsNotLost(
-      "dbBatch",
-      setUpSimultaneousPhase,
-      (matchDo) =>
-        matchDo.fetch(jsonRequest("/action", { playerId: "alice", action: { t: "pick", value: 10 } }))
+    await expectRejoinDuringPauseIsNotLost("dbBatch", setUpSimultaneousPhase, (matchDo) =>
+      matchDo.fetch(
+        jsonRequest("/action", { playerId: "alice", action: { t: "pick", value: 10 } }),
+      ),
     );
   });
 
@@ -487,7 +488,7 @@ describe("MatchDO.commit() race across every await boundary", () => {
         matchId: "m1",
         gameId: "counter",
         host: { id: "alice", nickname: "Alice" },
-      })
+      }),
     );
     await matchDo.fetch(jsonRequest("/lobby/join", { id: "bob", nickname: "Bob" }));
     await matchDo.fetch(jsonRequest("/start", { playerId: "alice" }));
@@ -497,12 +498,12 @@ describe("MatchDO.commit() race across every await boundary", () => {
 
     pauses.armPause("getAlarm");
     const alicePick = matchDo.fetch(
-      jsonRequest("/action", { playerId: "alice", action: { t: "pick", value: 10 } })
+      jsonRequest("/action", { playerId: "alice", action: { t: "pick", value: 10 } }),
     );
     await pauses.waitUntilPaused("getAlarm");
 
     const bobResponse = await matchDo.fetch(
-      jsonRequest("/action", { playerId: "bob", action: { t: "pick", value: 20 } })
+      jsonRequest("/action", { playerId: "bob", action: { t: "pick", value: 20 } }),
     );
     expect(bobResponse.status).toBe(200);
 

@@ -92,7 +92,7 @@ export function reduce(
   state: CounterState,
   action: CounterAction,
   by: PlayerId,
-  now: number
+  now: number,
 ): CounterState {
   if (state.phase === "done") {
     throw new Error("match already finished");

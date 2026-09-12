@@ -106,7 +106,7 @@ export function init(players: PlayerId[], seed: number): TriviaState {
 // what" record that `view()` is allowed to reveal only from `reveal` on.
 function scoreQuestion(
   state: TriviaState,
-  question: Question
+  question: Question,
 ): { scores: Record<PlayerId, number>; given: Record<PlayerId, number | null> } {
   const scores = { ...state.scores };
   const given: Record<PlayerId, number | null> = {};
@@ -154,7 +154,12 @@ function advanceAfterReveal(state: TriviaState, now: number): TriviaState {
   };
 }
 
-export function reduce(state: TriviaState, action: AnswerAction, by: PlayerId, now: number): TriviaState {
+export function reduce(
+  state: TriviaState,
+  action: AnswerAction,
+  by: PlayerId,
+  now: number,
+): TriviaState {
   if (state.phase !== "answering") {
     throw new Error("not accepting answers right now");
   }

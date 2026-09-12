@@ -134,13 +134,18 @@ export function useMatch(matchId: string, onUnauthorized?: () => void): UseMatch
       // connect() first wins, and the other is a no-op rather than opening a
       // second, permanently-leaked socket that overwrites socketRef.current.
       const existing = socketRef.current;
-      if (existing && (existing.readyState === WebSocket.OPEN || existing.readyState === WebSocket.CONNECTING)) {
+      if (
+        existing &&
+        (existing.readyState === WebSocket.OPEN || existing.readyState === WebSocket.CONNECTING)
+      ) {
         return;
       }
       setConnection("connecting");
 
       const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-      const ws = new WebSocket(`${wsProtocol}//${window.location.host}/ws/${encodeURIComponent(matchId)}`);
+      const ws = new WebSocket(
+        `${wsProtocol}//${window.location.host}/ws/${encodeURIComponent(matchId)}`,
+      );
       socketRef.current = ws;
       let helloAcked = false;
 
@@ -213,7 +218,10 @@ export function useMatch(matchId: string, onUnauthorized?: () => void): UseMatch
         reconnectTimerRef.current = null;
       }
       const current = socketRef.current;
-      if (current && (current.readyState === WebSocket.OPEN || current.readyState === WebSocket.CONNECTING)) {
+      if (
+        current &&
+        (current.readyState === WebSocket.OPEN || current.readyState === WebSocket.CONNECTING)
+      ) {
         return;
       }
       connect();
@@ -297,7 +305,7 @@ export function useMatch(matchId: string, onUnauthorized?: () => void): UseMatch
           setError(toMatchError(err, "action_failed", "action failed"));
         });
     },
-    [applySnapshot]
+    [applySnapshot],
   );
 
   const start = useCallback(() => {

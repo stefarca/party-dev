@@ -20,5 +20,11 @@
     "resolveJsonModule": true,
     "types": []
   },
-  "include": ["worker/**/*.ts", "shared/**/*.ts", "games/**/*.ts", "games/**/*.tsx", "worker-configuration.d.ts"]
+  "include": [
+    "worker/**/*.ts",
+    "shared/**/*.ts",
+    "games/**/*.ts",
+    "games/**/*.tsx",
+    "worker-configuration.d.ts"
+  ]
 }

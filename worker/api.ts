@@ -113,7 +113,7 @@ api.post("/matches", requireSession(), async (c) => {
     const code = generateMatchCode();
     try {
       await c.env.DB.prepare(
-        "INSERT INTO matches (id, game_id, status, created_at, updated_at, deadline) VALUES (?, ?, 'lobby', ?, ?, NULL)"
+        "INSERT INTO matches (id, game_id, status, created_at, updated_at, deadline) VALUES (?, ?, 'lobby', ?, ?, NULL)",
       )
         .bind(code, parsed.data.gameId, now, now)
         .run();
@@ -229,9 +229,7 @@ api.get("/matches/:id/snapshot", requireSession(), async (c) => {
 
   const id = c.env.MATCH.idFromName(code);
   const stub = c.env.MATCH.get(id);
-  const res = await stub.fetch(
-    `http://do/view?playerId=${encodeURIComponent(session.pid)}`
-  );
+  const res = await stub.fetch(`http://do/view?playerId=${encodeURIComponent(session.pid)}`);
   if (res.status === 404) return c.json(await res.json(), 404);
   if (res.status === 403) return c.json(await res.json(), 403);
   if (!res.ok) return c.json({ error: "snapshot_failed" }, 500);
@@ -329,7 +327,7 @@ api.get("/matches", requireSession(), async (c) => {
      FROM matches m
      JOIN match_players mine ON mine.match_id = m.id AND mine.player_id = ?
      JOIN match_players p ON p.match_id = m.id
-     ORDER BY m.updated_at DESC`
+     ORDER BY m.updated_at DESC`,
   )
     .bind(session.pid)
     .all<MatchIndexRow>();

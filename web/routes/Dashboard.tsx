@@ -17,11 +17,27 @@ function gameName(games: GameMeta[], gameId: string): string {
   return games.find((g) => g.id === gameId)?.name ?? gameId;
 }
 
-function MatchRow({ match, games, myPlayerId }: { match: MatchSummary; games: GameMeta[]; myPlayerId: string }) {
+function MatchRow({
+  match,
+  games,
+  myPlayerId,
+}: {
+  match: MatchSummary;
+  games: GameMeta[];
+  myPlayerId: string;
+}) {
   const others = match.players.filter((p) => p.id !== myPlayerId);
-  const otherNames = others.length > 0 ? others.map((p) => p.nickname).join(", ") : "waiting for others to join";
+  const otherNames =
+    others.length > 0 ? others.map((p) => p.nickname).join(", ") : "waiting for others to join";
   return (
-    <a className="card match-row" href={`/m/${match.id}`} onClick={(e) => { e.preventDefault(); navigate(`/m/${match.id}`); }}>
+    <a
+      className="card match-row"
+      href={`/m/${match.id}`}
+      onClick={(e) => {
+        e.preventDefault();
+        navigate(`/m/${match.id}`);
+      }}
+    >
       <div className="match-row-main">
         <strong>{gameName(games, match.gameId)}</strong>
         <span className="match-row-players">{otherNames}</span>
@@ -237,7 +253,11 @@ export function Dashboard() {
         <h2>Start a new match</h2>
         <form onSubmit={handleCreate}>
           <label htmlFor="game-select">Game</label>
-          <select id="game-select" value={selectedGame} onChange={(e) => setSelectedGame(e.target.value)}>
+          <select
+            id="game-select"
+            value={selectedGame}
+            onChange={(e) => setSelectedGame(e.target.value)}
+          >
             {games.map((g) => (
               <option key={g.id} value={g.id}>
                 {g.name} ({g.minPlayers}-{g.maxPlayers} players)

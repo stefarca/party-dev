@@ -40,7 +40,11 @@ export type DropAction = { t: "drop"; col: number };
 
 export const DropActionSchema: z.ZodType<DropAction> = z.object({
   t: z.literal("drop"),
-  col: z.number().int().min(0).max(COLS - 1),
+  col: z
+    .number()
+    .int()
+    .min(0)
+    .max(COLS - 1),
 });
 
 function emptyBoard(): Cell[][] {

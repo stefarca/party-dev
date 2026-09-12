@@ -25,7 +25,9 @@ export function DebugGameView({ view, waitingOn, deadline, result, send }: GameU
 
   return (
     <div className="card debug-game-view">
-      <p className="debug-game-view-note">No UI is registered for this game — showing the raw engine view.</p>
+      <p className="debug-game-view-note">
+        No UI is registered for this game — showing the raw engine view.
+      </p>
       <pre>{JSON.stringify({ view, waitingOn, deadline, result }, null, 2)}</pre>
       <label htmlFor="debug-action">Action (JSON)</label>
       <textarea

@@ -47,7 +47,15 @@ function nameFor(players: GameUiProps["players"], id: string): string {
   return players.find((p) => p.id === id)?.nickname ?? id;
 }
 
-function Scoreboard({ scores, players, me }: { scores: Record<string, number>; players: GameUiProps["players"]; me: string }) {
+function Scoreboard({
+  scores,
+  players,
+  me,
+}: {
+  scores: Record<string, number>;
+  players: GameUiProps["players"];
+  me: string;
+}) {
   const entries = Object.entries(scores).sort((a, b) => b[1] - a[1]);
   return (
     <ul className="trivia-scoreboard">
@@ -61,7 +69,17 @@ function Scoreboard({ scores, players, me }: { scores: Record<string, number>; p
   );
 }
 
-function Answering({ v, players, me, send }: { v: AnsweringView; players: GameUiProps["players"]; me: string; send: (a: unknown) => void }) {
+function Answering({
+  v,
+  players,
+  me,
+  send,
+}: {
+  v: AnsweringView;
+  players: GameUiProps["players"];
+  me: string;
+  send: (a: unknown) => void;
+}) {
   const locked = v.yourAnswer !== null;
 
   function pick(choice: number) {
@@ -100,7 +118,15 @@ function Answering({ v, players, me, send }: { v: AnsweringView; players: GameUi
   );
 }
 
-function Reveal({ v, players, me }: { v: RevealView; players: GameUiProps["players"]; me: string }) {
+function Reveal({
+  v,
+  players,
+  me,
+}: {
+  v: RevealView;
+  players: GameUiProps["players"];
+  me: string;
+}) {
   return (
     <div className="card trivia-card">
       <p className="trivia-round">
@@ -129,8 +155,7 @@ function Reveal({ v, players, me }: { v: RevealView; players: GameUiProps["playe
           return (
             <li key={p.id}>
               {nameFor(players, p.id)}
-              {p.id === me && " (you)"}:{" "}
-              {given === null ? "no answer" : v.choices[given]}
+              {p.id === me && " (you)"}: {given === null ? "no answer" : v.choices[given]}
               {gotIt ? " (+1)" : ""}
             </li>
           );

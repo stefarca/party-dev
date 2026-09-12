@@ -95,7 +95,7 @@ account, which the implementer does not have. To deploy for real:
    §8's nudges; if you skip this, `worker/nudge.ts` no-ops cleanly and the rest of the app is
    unaffected. Never commit a real value anywhere — it belongs only in this secret.
 7. Override `PUBLIC_BASE_URL` in `wrangler.jsonc`'s `vars` (or via `wrangler deploy --var
-   PUBLIC_BASE_URL:https://your-real-domain`) before deploying. The committed value
+PUBLIC_BASE_URL:https://your-real-domain`) before deploying. The committed value
    (`http://localhost:5173`) is a local-dev default — leaving it as-is in production means every
    Slack nudge links to localhost.
 8. `npm run deploy` — builds the client and runs `wrangler deploy`.

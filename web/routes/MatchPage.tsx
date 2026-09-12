@@ -65,7 +65,10 @@ function getLazyUi(gameId: string): LazyExoticComponent<ComponentType<GameUiProp
 // `fallback` instead of white-screening the whole app (plan 05 step 5).
 // `key`d by match code from the caller so navigating to a different match
 // always starts with a clean (non-tripped) boundary.
-class GameErrorBoundary extends Component<{ children: ReactNode; fallback: ReactNode }, { hasError: boolean }> {
+class GameErrorBoundary extends Component<
+  { children: ReactNode; fallback: ReactNode },
+  { hasError: boolean }
+> {
   state = { hasError: false };
 
   static getDerivedStateFromError() {
@@ -153,7 +156,8 @@ function MatchBody({
   if (status === "lobby") {
     const isHost = myPlayerId === match.hostId;
     const count = players.length;
-    const canStart = isHost && meta !== undefined && count >= meta.minPlayers && count <= meta.maxPlayers;
+    const canStart =
+      isHost && meta !== undefined && count >= meta.minPlayers && count <= meta.maxPlayers;
 
     return (
       <div className="card">
@@ -204,7 +208,13 @@ function MatchBody({
         deadline={snapshot.deadline}
         result={snapshot.result}
       />
-      <GameUiHost code={match.id} gameId={match.gameId} snapshot={snapshot} me={myPlayerId} send={send} />
+      <GameUiHost
+        code={match.id}
+        gameId={match.gameId}
+        snapshot={snapshot}
+        me={myPlayerId}
+        send={send}
+      />
       {transportError && <p className="error">{transportError.message}</p>}
       <HistoryPanel events={events} />
       <div className="match-footer">
@@ -245,7 +255,14 @@ export function MatchPage({ code }: { code: string }) {
     load();
   }, [load]);
 
-  const { snapshot, events, connection, error: transportError, send, start } = useMatch(code, notifyUnauthorized);
+  const {
+    snapshot,
+    events,
+    connection,
+    error: transportError,
+    send,
+    start,
+  } = useMatch(code, notifyUnauthorized);
 
   const myPlayerId = player?.playerId ?? "";
 

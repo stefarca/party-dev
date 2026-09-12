@@ -65,8 +65,7 @@ interface ConnectionAttachment {
 }
 
 type ActionResult =
-  | { ok: true; snapshot: MatchSnapshot }
-  | { ok: false; code: string; message: string };
+  { ok: true; snapshot: MatchSnapshot } | { ok: false; code: string; message: string };
 
 type MutationResult = { ok: true } | { ok: false; code: string; message: string };
 
@@ -120,12 +119,10 @@ export class MatchDO extends DurableObject<Env> {
 
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
-    this.ctx.storage.sql.exec(
-      "CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT)"
-    );
+    this.ctx.storage.sql.exec("CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT)");
     // Append-only event log (PLAN.md §7), verbatim DDL.
     this.ctx.storage.sql.exec(
-      "CREATE TABLE IF NOT EXISTS events (seq INTEGER PRIMARY KEY AUTOINCREMENT, ts INTEGER, payload TEXT)"
+      "CREATE TABLE IF NOT EXISTS events (seq INTEGER PRIMARY KEY AUTOINCREMENT, ts INTEGER, payload TEXT)",
     );
     // Hibernation-safe keepalive (§10.2): the runtime answers a raw "ping"
     // text frame with "pong" itself, without ever waking this DO. This is
@@ -141,9 +138,9 @@ export class MatchDO extends DurableObject<Env> {
     const url = new URL(request.url);
 
     if (request.method === "GET" && url.pathname === "/ping") {
-      const row = this.ctx.storage.sql
-        .exec("SELECT count(*) AS n FROM sqlite_master")
-        .one() as { n: number };
+      const row = this.ctx.storage.sql.exec("SELECT count(*) AS n FROM sqlite_master").one() as {
+        n: number;
+      };
       return Response.json({
         ok: true,
         id: this.ctx.id.toString(),
@@ -198,7 +195,7 @@ export class MatchDO extends DurableObject<Env> {
     this.ctx.storage.sql.exec(
       `INSERT INTO meta (key, value) VALUES ('match', ?)
        ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
-      JSON.stringify(record)
+      JSON.stringify(record),
     );
   }
 
@@ -208,7 +205,7 @@ export class MatchDO extends DurableObject<Env> {
     this.ctx.storage.sql.exec(
       "INSERT INTO events (ts, payload) VALUES (?, ?)",
       ts,
-      JSON.stringify(payload)
+      JSON.stringify(payload),
     );
     const row = this.ctx.storage.sql.exec("SELECT last_insert_rowid() AS seq").one() as {
       seq: number;
@@ -221,7 +218,7 @@ export class MatchDO extends DurableObject<Env> {
       .exec(
         "SELECT seq, ts, payload FROM events WHERE seq > ? ORDER BY seq ASC LIMIT ?",
         since,
-        limit
+        limit,
       )
       .toArray() as { seq: number; ts: number; payload: string }[];
     return rows.map((r) => ({ seq: r.seq, ts: r.ts, payload: JSON.parse(r.payload) }));
@@ -290,7 +287,7 @@ export class MatchDO extends DurableObject<Env> {
   // commit() for why.
   private deriveWaitingAndDeadline(
     module: GameModule<unknown, unknown> | undefined,
-    record: MatchRecord
+    record: MatchRecord,
   ): { waitingOn: PlayerId[]; deadline: number | null } {
     const state = record.state;
     const hasState = module !== undefined && state !== null;
@@ -477,7 +474,7 @@ export class MatchDO extends DurableObject<Env> {
         url,
       }).catch((err) => {
         console.error("nudgeHook: sendSlackNudge rejected unexpectedly", err);
-      })
+      }),
     );
   }
 
@@ -509,9 +506,7 @@ export class MatchDO extends DurableObject<Env> {
       state: null,
       nudgedAt: {},
     };
-    await this.commit(record, [
-      { type: "player_joined", id: host.id, nickname: host.nickname },
-    ]);
+    await this.commit(record, [{ type: "player_joined", id: host.id, nickname: host.nickname }]);
     return Response.json(this.toSummary(record));
   }
 
@@ -602,7 +597,7 @@ export class MatchDO extends DurableObject<Env> {
              status = excluded.status,
              updated_at = excluded.updated_at,
              deadline = excluded.deadline,
-             host_id = excluded.host_id`
+             host_id = excluded.host_id`,
         ).bind(
           record.id,
           record.gameId,
@@ -610,7 +605,7 @@ export class MatchDO extends DurableObject<Env> {
           record.createdAt,
           record.updatedAt,
           deadline,
-          record.hostId
+          record.hostId,
         ),
         ...record.players.map((p) =>
           this.env.DB.prepare(
@@ -618,8 +613,8 @@ export class MatchDO extends DurableObject<Env> {
              VALUES (?, ?, ?, ?)
              ON CONFLICT(match_id, player_id) DO UPDATE SET
                waiting = excluded.waiting,
-               nickname = excluded.nickname`
-          ).bind(record.id, p.id, waitingSet.has(p.id) ? 1 : 0, p.nickname)
+               nickname = excluded.nickname`,
+          ).bind(record.id, p.id, waitingSet.has(p.id) ? 1 : 0, p.nickname),
         ),
       ];
       await this.env.DB.batch(statements);
@@ -721,7 +716,7 @@ export class MatchDO extends DurableObject<Env> {
     if (!result.ok) {
       return Response.json(
         { error: result.code, message: result.message },
-        { status: statusForCode(result.code) }
+        { status: statusForCode(result.code) },
       );
     }
     const record = this.readMatch() as MatchRecord;
@@ -736,7 +731,7 @@ export class MatchDO extends DurableObject<Env> {
     if (!result.ok) {
       return Response.json(
         { error: result.code, message: result.message },
-        { status: statusForCode(result.code) }
+        { status: statusForCode(result.code) },
       );
     }
     return Response.json(result.snapshot);
@@ -839,7 +834,11 @@ export class MatchDO extends DurableObject<Env> {
       const text = typeof message === "string" ? message : new TextDecoder().decode(message);
       raw = JSON.parse(text);
     } catch {
-      this.safeSend(ws, { t: "error", code: "invalid_json", message: "message was not valid JSON" });
+      this.safeSend(ws, {
+        t: "error",
+        code: "invalid_json",
+        message: "message was not valid JSON",
+      });
       return;
     }
 
@@ -906,7 +905,7 @@ export class MatchDO extends DurableObject<Env> {
     _ws: WebSocket,
     _code: number,
     _reason: string,
-    _wasClean: boolean
+    _wasClean: boolean,
   ): Promise<void> {
     // Nothing to clean up: there is no in-memory connection map (hibernation
     // wipes it anyway) — ctx.getWebSockets() always enumerates live sockets

@@ -110,7 +110,9 @@ describe("trivia — reduce: simultaneous answering", () => {
     state = answer(state, "alice", q.answer, 1000);
     state = answer(state, "bob", q.answer, 1100);
     state = answer(state, "carol", q.answer, 1200); // now "reveal"
-    expect(() => reduce(state, { t: "answer", round: state.round, choice: 0 }, "alice", 1300)).toThrow();
+    expect(() =>
+      reduce(state, { t: "answer", round: state.round, choice: 0 }, "alice", 1300),
+    ).toThrow();
   });
 
   it("does not mutate its input state and returns a new object", () => {
@@ -236,7 +238,10 @@ describe("trivia — view()", () => {
     state = answer(state, "carol", (q.answer + 1) % q.choices.length, 1200);
     expect(state.phase).toBe("reveal");
 
-    const projected = view(state, "alice") as { correctAnswer: number; given: Record<string, number | null> };
+    const projected = view(state, "alice") as {
+      correctAnswer: number;
+      given: Record<string, number | null>;
+    };
     expect(projected.correctAnswer).toBe(q.answer);
     expect(projected.given.carol).toBe((q.answer + 1) % q.choices.length);
   });
@@ -323,8 +328,12 @@ describe("trivia — full playthrough", () => {
 
 describe("trivia — module shape", () => {
   it("validates actions with actionSchema", () => {
-    expect(triviaGame.actionSchema.safeParse({ t: "answer", round: 0, choice: 0 }).success).toBe(true);
-    expect(triviaGame.actionSchema.safeParse({ t: "answer", round: 0, choice: -1 }).success).toBe(false);
+    expect(triviaGame.actionSchema.safeParse({ t: "answer", round: 0, choice: 0 }).success).toBe(
+      true,
+    );
+    expect(triviaGame.actionSchema.safeParse({ t: "answer", round: 0, choice: -1 }).success).toBe(
+      false,
+    );
     expect(triviaGame.actionSchema.safeParse({ t: "nonsense" }).success).toBe(false);
   });
 

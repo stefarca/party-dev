@@ -90,7 +90,7 @@ export function shouldNudge(
   nudgedAt: number | undefined,
   _playerId: PlayerId,
   now: number,
-  becameWaitingAt: number
+  becameWaitingAt: number,
 ): boolean {
   if (nudgedAt === undefined) return true;
   if (nudgedAt >= becameWaitingAt) return false;

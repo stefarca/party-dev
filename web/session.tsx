@@ -72,7 +72,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<SessionValue>(
     () => ({ state, player, error, signIn, rename, retry, notifyUnauthorized }),
-    [state, player, error, signIn, rename, retry, notifyUnauthorized]
+    [state, player, error, signIn, rename, retry, notifyUnauthorized],
   );
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
