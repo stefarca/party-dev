@@ -5,11 +5,20 @@
     "lib": ["es2022"],
     "module": "esnext",
     "moduleResolution": "bundler",
+    // Not because the Worker bundle contains any JSX (it does not —
+    // `serverGames` in games/registry.ts never imports a `.tsx` file, see
+    // the comment there). `gameUi`'s dynamically-imported `.tsx` UI modules
+    // are only ever referenced by *type* from this program (to type-check
+    // the `Promise<{ default: ComponentType<GameUiProps> }>` shape of
+    // `import("./some-game/ui")`), but the TS project-reference compiler
+    // still needs to parse those files to get there, which fails without a
+    // `jsx` option at all, regardless of runtime usage.
+    "jsx": "react-jsx",
     "strict": true,
     "noEmit": true,
     "skipLibCheck": true,
     "resolveJsonModule": true,
     "types": []
   },
-  "include": ["worker/**/*.ts", "shared/**/*.ts", "games/**/*.ts", "worker-configuration.d.ts"]
+  "include": ["worker/**/*.ts", "shared/**/*.ts", "games/**/*.ts", "games/**/*.tsx", "worker-configuration.d.ts"]
 }

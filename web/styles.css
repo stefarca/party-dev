@@ -308,3 +308,81 @@ pre {
   resize: vertical;
   margin-bottom: 0.5rem;
 }
+
+/* Plan 06: Connect 4 board. */
+
+.c4-seats {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.c4-seat {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.9rem;
+}
+
+.c4-seat-you {
+  font-weight: 700;
+}
+
+.c4-board {
+  display: grid;
+  gap: 0.25rem;
+  background: #1d4ed8;
+  padding: 0.4rem;
+  border-radius: 8px;
+}
+
+.c4-column {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.2rem;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  border-radius: 6px;
+}
+
+.c4-column:focus-visible {
+  outline: 3px solid #fff7ed;
+  outline-offset: 2px;
+}
+
+.c4-column:disabled {
+  cursor: not-allowed;
+}
+
+.c4-disc {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 1;
+  min-width: 1.5rem;
+  border-radius: 50%;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #1a1a1a;
+}
+
+.c4-disc-empty {
+  background: #eef2ff;
+}
+
+.c4-disc-filled {
+  color: #fff;
+}
+
+.c4-disc-last {
+  box-shadow: inset 0 0 0 3px #1a1a1a;
+}
+
+.c4-status {
+  margin: 0.75rem 0 0;
+  color: #555;
+}

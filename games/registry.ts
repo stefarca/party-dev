@@ -1,5 +1,6 @@
 import type { ComponentType } from "react";
 
+import { connect4Game } from "./connect4/game";
 import type { GameModule } from "../shared/game";
 import type { GameUiProps } from "../shared/protocol";
 
@@ -13,7 +14,7 @@ import type { GameUiProps } from "../shared/protocol";
 // round-trip). It must never import a `.tsx` file — that would pull React
 // into the Worker bundle.
 export const serverGames: Record<string, GameModule<any, any>> = {
-  // connect4: connect4Game, (plan 06)
+  connect4: connect4Game,
   // trivia: triviaGame,     (plan 07)
 };
 
@@ -21,7 +22,7 @@ export const serverGames: Record<string, GameModule<any, any>> = {
 // linearly with the number of games (§9) — only the UI for the game you are
 // actually looking at is ever fetched.
 export const gameUi: Record<string, () => Promise<{ default: ComponentType<GameUiProps> }>> = {
-  // connect4: () => import("./connect4/ui"), (plan 06)
+  connect4: () => import("./connect4/ui"),
   // trivia: () => import("./trivia/ui"),     (plan 07)
 };
 
