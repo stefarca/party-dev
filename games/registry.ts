@@ -14,6 +14,7 @@ import type { GameUiProps } from "../shared/protocol";
 // game's rules (the DO must be able to run any match without a network
 // round-trip). It must never import a `.tsx` file — that would pull React
 // into the Worker bundle.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- registry is intentionally generic over each game's state/action types
 export const serverGames: Record<string, GameModule<any, any>> = {
   connect4: connect4Game,
   trivia: triviaGame,
@@ -27,6 +28,7 @@ export const gameUi: Record<string, () => Promise<{ default: ComponentType<GameU
   trivia: () => import("./trivia/ui"),
 };
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- lookup is intentionally generic over each game's state/action types
 export function getGame(id: string): GameModule<any, any> | undefined {
   return serverGames[id];
 }

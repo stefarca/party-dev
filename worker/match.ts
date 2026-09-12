@@ -376,6 +376,7 @@ export class MatchDO extends DurableObject<Env> {
     // was suspended there, so `current`/`derived` from stage 3 can no
     // longer be trusted.
     current = this.readMatch() ?? record;
+    // eslint-disable-next-line no-useless-assignment -- defensive re-read for symmetry with the other stages; overwritten again after await #3 below but kept so future edits reordering this block stay safe
     derived = this.deriveWaitingAndDeadline(module, current);
 
     // 5. Broadcast a per-player snapshot to every connected socket, using

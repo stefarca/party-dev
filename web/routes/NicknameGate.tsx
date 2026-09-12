@@ -8,6 +8,7 @@ import { useSession } from "../session";
 // user sees the same 1-24 char / no-control-character rule before ever
 // hitting the network. The server re-validates regardless.
 const MAX_LEN = 24;
+// eslint-disable-next-line no-control-regex -- control chars are the point of this validation
 const NO_CONTROL_CHARS = /^[^\x00-\x1F\x7F]*$/;
 
 function validate(nickname: string): string | null {

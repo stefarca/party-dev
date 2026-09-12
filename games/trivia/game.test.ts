@@ -299,7 +299,7 @@ describe("trivia — full playthrough", () => {
   it("plays ROUNDS rounds, ends with a non-null result and correctly-summed scores", () => {
     let state = init(PLAYERS, 42);
     let aliceCorrect = 0;
-    let bobCorrect = 0;
+    const bobCorrect = 0;
     let carolCorrect = 0;
 
     for (let r = 0; r < ROUNDS; r++) {

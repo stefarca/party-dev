@@ -36,6 +36,7 @@ export interface MatchSummary {
 // No control characters (U+0000-U+001F, U+007F). Coworkers will open
 // devtools, so the nickname is validated server-side regardless of what the
 // client UI already enforces.
+// eslint-disable-next-line no-control-regex -- control chars are the point of this validation
 const NO_CONTROL_CHARS = /^[^\x00-\x1F\x7F]*$/;
 
 export const IdentityRequestSchema = z.object({
