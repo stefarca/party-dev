@@ -26,22 +26,35 @@
 
 .c4-board {
   display: grid;
-  gap: var(--game-gap);
+  gap: var(--space-1);
   background: var(--surface-void);
-  padding: var(--space-2);
+  padding: var(--space-1);
   border-radius: var(--game-radius);
   box-shadow: var(--shadow-inset);
+}
+
+@media (min-width: 30rem) {
+  .c4-board {
+    gap: var(--game-gap);
+    padding: var(--space-2);
+  }
 }
 
 .c4-column {
   display: flex;
   flex-direction: column;
-  gap: var(--game-gap);
+  gap: var(--space-1);
   padding: 0.2rem;
   border: none;
   background: transparent;
   cursor: pointer;
   border-radius: var(--radius-md);
+}
+
+@media (min-width: 30rem) {
+  .c4-column {
+    gap: var(--game-gap);
+  }
 }
 
 .c4-column-live {
@@ -89,6 +102,21 @@
     var(--game-piece-shadow),
     0 0 0 3px var(--accent),
     var(--glow-accent);
+  /* Fires once when a disc first gains this class (a real new move) — a
+     re-render with the same `lastMove` leaves the class list unchanged and
+     never restarts it. */
+  animation: party-disc-drop var(--dur-base) var(--ease-spring) both;
+}
+
+@keyframes party-disc-drop {
+  from {
+    transform: translateY(-12px);
+    opacity: 0.6;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
 }
 
 .c4-disc-preview {
@@ -128,9 +156,12 @@
 
 .trivia-progress-fill {
   height: 100%;
+  width: 100%;
+  transform: scaleX(var(--fill, 0));
+  transform-origin: left center;
   background: var(--accent);
   border-radius: inherit;
-  transition: width var(--dur-base) var(--ease-out);
+  transition: transform var(--dur-base) var(--ease-out);
 }
 
 .trivia-question {

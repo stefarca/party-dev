@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { FormEvent } from "react";
 
 import { ApiError } from "./api";
+import { Spinner } from "./components/states";
 import { ThemeToggle } from "./components/ThemeToggle";
 import { WordMark } from "./components/WordMark";
 import { Dashboard } from "./routes/Dashboard";
@@ -78,7 +79,7 @@ function RouteContent() {
   if (route.name === "dashboard") return <Dashboard />;
   if (route.name === "match") return <MatchPage code={route.code} />;
   return (
-    <main className="container">
+    <main id="main-content" className="container">
       <p>Page not found.</p>
     </main>
   );
@@ -89,8 +90,9 @@ function AppShell() {
 
   if (state === "loading") {
     return (
-      <main className="container">
-        <p>Loading…</p>
+      <main id="main-content" className="splash">
+        <WordMark className="splash-mark" />
+        <Spinner label="Loading party-dev" />
       </main>
     );
   }
@@ -111,6 +113,9 @@ export function App() {
   return (
     <SessionProvider>
       <div className="app-bg" aria-hidden="true" />
+      <a href="#main-content" className="skip-link">
+        Skip to content
+      </a>
       <AppShell />
     </SessionProvider>
   );

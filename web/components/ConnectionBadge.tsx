@@ -12,7 +12,7 @@ const LABEL: Record<ConnectionState, string> = {
 
 export function ConnectionBadge({ connection }: { connection: ConnectionState }) {
   return (
-    <span className={`connection-badge connection-${connection}`}>
+    <span className={`connection-badge connection-${connection}`} role="status" aria-live="polite">
       <span className="connection-dot" aria-hidden="true" />
       <span className="connection-label">{LABEL[connection]}</span>
     </span>

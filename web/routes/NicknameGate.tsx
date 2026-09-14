@@ -50,7 +50,7 @@ export function NicknameGate() {
   }
 
   return (
-    <main className="page page-narrow gate">
+    <main id="main-content" className="page page-narrow gate">
       <div className="panel gate-panel">
         <div className="gate-header">
           <WordMark className="gate-mark" />

@@ -19,6 +19,7 @@
   box-shadow: var(--shadow-3), var(--edge-highlight);
   overflow: hidden;
   margin-bottom: var(--space-4);
+  animation: party-fade-in var(--dur-slow) var(--ease-out) both;
 }
 
 .game-surface-bezel {
@@ -41,9 +42,23 @@
 }
 
 .game-surface-well {
-  padding: var(--space-4);
+  padding: var(--space-2);
   background: var(--game-well);
   box-shadow: var(--shadow-inset);
+}
+
+@media (min-width: 30rem) {
+  .game-surface-well {
+    padding: var(--space-4);
+  }
+}
+
+/* Skeleton cabinet: shown in place of the real board before the first
+   snapshot arrives, reserving roughly the same footprint. */
+.game-surface-skeleton .game-surface-well {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
 }
 
 /* Shared game vocabulary. */
@@ -80,12 +95,22 @@
 .game-choice {
   font: inherit;
   text-align: left;
+  white-space: normal;
   padding: var(--space-3) var(--space-4);
   border: 1px solid var(--border-strong);
   border-radius: var(--game-radius);
   background: var(--surface-1);
   color: var(--text-primary);
   cursor: pointer;
+  transition:
+    transform var(--dur-fast) var(--ease-out),
+    background-color var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out);
+}
+
+.game-choice:not(:disabled):hover {
+  transform: translateY(-1px);
+  border-color: var(--accent);
 }
 
 .game-choice:disabled {
@@ -96,6 +121,22 @@
   border-color: var(--accent);
   background: var(--accent-soft);
   font-weight: 700;
+  /* Fires once when a choice is picked — the class is only added at that
+     moment, so later re-renders while the same choice stays picked leave
+     the class list unchanged and never restart it. */
+  animation: party-choice-press var(--dur-fast) var(--ease-out);
+}
+
+@keyframes party-choice-press {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(0.97);
+  }
+  100% {
+    transform: scale(1);
+  }
 }
 
 .game-choice-correct {

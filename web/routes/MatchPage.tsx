@@ -17,6 +17,7 @@ import { ConnectionBadge } from "../components/ConnectionBadge";
 import { DebugGameView } from "../components/DebugGameView";
 import { GameSurface } from "../components/GameSurface";
 import { HistoryPanel } from "../components/HistoryPanel";
+import { Notice, Skeleton } from "../components/states";
 import { TurnIndicator } from "../components/TurnIndicator";
 import { useSession } from "../session";
 import type { ConnectionState, MatchError } from "../useMatch";
@@ -43,6 +44,39 @@ function MatchHeader({
       <div className="match-header-meta">
         <span className={statusChipClass(status)}>{status}</span>
         <ConnectionBadge connection={connection} />
+      </div>
+    </div>
+  );
+}
+
+// Reserves roughly the header + share panel + roster panel footprint while
+// the initial `getMatch()` fetch is in flight.
+function MatchSkeleton() {
+  return (
+    <>
+      <div className="match-header">
+        <Skeleton width="10rem" height="1.5rem" />
+        <Skeleton width="5rem" height="1.3rem" />
+      </div>
+      <div className="panel">
+        <Skeleton width="60%" height="1.1rem" />
+        <Skeleton height="4rem" />
+      </div>
+    </>
+  );
+}
+
+// Reserves roughly the cabinet's footprint for the brief window between the
+// lobby summary reporting the match has started and the live snapshot
+// actually arriving.
+function GameSurfaceSkeleton() {
+  return (
+    <div className="game-surface game-surface-skeleton">
+      <div className="game-surface-bezel">
+        <Skeleton width="8rem" height="1.2rem" />
+      </div>
+      <div className="game-surface-well">
+        <Skeleton height="12rem" />
       </div>
     </div>
   );
@@ -228,7 +262,14 @@ function GameUiHost({
   return (
     <GameSurface title={title}>
       <GameErrorBoundary key={code} fallback={<DebugGameView {...props} />}>
-        <Suspense fallback={<p className="game-muted">Loading game…</p>}>
+        <Suspense
+          fallback={
+            <div role="status">
+              <span className="visually-hidden">Loading game…</span>
+              <Skeleton height="12rem" />
+            </div>
+          }
+        >
           <Lazy {...props} />
         </Suspense>
       </GameErrorBoundary>
@@ -293,7 +334,11 @@ function MatchBody({
               Start match
             </button>
           )}
-          {transportError && <div className="notice notice-danger">{transportError.message}</div>}
+          {transportError && (
+            <Notice tone="danger" role="status">
+              {transportError.message}
+            </Notice>
+          )}
         </div>
       </section>
     );
@@ -303,7 +348,7 @@ function MatchBody({
   // still be in flight for a brief instant right after the lobby summary
   // (loaded first) reports the match has already started elsewhere.
   if (!snapshot) {
-    return <div className="notice">Loading match…</div>;
+    return <GameSurfaceSkeleton />;
   }
 
   return (
@@ -322,7 +367,11 @@ function MatchBody({
         me={myPlayerId}
         send={send}
       />
-      {transportError && <div className="notice notice-danger">{transportError.message}</div>}
+      {transportError && (
+        <Notice tone="danger" role="status">
+          {transportError.message}
+        </Notice>
+      )}
       <HistoryPanel events={events} />
     </>
   );
@@ -413,7 +462,7 @@ export function MatchPage({ code }: { code: string }) {
   const status = snapshot?.status ?? match?.status;
 
   return (
-    <main className="page page-narrow">
+    <main id="main-content" className="page page-narrow">
       {match && (
         <MatchHeader
           name={meta?.name ?? match.gameId}
@@ -422,15 +471,12 @@ export function MatchPage({ code }: { code: string }) {
         />
       )}
 
-      {loading && <div className="notice">Loading…</div>}
+      {loading && <MatchSkeleton />}
 
       {!loading && error && (
-        <div className="notice notice-danger">
-          <p>{error}</p>
-          <button className="btn btn-ghost" onClick={() => load()}>
-            Retry
-          </button>
-        </div>
+        <Notice tone="danger" action={{ label: "Retry", onClick: () => load() }}>
+          {error}
+        </Notice>
       )}
 
       {!loading && !error && match && (

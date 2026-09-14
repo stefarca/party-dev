@@ -1,3 +1,5 @@
+import type { CSSProperties } from "react";
+
 import type { GameUiProps } from "../../shared/protocol";
 
 // Trivia UI. No game-specific countdown here — the round/reveal
@@ -51,7 +53,7 @@ function nameFor(players: GameUiProps["players"], id: string): string {
 }
 
 function RoundProgress({ round, totalRounds }: { round: number; totalRounds: number }) {
-  const pct = totalRounds > 0 ? ((round + 1) / totalRounds) * 100 : 0;
+  const fraction = totalRounds > 0 ? (round + 1) / totalRounds : 0;
   return (
     <div className="trivia-progress-strip">
       <p className="trivia-round game-text">
@@ -64,7 +66,7 @@ function RoundProgress({ round, totalRounds }: { round: number; totalRounds: num
         aria-valuemin={1}
         aria-valuemax={totalRounds}
       >
-        <div className="trivia-progress-fill" style={{ width: `${pct}%` }} />
+        <div className="trivia-progress-fill" style={{ "--fill": fraction } as CSSProperties} />
       </div>
     </div>
   );

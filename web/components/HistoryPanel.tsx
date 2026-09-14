@@ -13,17 +13,21 @@ export function HistoryPanel({ events }: { events: MatchEvent[] }) {
         History
         <span className="chip">{events.length}</span>
       </summary>
-      <ul className="history-list">
-        {newestFirst.map((event) => (
-          <li key={event.seq} className="history-item">
-            <div className="history-item-head">
-              <span className="history-seq">#{event.seq}</span>
-              <span className="history-ts">{new Date(event.ts).toLocaleTimeString()}</span>
-            </div>
-            <pre className="history-payload">{JSON.stringify(event.payload)}</pre>
-          </li>
-        ))}
-      </ul>
+      {newestFirst.length === 0 ? (
+        <p className="history-empty">No moves yet.</p>
+      ) : (
+        <ul className="history-list">
+          {newestFirst.map((event) => (
+            <li key={event.seq} className="history-item">
+              <div className="history-item-head">
+                <span className="history-seq">#{event.seq}</span>
+                <span className="history-ts">{new Date(event.ts).toLocaleTimeString()}</span>
+              </div>
+              <pre className="history-payload">{JSON.stringify(event.payload)}</pre>
+            </li>
+          ))}
+        </ul>
+      )}
     </details>
   );
 }

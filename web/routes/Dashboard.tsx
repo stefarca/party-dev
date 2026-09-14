@@ -7,6 +7,7 @@ import type { MatchStatus, MatchSummary } from "../../shared/protocol";
 import { ApiError, createMatch, getGames, joinMatch, listMatches } from "../api";
 import type { MatchBuckets } from "../api";
 import { setDashboardYourTurn } from "../badge";
+import { EmptyState, Notice, Skeleton } from "../components/states";
 import { formatDeadline, relativeTime } from "../format";
 import { navigate } from "../router";
 import { useSession } from "../session";
@@ -97,12 +98,7 @@ function Section({
         <span className="chip">{matches.length}</span>
       </div>
       {matches.length === 0 ? (
-        <div className="empty-shelf">
-          <span className="empty-shelf-glyph" aria-hidden="true">
-            ○
-          </span>
-          <p>{emptyText}</p>
-        </div>
+        <EmptyState>{emptyText}</EmptyState>
       ) : (
         <div className="match-list">
           {matches.map((m) => (
@@ -111,6 +107,33 @@ function Section({
         </div>
       )}
     </section>
+  );
+}
+
+// Reserves roughly the shelf/match-card footprint the real content will
+// take, so the first fetch doesn't cause a layout jump when it resolves.
+function ShelfSkeleton() {
+  return (
+    <section className="shelf">
+      <div className="shelf-header">
+        <Skeleton width="8rem" height="1.3rem" />
+        <Skeleton width="2rem" height="1.3rem" />
+      </div>
+      <div className="match-list">
+        <Skeleton height="6.5rem" />
+        <Skeleton height="6.5rem" />
+      </div>
+    </section>
+  );
+}
+
+function DashboardSkeleton() {
+  return (
+    <>
+      <ShelfSkeleton />
+      <ShelfSkeleton />
+      <ShelfSkeleton />
+    </>
   );
 }
 
@@ -235,19 +258,18 @@ export function Dashboard() {
 
   if (loading) {
     return (
-      <main className="page">
-        <p>Loading…</p>
+      <main id="main-content" className="page">
+        <DashboardSkeleton />
       </main>
     );
   }
 
   if (error) {
     return (
-      <main className="page">
-        <p className="error">{error}</p>
-        <button className="btn btn-ghost" onClick={() => refresh()}>
-          Retry
-        </button>
+      <main id="main-content" className="page">
+        <Notice tone="danger" action={{ label: "Retry", onClick: () => refresh() }}>
+          {error}
+        </Notice>
       </main>
     );
   }
@@ -256,7 +278,7 @@ export function Dashboard() {
   const data = buckets ?? { yourTurn: [], waiting: [], finished: [] };
 
   return (
-    <main className="page">
+    <main id="main-content" className="page">
       <Section
         title="Your turn"
         emptyText="Nothing needs your move right now."

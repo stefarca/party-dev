@@ -52,6 +52,7 @@
 
 .shelf {
   margin-bottom: var(--space-6);
+  animation: party-fade-in var(--dur-slow) var(--ease-out) both;
 }
 
 .shelf-header {
@@ -67,8 +68,14 @@
 
 .match-list {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  grid-template-columns: 1fr;
   gap: var(--space-3);
+}
+
+@media (min-width: 30rem) {
+  .match-list {
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  }
 }
 
 .match-card {
@@ -80,9 +87,18 @@
   margin-bottom: 0;
 }
 
+.match-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--edge-highlight), var(--shadow-3);
+}
+
 .match-card-accent {
   border-color: var(--border-accent);
   box-shadow: var(--edge-highlight), var(--shadow-2), var(--glow-accent);
+}
+
+.match-card-accent:hover {
+  box-shadow: var(--edge-highlight), var(--shadow-3), var(--glow-accent);
 }
 
 .match-card-main {
@@ -130,11 +146,17 @@
 
 .game-picker {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  grid-template-columns: 1fr;
   gap: var(--space-2);
   border: none;
   margin: 0;
   padding: 0;
+}
+
+@media (min-width: 30rem) {
+  .game-picker {
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  }
 }
 
 .game-picker legend {
@@ -173,6 +195,11 @@
   border-radius: var(--radius-lg);
   background: var(--surface-2);
   box-shadow: var(--edge-highlight);
+  transition: transform var(--dur-base) var(--ease-out);
+}
+
+.game-picker-option:hover .game-picker-card {
+  transform: translateY(-2px);
 }
 
 .game-picker-input:focus-visible + .game-picker-card {

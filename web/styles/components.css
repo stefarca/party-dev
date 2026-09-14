@@ -51,8 +51,12 @@ pre {
 }
 
 .theme-toggle-option {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.75rem;
   font-size: var(--text-sm);
-  padding: var(--space-1) var(--space-2);
+  padding: var(--space-2) var(--space-3);
   border: 1px solid transparent;
   border-radius: var(--radius-pill);
   background: transparent;
@@ -65,4 +69,16 @@ pre {
   border-color: var(--border-accent);
   color: var(--text-primary);
   font-weight: 600;
+}
+
+/* Icon-only below the small breakpoint so the header fits on one row; the
+   accessible name comes from the button's own `aria-label` either way. */
+.theme-toggle-label {
+  display: none;
+}
+
+@media (min-width: 30rem) {
+  .theme-toggle-label {
+    display: inline;
+  }
 }

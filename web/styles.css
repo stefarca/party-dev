@@ -2,6 +2,7 @@
 @import "./styles/base.css";
 @import "./styles/shell.css";
 @import "./styles/components.css";
+@import "./styles/states.css";
 @import "./styles/dashboard.css";
 @import "./styles/match.css";
 @import "./styles/game-surface.css";

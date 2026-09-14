@@ -18,9 +18,11 @@ export function ThemeToggle() {
           type="button"
           className="btn btn-quiet btn-sm theme-toggle-option"
           aria-pressed={preference === option.value}
+          aria-label={option.label}
           onClick={() => setThemePreference(option.value)}
         >
-          <span aria-hidden="true">{option.glyph}</span> {option.label}
+          <span aria-hidden="true">{option.glyph}</span>
+          <span className="theme-toggle-label">{option.label}</span>
         </button>
       ))}
     </div>

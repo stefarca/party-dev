@@ -39,6 +39,22 @@
   max-width: var(--width-match);
 }
 
+/* Branded splash: the app's very first paint, before session state is known. */
+.splash {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-4);
+}
+
+.splash-mark {
+  width: 2.5rem;
+  height: 2.5rem;
+  color: var(--accent);
+}
+
 .stack {
   display: flex;
   flex-direction: column;
@@ -117,6 +133,23 @@
   flex-wrap: wrap;
 }
 
+/* Mobile-first: the nickname control shrinks to fit next to the theme
+   toggle on one row at narrow widths, and grows back above the small
+   breakpoint (see web/styles/tokens.css for the documented breakpoint
+   pair). */
+.app-header-right .btn-ghost {
+  max-width: 7rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (min-width: 30rem) {
+  .app-header-right .btn-ghost {
+    max-width: none;
+  }
+}
+
 .rename-form {
   display: flex;
   gap: var(--space-1);
@@ -153,6 +186,10 @@
 .btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.btn:hover:not(:disabled) {
+  transform: translateY(-1px);
 }
 
 .btn:active:not(:disabled) {
@@ -245,6 +282,13 @@ textarea:focus-visible {
   box-shadow: var(--edge-highlight), var(--shadow-2);
   padding: var(--space-4);
   margin-bottom: var(--space-4);
+  /* One-shot entrance on mount. Re-renders never restart this: the
+     animation only (re)starts if the element itself is freshly inserted,
+     not when its props/children change. */
+  animation: party-fade-in var(--dur-slow) var(--ease-out) both;
+  transition:
+    transform var(--dur-base) var(--ease-out),
+    box-shadow var(--dur-base) var(--ease-out);
 }
 
 .panel-accent {
@@ -309,6 +353,6 @@ textarea:focus-visible {
 
 .chip-accent {
   background: var(--accent-soft);
-  color: var(--accent);
+  color: var(--accent-on-soft);
   border-color: var(--border-accent);
 }
