@@ -87,24 +87,39 @@ deadline, with a reveal phase in between — plan 07).
 
 ## Deploying (operator, requires a Cloudflare account)
 
-This repo's `wrangler.jsonc` commits a **placeholder** `d1_databases[0].database_id`
-(`REPLACE_ME_SEE_README`) because creating a real D1 database requires an authenticated Cloudflare
-account, which the implementer does not have. To deploy for real:
+This repo's `wrangler.jsonc` commits **placeholder** values for `d1_databases[0].database_id`
+(`REPLACE_ME_SEE_README`) and `vars.PUBLIC_BASE_URL` (`http://localhost:5173`), since the real
+values are operator-specific and shouldn't live in the repo. Deploys go through
+[`.github/workflows/deploy.yml`](./.github/workflows/deploy.yml), which substitutes the real
+values in at deploy time from a repo secret and a repo variable.
+
+### One-time setup
 
 1. `wrangler login`
-2. `wrangler d1 create party` — copy the `database_id` from the output.
-3. Paste that `database_id` into `wrangler.jsonc` under `d1_databases[0].database_id`.
-4. `npm run db:migrate:remote` — applies `migrations/*.sql` to the real D1 database.
-5. `wrangler secret put SESSION_SECRET` — sets the HMAC key used to sign identity cookies
+2. `wrangler d1 create party` — copy the `database_id` from the output. (The deploy workflow
+   applies `migrations/*.sql` on every run, so there's no separate manual migration step.)
+3. `wrangler secret put SESSION_SECRET` — sets the HMAC key used to sign identity cookies
    (PLAN.md §10.7). Generate a long random value; never reuse the `.dev.vars` dummy.
-6. `wrangler secret put SLACK_WEBHOOK_URL` — optional. Sets the Slack incoming-webhook URL for
+4. `wrangler secret put SLACK_WEBHOOK_URL` — optional. Sets the Slack incoming-webhook URL for
    §8's nudges; if you skip this, `worker/nudge.ts` no-ops cleanly and the rest of the app is
    unaffected. Never commit a real value anywhere — it belongs only in this secret.
-7. Override `PUBLIC_BASE_URL` in `wrangler.jsonc`'s `vars` (or via `wrangler deploy --var
-PUBLIC_BASE_URL:https://your-real-domain`) before deploying. The committed value
-   (`http://localhost:5173`) is a local-dev default — leaving it as-is in production means every
-   Slack nudge links to localhost.
-8. `npm run deploy` — builds the client and runs `wrangler deploy`.
+5. In the GitHub repo settings, add:
+   - **Settings → Secrets and variables → Actions → Secrets:**
+     - `CF_D1_DATABASE_ID` — the `database_id` from step 2.
+     - `CLOUDFLARE_API_TOKEN` — an API token with Workers Scripts, Workers Routes, D1, and
+       Durable Objects edit permissions for the target account.
+     - `CLOUDFLARE_ACCOUNT_ID` — your Cloudflare account ID.
+   - **Settings → Secrets and variables → Actions → Variables:**
+     - `PUBLIC_BASE_URL` — the real public URL (e.g. `https://party-dev.<subdomain>.workers.dev`
+       or a custom domain). Leaving this as the local-dev default in production means every Slack
+       nudge links to localhost.
 
-Do not commit the real `database_id` if you'd rather keep it private; it is not a secret, but the
-`REPLACE_ME_SEE_README` placeholder in this repo intentionally does not point at anything.
+Never paste the real `database_id` or `PUBLIC_BASE_URL` into the committed `wrangler.jsonc` — the
+workflow overwrites the placeholders in a checkout that only exists for the run, so the repo stays
+generic.
+
+### Deploying
+
+Push to `main`, or run the **Deploy** workflow manually from the Actions tab
+(`workflow_dispatch`). Locally, `npm run deploy` still works for ad hoc deploys if you paste the
+real `database_id`/`PUBLIC_BASE_URL` into your own working copy first (don't commit them).
