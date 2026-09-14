@@ -1,7 +1,7 @@
 import type { ConnectionState } from "../useMatch";
 
 // Small always-visible indicator so a stalled socket is visible rather than
-// mysterious (plan 05 step 4) — the page keeps working over HTTP either way,
+// mysterious — the page keeps working over HTTP either way,
 // but the player should be able to tell why live updates stopped.
 
 const LABEL: Record<ConnectionState, string> = {

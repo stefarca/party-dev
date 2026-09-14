@@ -1,8 +1,8 @@
 import { useSyncExternalStore } from "react";
 
-// Hand-rolled client-side routing (~40 lines) — a router dependency is out
-// of scope for this plan. Keeps a single route table so plans 05-07 can add
-// routes here without touching every component that navigates.
+// Hand-rolled client-side routing (~40 lines) — deliberately no router
+// dependency. Keeps a single route table so new routes can be added here
+// without touching every component that navigates.
 //
 // Routes:
 //   /            -> dashboard

@@ -1,6 +1,6 @@
 import type { MatchEvent } from "../../shared/protocol";
 
-// A generic, collapsible view of the event log (PLAN.md §7). Newest first,
+// A generic, collapsible view of the event log. Newest first,
 // and deliberately ignorant of any game's payload shape — `payload` is
 // rendered as raw JSON, whatever it is.
 

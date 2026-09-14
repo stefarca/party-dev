@@ -3,7 +3,7 @@ import type { MatchSnapshot, MatchSummary } from "../shared/protocol";
 
 // Thin typed client over worker/api.ts. Every call goes through request()
 // so credentials, headers, and error shape are consistent in one place —
-// see the plan's binding rule that every fetch send
+// including the rule that every fetch sends
 // `credentials: "same-origin"` (the session cookie is HttpOnly; nothing here
 // ever reads it directly).
 
@@ -104,7 +104,7 @@ export function getMatch(id: string): Promise<MatchSummary> {
   return request<MatchSummary>(`/api/matches/${encodeURIComponent(id)}`);
 }
 
-// The live match transport's HTTP fallbacks (plan 05, PLAN.md §7) — the
+// The live match transport's HTTP fallbacks — the
 // same shapes the WS `snapshot`/`action`/`start` messages use, so useMatch
 // can treat either transport interchangeably.
 export function getMatchSnapshot(id: string): Promise<MatchSnapshot> {

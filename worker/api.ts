@@ -105,7 +105,7 @@ api.post("/matches", requireSession(), async (c) => {
   // This INSERT is only a collision reservation on the code, not the
   // authoritative index write — MatchDO.syncIndex() (called via
   // /lobby/create below) is what writes the real matches/match_players rows
-  // once the DO has accepted the match (§6: D1 is derived, the DO is
+  // once the DO has accepted the match (D1 is derived, the DO is
   // authoritative). We retry on a PRIMARY KEY collision, capped at 5
   // attempts (32^6 codes makes repeated collisions vanishingly unlikely).
   let matchId: string | null = null;
@@ -141,8 +141,7 @@ api.post("/matches", requireSession(), async (c) => {
     if (!res.ok) throw new Error(`lobby create failed with status ${res.status}`);
   } catch (err) {
     // The DO create failed after we reserved the code in D1 — delete the
-    // reservation so the code is not left as an orphan row (see Risks/notes
-    // in the plan).
+    // reservation so the code is not left as an orphan row.
     await c.env.DB.prepare("DELETE FROM matches WHERE id = ?").bind(matchId).run();
     console.error("match create failed", err);
     return c.json({ error: "create_failed" }, 500);
@@ -152,9 +151,8 @@ api.post("/matches", requireSession(), async (c) => {
 });
 
 // Unknown/malformed codes 404 before the auth check (an unrecognized code
-// leaks nothing about whether the caller is logged in, and this is what the
-// plan's own verification script expects); a *recognized* code still
-// requires a session to actually join.
+// leaks nothing about whether the caller is logged in); a *recognized*
+// code still requires a session to actually join.
 api.post("/matches/:code/join", async (c) => {
   const body = await readJsonBody(c.req.raw);
   const parsed = JoinMatchRequestSchema.safeParse(body);
@@ -192,10 +190,8 @@ api.post("/matches/:code/join", async (c) => {
   return c.json(await res.json());
 });
 
-// Not covered by plan 02 (which only ever routed to the DO's own
-// GET /snapshot internally) — plan 03's MatchPage needs a REST-reachable
-// equivalent to render the lobby, so it is added here rather than left as a
-// gap. Unlike the join route above, auth is checked first (via
+// REST equivalent of the DO's internal GET /snapshot, so MatchPage can
+// render the lobby. Unlike the join route above, auth is checked first (via
 // requireSession() middleware) — an unauthenticated caller gets 401
 // regardless of whether the code is valid, which is intentionally more
 // conservative than join's not-found-before-auth ordering. No per-player
@@ -215,10 +211,10 @@ api.get("/matches/:code", requireSession(), async (c) => {
   return c.json(await res.json());
 });
 
-// HTTP fallbacks for the live match transport (PLAN.md §7: "treat WS as an
+// HTTP fallbacks for the live match transport ("treat WS as an
 // optimization over 'fetch state on load', never as the only path"). Both
 // return/accept exactly the same shapes as the WS `snapshot`/`action`
-// messages (shared/protocol.ts's MatchSnapshot) — plan 05's client can use
+// messages (shared/protocol.ts's MatchSnapshot) — the client can use
 // either transport interchangeably.
 api.get("/matches/:id/snapshot", requireSession(), async (c) => {
   const session = c.get("session") as Session;
@@ -237,11 +233,10 @@ api.get("/matches/:id/snapshot", requireSession(), async (c) => {
   return c.json(await res.json());
 });
 
-// HTTP fallback for starting a match (plan 05, §7): the DO's `/start` route
-// already existed from plan 04 (used internally by the WS `{ t: "start" }`
-// handler) but was never wired to a REST route — without this, a blocked
+// HTTP fallback for starting a match via the DO's `/start` route (also used
+// internally by the WS `{ t: "start" }` handler) — without this, a blocked
 // WebSocket would leave the host with no way to start a match at all,
-// contradicting §7's "WS is an optimization ... never the only path".
+// contradicting "WS is an optimization ... never the only path".
 // Mirrors the /actions route immediately below one-for-one.
 api.post("/matches/:id/start", requireSession(), async (c) => {
   const session = c.get("session") as Session;

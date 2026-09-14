@@ -62,7 +62,7 @@ function getLazyUi(gameId: string): LazyExoticComponent<ComponentType<GameUiProp
 }
 
 // Catches a throw from a broken game module's render so it degrades to
-// `fallback` instead of white-screening the whole app (plan 05 step 5).
+// `fallback` instead of white-screening the whole app.
 // `key`d by match code from the caller so navigating to a different match
 // always starts with a clean (non-tripped) boundary.
 class GameErrorBoundary extends Component<
@@ -119,11 +119,11 @@ function GameUiHost({
   );
 }
 
-// The plan 03 seam: once there's a live transport, it mounts here in place
-// of the static lobby/placeholder body, keyed off `match.status`. Keep this
+// The live transport mounts here in place of the static lobby/placeholder
+// body, keyed off `match.status`. Keep this
 // component thin — no game-specific logic belongs in MatchPage.
 //
-// `match` (the plan 02/03 lobby summary) is still the source of `hostId`
+// `match` (the lobby summary) is still the source of `hostId`
 // and `gameId`, neither of which appears in `MatchSnapshot` — they never
 // change for the lifetime of a match, so there is no freshness concern in
 // reading them from the one-shot `getMatch()` load. Everything that *does*
@@ -291,7 +291,7 @@ export function MatchPage({ code }: { code: string }) {
     start,
   } = useMatch(code, ready, notifyUnauthorized);
 
-  // Tab badge (§8 item 2): keep it live from this match's own snapshot
+  // Tab badge: keep it live from this match's own snapshot
   // stream between dashboard visits — a WS push that makes it this player's
   // turn updates the badge immediately, rather than waiting for the next
   // time the dashboard is mounted/polled. `setDashboardYourTurn` (called

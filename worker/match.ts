@@ -15,19 +15,18 @@ import type {
 } from "../shared/protocol";
 import { sendSlackNudge, shouldNudge } from "./nudge";
 
-// PLAN.md §10 gotchas that apply to every method added to this class:
+// Durable Object gotchas that apply to every method added to this class:
 // - Hibernation API only: use `ctx.acceptWebSocket()` / `webSocketMessage()`
 //   handlers, never the browser-style WebSocket event-binding API — that
 //   pins the DO in memory and bills idle lobbies for nothing.
 // - Never a timer-based interval. Use `ctx.storage.setAlarm()`.
 // - Hibernation wipes in-memory state; persist to `ctx.storage` on every
 //   mutation and rehydrate from it on every request rather than caching it
-//   on `this` (still true as of this plan — the DO holds no per-request
-//   cache of the match record).
+//   on `this` (the DO holds no per-request cache of the match record).
 //
-// This plan (04) adds the game engine: the move pipeline (`commit`), the
-// event log, alarm-driven `onDeadline`, and hibernatable WebSockets. No real
-// game ships here — `games/registry.ts`'s `serverGames` is still empty.
+// This class is the game engine: the move pipeline (`commit`), the event
+// log, alarm-driven `onDeadline`, and hibernatable WebSockets. It holds no
+// game-specific knowledge — games come from `games/registry.ts`.
 
 interface MatchPlayerRecord {
   id: string;
@@ -46,17 +45,17 @@ interface MatchRecord {
   players: MatchPlayerRecord[];
   createdAt: number;
   updatedAt: number;
-  seed: number; // rolled once at create time, never re-rolled (PLAN.md §5 rule 3)
+  seed: number; // rolled once at create time, never re-rolled
   state: unknown | null;
-  // Plan 08's Slack nudge rate limit (§8): the epoch ms each player was last
+  // Slack nudge rate limit: the epoch ms each player was last
   // actually nudged, keyed by playerId. Lives on the DO record rather than a
-  // D1 column — see the deviation comment on `nudgeHook` below. Never
+  // D1 column — see the comment on `nudgeHook` below. Never
   // cleared/deleted (see `shouldNudge` in worker/nudge.ts for why); absent
   // entries simply mean "never nudged".
   nudgedAt: Record<PlayerId, number>;
 }
 
-// Per-connection attachment (PLAN.md §10.3): hibernation wipes in-memory
+// Per-connection attachment: hibernation wipes in-memory
 // state, so identity travels on `ws.serializeAttachment()`, never in an
 // in-memory Map keyed by socket.
 interface ConnectionAttachment {
@@ -120,17 +119,17 @@ export class MatchDO extends DurableObject<Env> {
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
     this.ctx.storage.sql.exec("CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT)");
-    // Append-only event log (PLAN.md §7), verbatim DDL.
+    // Append-only event log.
     this.ctx.storage.sql.exec(
       "CREATE TABLE IF NOT EXISTS events (seq INTEGER PRIMARY KEY AUTOINCREMENT, ts INTEGER, payload TEXT)",
     );
-    // Hibernation-safe keepalive (§10.2): the runtime answers a raw "ping"
+    // Hibernation-safe keepalive: the runtime answers a raw "ping"
     // text frame with "pong" itself, without ever waking this DO. This is
     // the preferred mechanism over the app-level `{t:"ping"}` message (see
     // webSocketMessage's "ping" case) — configure one or the other for
     // actual heartbeat traffic, never both, or keepalives double up and
-    // waste the 20:1-billed inbound message budget (§2). The client
-    // transport (plan 05) relies on this and does not send `{t:"ping"}`.
+    // waste the 20:1-billed inbound message budget. The client
+    // transport relies on this and does not send `{t:"ping"}`.
     this.ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair("ping", "pong"));
   }
 
@@ -199,7 +198,7 @@ export class MatchDO extends DurableObject<Env> {
     );
   }
 
-  // Returns the new row's seq, per the plan's exact signature.
+  // Returns the new row's seq.
   private appendEvent(payload: object): number {
     const ts = Date.now();
     this.ctx.storage.sql.exec(
@@ -244,10 +243,10 @@ export class MatchDO extends DurableObject<Env> {
     };
   }
 
-  // Builds the MatchSnapshot for one specific player — never raw state
-  // (§5 rule 2). Shared by the WS `hello`/action-result replies, the
+  // Builds the MatchSnapshot for one specific player — never raw state.
+  // Shared by the WS `hello`/action-result replies, the
   // broadcast in `commit()`, and the HTTP `/view` fallback, so all three
-  // transports agree on exactly one shape (§7).
+  // transports agree on exactly one shape.
   private snapshotFor(record: MatchRecord, playerId: PlayerId): MatchSnapshot {
     const module = getGame(record.gameId) as GameModule<unknown, unknown> | undefined;
     const state = record.state;
@@ -271,8 +270,7 @@ export class MatchDO extends DurableObject<Env> {
     }
   }
 
-  // Plan 08 needs this to decide who to nudge (only players who are not
-  // currently connected).
+  // Used to decide who to nudge (only players who are not currently connected).
   private isConnected(playerId: PlayerId): boolean {
     for (const ws of this.ctx.getWebSockets()) {
       const attachment = ws.deserializeAttachment() as ConnectionAttachment | null;
@@ -298,7 +296,7 @@ export class MatchDO extends DurableObject<Env> {
   }
 
   // ---------------------------------------------------------------------
-  // The move pipeline (PLAN.md §5's binding order). Every mutation path —
+  // The move pipeline, in its binding order. Every mutation path —
   // join, start, action, alarm — funnels through this single method.
   // ---------------------------------------------------------------------
 
@@ -342,7 +340,7 @@ export class MatchDO extends DurableObject<Env> {
     // line below this comment, though, is separated from the next by at
     // least one `await`, and DOs *do* interleave other requests across an
     // await (input gates only protect synchronous sections, not the whole
-    // method — see PLAN.md §10 / Cloudflare's DO concurrency model). If
+    // method — see Cloudflare's DO concurrency model). If
     // another mutation (a second player's action, or an alarm fire) runs to
     // completion during ANY of those awaits, `record` and anything derived
     // from it before that await becomes stale the instant we resume.
@@ -381,9 +379,9 @@ export class MatchDO extends DurableObject<Env> {
 
     // 5. Broadcast a per-player snapshot to every connected socket, using
     // that socket's own view(state, playerId) — N tailored messages, never
-    // one shared payload (§5 rule 2). O(players) view() + JSON
+    // one shared payload. O(players) view() + JSON
     // serialization per commit; fine for the <=8-player games this engine
-    // targets, but keep reducers/views small (§10.5's 10ms CPU budget
+    // targets, but keep reducers/views small (the 10ms CPU budget
     // applies here too). This loop itself has no `await` in it, so
     // `current`/`derived` re-read immediately above stay valid for its
     // entire duration.
@@ -397,7 +395,7 @@ export class MatchDO extends DurableObject<Env> {
       }
     }
 
-    // 6. Update the D1 index (derived state — §6). `syncIndex()` takes no
+    // 6. Update the D1 index (derived state). `syncIndex()` takes no
     // arguments and re-reads canonical state itself, at whatever instant
     // its own turn in `dbWriteQueue` actually starts — see the comment on
     // `dbWriteQueue` for why re-reading here in commit(), before calling
@@ -409,7 +407,7 @@ export class MatchDO extends DurableObject<Env> {
     current = this.readMatch() ?? record;
     derived = this.deriveWaitingAndDeadline(module, current);
 
-    // 7. Nudge players newly waited-on who are not connected (plan 08).
+    // 7. Nudge players newly waited-on who are not connected.
     // `newlyWaiting` is computed from `current`/`derived` above — the
     // freshest truth after every prior stage's await — and from
     // `previousWaiting` captured before this commit touched anything, so a
@@ -423,16 +421,15 @@ export class MatchDO extends DurableObject<Env> {
     await this.nudgeHook(current, newlyWaiting);
   }
 
-  // Plan 08 (§8): Slack-nudge every player in `newlyWaiting` who is not
+  // Slack-nudge every player in `newlyWaiting` who is not
   // currently connected, rate-limited to one nudge per player per match per
   // turn plus a hard floor backstop — see `shouldNudge` in worker/nudge.ts
   // for the exact rule. Several players becoming newly-waited-on in the same
   // commit (e.g. a trivia round start) produce exactly one batched Slack
   // message, never one per player.
   //
-  // Deviation from §8, noted as the plan requires: §8 says track `nudged_at`
-  // "on the match row", which reads as a D1 column. It lives on this DO's
-  // own record instead, because the DO is authoritative (§6) and this avoids
+  // `nudgedAt` lives on this DO's own record rather than in a D1 column,
+  // because the DO is authoritative and this avoids
   // a read-modify-write against derived state on every single move. No D1
   // migration is needed.
   private async nudgeHook(record: MatchRecord, newlyWaiting: PlayerId[]): Promise<void> {
@@ -480,8 +477,7 @@ export class MatchDO extends DurableObject<Env> {
   }
 
   // ---------------------------------------------------------------------
-  // Lobby routes (unchanged behaviour from plan 02, now funnelled through
-  // commit() per PLAN.md §5's "every mutation path" rule).
+  // Lobby routes (funnelled through commit(), like every mutation path).
   // ---------------------------------------------------------------------
 
   private async handleLobbyCreate(request: Request): Promise<Response> {
@@ -528,7 +524,7 @@ export class MatchDO extends DurableObject<Env> {
       // Idempotent re-join: succeeds regardless of match status. We also
       // lazily refresh the nickname here rather than fanning out nickname
       // changes to every match the player is in — stale opponent names in
-      // old matches are acceptable (see plan Risks/notes).
+      // old matches are acceptable.
       existing.nickname = nickname;
     } else {
       if (record.status !== "lobby") {
@@ -547,10 +543,9 @@ export class MatchDO extends DurableObject<Env> {
     return Response.json(this.toSummary(record));
   }
 
-  // This route stays a lobby-only summary (plan 02/03's shape) even though
-  // the engine now exists — a MatchSnapshot with a real per-player `view`
-  // is served separately by GET /view, GET /ws and the /action fallback
-  // (this plan). `/api/matches/:code` (plan 03) is the only caller.
+  // This route stays a lobby-only summary — a MatchSnapshot with a real
+  // per-player `view` is served separately by GET /view, GET /ws and the
+  // /action fallback. `/api/matches/:code` is the only caller.
   private handleLobbySnapshot(): Response {
     const record = this.readMatch();
     if (!record) {
@@ -559,11 +554,11 @@ export class MatchDO extends DurableObject<Env> {
     return Response.json(this.toSummary(record));
   }
 
-  // D1 is derived state (§6): the DO stays authoritative even if this write
+  // D1 is derived state: the DO stays authoritative even if this write
   // fails, and the index can be repaired later. Never fail the caller's
   // mutation because the index sync failed, and — critically inside
   // alarm() — never let this throw, or a retry storm could double-resolve
-  // a round (§10.6).
+  // a round.
   //
   // Deliberately takes no arguments: it enqueues its real work onto
   // `dbWriteQueue` and only reads canonical state (via `writeIndexNow`)
@@ -657,7 +652,7 @@ export class MatchDO extends DurableObject<Env> {
     const record = this.readMatch();
     if (!record) return { ok: false, code: "not_found", message: "match not found" };
 
-    // Plan step 9's literal order: resolve the module -> parse the action
+    // Check order: resolve the module -> parse the action
     // -> not-your-turn -> not-active. `waitingOn`/`not_active` both need
     // `record.state`, which is only non-null once the match has actually
     // started, so `not_active` is checked right before `waitingOn` is
@@ -739,7 +734,7 @@ export class MatchDO extends DurableObject<Env> {
   }
 
   // ---------------------------------------------------------------------
-  // Alarm-driven onDeadline (PLAN.md §5, §10.6).
+  // Alarm-driven onDeadline.
   // ---------------------------------------------------------------------
 
   async alarm(): Promise<void> {
@@ -763,8 +758,8 @@ export class MatchDO extends DurableObject<Env> {
     try {
       resolvedState = module.onDeadline(record.state, now);
     } catch (err) {
-      // Never throw out of alarm(): a throw is retried up to 6 times
-      // (§10.6), and a retry storm could double-resolve a round if
+      // Never throw out of alarm(): a throw is retried up to 6 times,
+      // and a retry storm could double-resolve a round if
       // onDeadline is not perfectly idempotent. Log and give up on this
       // fire — the next legitimate mutation (a move, or the next scheduled
       // alarm) will recover.
@@ -772,7 +767,7 @@ export class MatchDO extends DurableObject<Env> {
       return;
     }
 
-    // Idempotency guard (§5 rule 4 / §10.6): the module contract requires
+    // Idempotency guard: the module contract requires
     // onDeadline to key its resolution on the round/phase number and no-op
     // on an already-resolved round. This is a belt-and-suspenders check —
     // if the deadline genuinely did not advance, do not loop by
@@ -796,7 +791,7 @@ export class MatchDO extends DurableObject<Env> {
   }
 
   // ---------------------------------------------------------------------
-  // Hibernatable WebSockets (PLAN.md §10.2/§10.3).
+  // Hibernatable WebSockets.
   // ---------------------------------------------------------------------
 
   private handleWsUpgrade(request: Request): Response {
@@ -896,7 +891,7 @@ export class MatchDO extends DurableObject<Env> {
       }
     } catch (err) {
       // Belt-and-suspenders: nothing above should throw, but a throw here
-      // would otherwise kill the socket (§10.2/step 11).
+      // would otherwise kill the socket.
       console.error("webSocketMessage failed", err);
       this.safeSend(ws, { t: "error", code: "internal_error", message: "internal error" });
     }

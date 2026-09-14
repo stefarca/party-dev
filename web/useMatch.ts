@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ApiError, getMatchSnapshot, postMatchAction, postMatchStart } from "./api";
 import type { MatchEvent, MatchSnapshot, ServerMessage } from "../shared/protocol";
 
-// The live match transport (plan 05, PLAN.md §7): "treat WS as an
+// The live match transport: "treat WS as an
 // optimization over 'fetch state on load', never as the only path". This
 // hook always fetches the HTTP snapshot first and renders it immediately,
 // then opens a WebSocket as a pure add-on. If the socket never opens (or
@@ -71,7 +71,7 @@ export function useMatch(
   const onUnauthorizedRef = useRef(onUnauthorized);
   onUnauthorizedRef.current = onUnauthorized;
 
-  // Replaces the rendered snapshot, guarding against the Risks/notes case: a
+  // Replaces the rendered snapshot, guarding against this case: a
   // snapshot that arrives out of order after a reconnect (e.g. a slow HTTP
   // fetch that resolves after the WS's own `hello` reply already landed)
   // must never clobber newer state.
@@ -184,7 +184,7 @@ export function useMatch(
         switch (msg.t) {
           case "snapshot": {
             if (!helloAcked) {
-              // A successful `hello` round trip — the plan's binding reset
+              // A successful `hello` round trip — the binding reset
               // point for the backoff counter.
               helloAcked = true;
               backoffAttemptRef.current = 0;
@@ -242,7 +242,7 @@ export function useMatch(
       connect();
     }
 
-    // §7's laptop-sleep/wake case: bypass the backoff timer entirely and
+    // Laptop-sleep/wake case: bypass the backoff timer entirely and
     // reconnect immediately when the tab becomes visible again or the OS
     // reports the network is back.
     function onVisibilityChange() {
@@ -296,7 +296,7 @@ export function useMatch(
     };
   }, [matchId, ready, applySnapshot, applyEvents]);
 
-  // The client never sends state, only intents (PLAN.md §5 rule 1) — these
+  // The client never sends state, only intents — these
   // two are the only two ways this hook ever talks to the server.
   const send = useCallback(
     (action: unknown) => {

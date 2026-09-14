@@ -13,7 +13,7 @@ npm run dev                      # vite + real workerd, prints the local URL
 
 - `npm test` — vitest (node environment). Single file: `npx vitest run worker/match.test.ts`; single
   case: `npx vitest run games/trivia/game.test.ts -t "idempotent"`.
-- `npm run typecheck` — `tsc -b` across the three project references below.
+- `npm run typecheck` — `tsc -b --noEmit` across the three project references below.
 - `npm run lint` / `npm run format` / `npm run format:check`.
 - `npm run cf-typegen` — regenerates the committed `worker-configuration.d.ts`; re-run after
   changing bindings in `wrangler.jsonc`.
@@ -22,13 +22,14 @@ npm run dev                      # vite + real workerd, prints the local URL
 If `/api/health` reports "no such table: matches", the migration CLI and the vite plugin are
 pointed at different `.wrangler/state` persist directories — re-run `npm run db:migrate:local`.
 
-`wrangler.jsonc` commits a placeholder `database_id` (`REPLACE_ME_SEE_README`); deploying for real
-needs the operator checklist in the README.
+**Every push to `main` deploys to production** (`.github/workflows/deploy.yml`): it applies
+`migrations/*.sql` to the remote D1 first, then runs `npm run deploy`. Migrations therefore hit
+production before the new Worker is live. The workflow `sed`-substitutes the committed placeholders
+`"database_id": "REPLACE_ME_SEE_README"` and `"PUBLIC_BASE_URL": "http://localhost:5173"` in
+`wrangler.jsonc` by exact text. Keep those two lines byte-identical and never commit real values.
+One-time operator setup is in the README.
 
 ## Architecture
-
-`PLAN.md` is the spec, and the code cites it constantly (`§5 rule 2`, `§10.6`, …). When changing
-behaviour that a comment pins to a section, read that section first and keep the citation accurate.
 
 **One `MatchDO` class runs every game.** `worker/match.ts` holds no game-specific knowledge; it
 looks games up through `games/registry.ts`. The Durable Object is authoritative; D1
@@ -65,9 +66,10 @@ grow with every game.
 both speak `MatchSnapshot` from `shared/protocol.ts`. WS is an optimization, never the only path —
 anything reachable over the socket needs an HTTP equivalent. `web/useMatch.ts` fetches the HTTP
 snapshot first, then attaches the socket as an add-on with backoff, and falls back to HTTP for
-sends.
+sends. Bump `PROTOCOL_VERSION` in `shared/version.ts` when a `shared/protocol.ts` message shape
+changes incompatibly.
 
-**Durable Object constraints** (free tier, `PLAN.md` §10): Hibernation API only
+**Durable Object constraints** (free tier): Hibernation API only
 (`ctx.acceptWebSocket()` + `webSocketMessage()`, never `addEventListener`); per-connection identity
 lives on `ws.serializeAttachment()`, never an in-memory map; no `setInterval` — use
 `ctx.storage.setAlarm()`; keep reducers inside the 10 ms CPU budget. `alarm()` must never throw
@@ -92,11 +94,16 @@ including deep-linked SPA routes like `/m/ABCDEF`, is served by Static Assets wi
 - There is no `@cloudflare/vitest-pool-workers` setup. `worker/match.test.ts` exercises `MatchDO`
   by mocking `cloudflare:workers` and hand-building the slice of `DurableObjectState`/`Env` it
   touches, backed by `node:sqlite` (typed by the local `worker/node-sqlite.d.ts`, since there is no
-  `@types/node`).
-- Prettier: `printWidth` 100; `PLAN.md`, `.claude/`, and generated files are ignored. ESLint flat
+  `@types/node`). Engine tests run against `games/__fixtures__/counter.ts`, a test-only game that
+  is deliberately left out of the registry; the test adds it to `serverGames` and removes it
+  afterwards.
+- Prettier: `printWidth` 100; `.claude/` and generated files are ignored. ESLint flat
   config enables only `rules-of-hooks` and `exhaustive-deps` from react-hooks — the
   React-Compiler-era rules flag deliberate patterns in `web/useMatch.ts`. `prettier` stays last in
   the config array.
 - Work is driven by plan files in `.claude/plans/` (frontmatter `plan`/`goal`/`status`/
-  `depends_on`; completed ones move to `archive/`). Commits are Conventional Commits, one per plan,
-  with a separate `chore: mark plan NN as done`.
+  `depends_on`; completed ones move to `archive/`). The directory is gitignored, so a plan's status
+  and archive changes stay local. Commits are Conventional Commits, one per plan.
+- Specs and plans are private. Never cite them in committed files: no spec filename, no `§`
+  section numbers, no "plan 05" / "step 4" / "Risks/notes" references in code, comments, or docs.
+  A comment should state the rule itself.

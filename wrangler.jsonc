@@ -3,15 +3,15 @@
   "compatibility_date": "2026-09-01",
   "main": "worker/index.ts",
   "assets": {
-    // Deviation from PLAN.md §9: `directory` is intentionally omitted here.
+    // `directory` is intentionally omitted here.
     // @cloudflare/vite-plugin populates it automatically with the client build
     // output path (dist/client) when it generates dist/party-dev/wrangler.json.
     "not_found_handling": "single-page-application",
     // Only run this Worker's own fetch handler for /api/* and /ws/* — every
     // other path (including deep-linked SPA routes like /m/ABCDEF) goes
     // straight to the assets handler, which applies not_found_handling above
-    // instead of falling through to Hono's default 404. /ws/* was added in
-    // plan 04 for the WebSocket upgrade route (PLAN.md §3) — without it,
+    // instead of falling through to Hono's default 404. /ws/* is needed
+    // for the WebSocket upgrade route — without it,
     // requests to /ws/* never reach the Worker at all.
     "run_worker_first": ["/api/*", "/ws/*"]
   },
@@ -26,7 +26,7 @@
       "database_id": "REPLACE_ME_SEE_README"
     }
   ],
-  // Plan 08 (§8): the base URL nudge messages link back to
+  // The base URL nudge messages link back to
   // (`<PUBLIC_BASE_URL>/m/<code>`). This committed value is a localhost
   // default for local dev only — production MUST override it (edit this
   // value before deploying, or pass `wrangler deploy --var

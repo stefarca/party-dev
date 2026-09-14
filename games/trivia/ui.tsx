@@ -1,6 +1,6 @@
 import type { GameUiProps } from "../../shared/protocol";
 
-// Trivia UI (plan 07). No game-specific countdown here — the round/reveal
+// Trivia UI. No game-specific countdown here — the round/reveal
 // deadline is already shown once, generically, by `TurnIndicator` in
 // `MatchPage`; duplicating it here would just be two clocks disagreeing by
 // a second.

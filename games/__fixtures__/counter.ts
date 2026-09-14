@@ -4,9 +4,9 @@ import { nextInt } from "../../shared/prng";
 import type { GameModule, Result } from "../../shared/game";
 import type { PlayerId } from "../../shared/protocol";
 
-// Test-only fixture game (PLAN.md §12 step 13). Deliberately NOT registered
-// in games/registry.ts — it exists purely to exercise both phase types from
-// PLAN.md §4 against a real GameModule implementation:
+// Test-only fixture game. Deliberately NOT registered in games/registry.ts —
+// it exists purely to exercise both phase types against a real GameModule
+// implementation:
 //
 //   1. "sequential" — each player increments a shared counter once, in turn
 //      order (proves the sequential phase / turn handoff).

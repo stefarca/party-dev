@@ -2,8 +2,8 @@ import { z } from "zod";
 
 import type { Result } from "./game";
 
-// The single home for cross-boundary types and zod schemas (PLAN.md §9).
-// PLAN.md §5 rule 1 is binding here: every inbound payload — REST bodies
+// The single home for cross-boundary types and zod schemas.
+// Server authority is binding here: every inbound payload — REST bodies
 // included, not just future WS messages — is validated with a schema from
 // this file, never trusted as-is.
 //
@@ -65,7 +65,7 @@ export type JoinMatchRequest = z.infer<typeof JoinMatchRequestSchema>;
 export const ActionRequestSchema = z.object({ action: z.unknown() });
 export type ActionRequest = z.infer<typeof ActionRequestSchema>;
 
-// Body of the HTTP start fallback (POST /api/matches/:id/start, plan 05) —
+// Body of the HTTP start fallback (POST /api/matches/:id/start) —
 // mirrors the WS `{ t: "start" }` message, which itself carries no payload.
 // Takes no body, same reasoning as JoinMatchRequestSchema above: still run
 // through a schema so an unexpected/extra payload gets a 400 rather than
@@ -74,15 +74,15 @@ export const StartMatchRequestSchema = z.object({}).strict();
 export type StartMatchRequest = z.infer<typeof StartMatchRequestSchema>;
 
 // ---------------------------------------------------------------------------
-// Live match wire protocol (PLAN.md §5, §7). Used by both the WebSocket at
+// Live match wire protocol. Used by both the WebSocket at
 // `/ws/:id` and the HTTP fallbacks (`GET /api/matches/:id/snapshot`,
-// `POST /api/matches/:id/actions`) — §7 is binding: "treat WS as an
+// `POST /api/matches/:id/actions`) — binding rule: "treat WS as an
 // optimization over 'fetch state on load', never as the only path", so both
 // transports must speak the exact same message/snapshot shapes.
 // ---------------------------------------------------------------------------
 
 // Client -> server. Every one of these is zod-validated by MatchDO before
-// it is trusted (§5 rule 1) — the client sends *intents*, never state.
+// it is trusted — the client sends *intents*, never state.
 export const HelloMessageSchema = z.object({
   t: z.literal("hello"),
   since: z.number().int().min(0),
@@ -116,9 +116,8 @@ export interface MatchEvent {
 }
 
 // The shape shared by the WS `snapshot` message and the HTTP snapshot
-// route's JSON body (§7). `view` is always this player's own `view()`
-// projection (or `null` before the game has started) — never raw state
-// (§5 rule 2).
+// route's JSON body. `view` is always this player's own `view()`
+// projection (or `null` before the game has started) — never raw state.
 export interface MatchSnapshot {
   seq: number;
   status: MatchStatus;
@@ -150,7 +149,7 @@ export interface PongMessage {
 
 export type ServerMessage = SnapshotMessage | EventsMessage | ErrorMessage | PongMessage;
 
-// Consumed by plan 05's `MatchPage` / lazily-loaded per-game UI components
+// Consumed by `MatchPage` / lazily-loaded per-game UI components
 // (declared here rather than in games/registry.ts because it depends on
 // `Result` and the other cross-boundary types already living in this file).
 export interface GameUiProps {

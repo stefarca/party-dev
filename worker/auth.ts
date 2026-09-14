@@ -1,7 +1,7 @@
 import type { Context, MiddlewareHandler } from "hono";
 import { getCookie, setCookie } from "hono/cookie";
 
-// Nickname + HMAC-signed cookie (PLAN.md §10.7 / §5 rule for identity). No
+// Nickname + HMAC-signed cookie. No
 // passwords, no KV/D1 session store — the cookie itself is the session,
 // authenticated with Web Crypto HMAC-SHA256 and a secret held in
 // env.SESSION_SECRET (a Worker secret, never committed).

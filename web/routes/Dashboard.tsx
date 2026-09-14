@@ -105,7 +105,7 @@ export function Dashboard() {
       setBuckets(nextBuckets);
       setGames(nextGames);
       setError(null);
-      // The tab badge (§8 item 2): the dashboard's "your turn" bucket is the
+      // The tab badge: the dashboard's "your turn" bucket is the
       // full, authoritative set of matches awaiting this player.
       setDashboardYourTurn(nextBuckets.yourTurn.map((m) => m.id));
       if (!selectedGame && nextGames.length > 0) setSelectedGame(nextGames[0].id);
@@ -123,8 +123,8 @@ export function Dashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [notifyUnauthorized]);
 
-  // Plan 05 step 8 ("invalidate the cached dashboard list so a return to /
-  // shows fresh buckets"): there is no cache to invalidate — this component
+  // A return to / must show fresh buckets. There is no cache to invalidate
+  // for that — this component
   // holds no state across mounts, and App.tsx's route switch unmounts it
   // entirely whenever the route is not "dashboard" (see RouteContent). Every
   // navigation back to `/` therefore mounts a brand new Dashboard, which
@@ -135,10 +135,9 @@ export function Dashboard() {
   }, [refresh]);
 
   // Refresh on tab focus and on a 30s poll while the tab is visible. This
-  // is browser-side setInterval, not a Durable Object timer — the PLAN.md
-  // §10.4 ban on setInterval is scoped to DOs (they must use
-  // ctx.storage.setAlarm() instead); a plain browser tab has no such
-  // constraint, and plan 05 replaces this polling with live updates anyway.
+  // is browser-side setInterval, not a Durable Object timer — the ban on
+  // setInterval is scoped to DOs (they must use ctx.storage.setAlarm()
+  // instead); a plain browser tab has no such constraint.
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     function scheduleNext() {

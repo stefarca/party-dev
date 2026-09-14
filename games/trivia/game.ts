@@ -7,21 +7,21 @@ import { QUESTIONS } from "./questions";
 import type { Question } from "./questions";
 
 // Trivia — the second real game, proving the "simultaneous + deadline" phase
-// type from PLAN.md §4 end to end (plan 07). Everyone answers the same
+// type end to end. Everyone answers the same
 // question at once; the round resolves the instant every player has
 // submitted, or when the deadline alarm fires, whichever comes first.
 //
-// This game is also the reason `view()` exists (§5 rule 2): full state
+// This game is also the reason `view()` exists: full state
 // carries the correct answer index and every player's own submission —
 // broadcasting it raw would hand every player the answer key in devtools.
-// And it is the reason `onDeadline` must be idempotent (§5 rule 4, §10.6):
+// And it is the reason `onDeadline` must be idempotent:
 // alarms are at-least-once with retries, and a double-resolve would score a
 // round twice.
 
 export const ROUNDS = 5;
 
-// PLAN.md §5 "a chess turn auto-passes after 24h" — the binding deadline
-// default for any deadline-driven phase, not just chess turns. A round left
+// 24h — the same auto-pass timeout as a sequential turn, and the binding
+// deadline default for any deadline-driven phase. A round left
 // unanswered still resolves (everyone who didn't answer scores 0) after this
 // long, so the game survives a meeting.
 export const ROUND_TIMEOUT_MS = 24 * 60 * 60 * 1000;
@@ -72,7 +72,7 @@ export function init(players: PlayerId[], seed: number): TriviaState {
   if (players.length < 2) {
     throw new Error("trivia requires at least 2 players");
   }
-  // §5 rule 3: which questions, and in what order, go through the seeded
+  // Seeded PRNG rule: which questions, and in what order, go through the seeded
   // PRNG, never Math.random() — the advanced rng state is stored so nothing
   // downstream needs `Math.random()` either.
   const ids = QUESTIONS.map((q) => q.id);
@@ -86,11 +86,11 @@ export function init(players: PlayerId[], seed: number): TriviaState {
     players: players.slice(),
     questionIds,
     round: 0,
-    // `init()` has no `now` (PLAN.md §5's signature is `init(players,
-    // seed)`), so it cannot stamp a real wall-clock start for round 0 — left
-    // at the `0` sentinel until the first `reduce()` call (which does get a
-    // real `now`) sets it for real. Same pattern as connect4's
-    // `turnStartedAt` (plan 06).
+    // `init()` has no `now` (the `GameModule` signature is
+    // `init(players, seed)`), so it cannot stamp a real wall-clock start for
+    // round 0 — left at the `0` sentinel until the first `reduce()` call
+    // (which does get a real `now`) sets it for real. Same pattern as
+    // connect4's `turnStartedAt`.
     roundStartedAt: 0,
     revealStartedAt: 0,
     answers: {},
@@ -122,7 +122,7 @@ function scoreQuestion(
 
 // A single shared resolution function used by BOTH `reduce` (the
 // all-submitted path) and `onDeadline` (the timeout path) so the two cannot
-// diverge (this plan's entire point). Moves `answering` -> `reveal`; the
+// diverge. Moves `answering` -> `reveal`; the
 // alarm-driven `advanceAfterReveal` below handles `reveal` -> next round /
 // `done`.
 function resolveRound(state: TriviaState, now: number): TriviaState {
@@ -218,7 +218,7 @@ export function view(state: TriviaState, forPlayer: PlayerId): unknown {
   }
 
   // "answering" — never include the correct answer index or any other
-  // player's choice (§5 rule 2); only this player's own submission (if any)
+  // player's choice; only this player's own submission (if any)
   // and the *count* of players who have answered.
   const yourAnswer = Object.prototype.hasOwnProperty.call(state.answers, forPlayer)
     ? state.answers[forPlayer]
@@ -256,7 +256,7 @@ export function deadline(state: TriviaState): number | null {
 }
 
 export function onDeadline(state: TriviaState, now: number): TriviaState {
-  // Idempotent (§5 rule 4, §10.6), keyed on `deadline(state)`: resolving a
+  // Idempotent, keyed on `deadline(state)`: resolving a
   // round (or advancing past a reveal) always moves the deadline forward —
   // `resolveRound` sets `revealStartedAt = now` (pushing the deadline out by
   // `REVEAL_MS`) and `advanceAfterReveal` sets a fresh `roundStartedAt` (or

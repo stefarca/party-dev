@@ -5,7 +5,7 @@ import { MIN_NUDGE_INTERVAL_MS, sendSlackNudge, shouldNudge } from "./nudge";
 // Pure parts only (worker/nudge.ts's own file comment): message composition
 // and the rate-limit predicate. `MatchDO.nudgeHook`'s wiring (connectivity
 // filtering, ctx.waitUntil, persisting `nudgedAt`) is exercised separately,
-// by hand in local dev per the plan's verification script — this repo has no
+// by hand in local dev — this repo has no
 // Durable Object integration test harness for that (see worker/match.test.ts's
 // own comment on why).
 

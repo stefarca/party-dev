@@ -4,16 +4,16 @@ import { nextInt } from "../../shared/prng";
 import type { GameModule, Result } from "../../shared/game";
 import type { PlayerId } from "../../shared/protocol";
 
-// Connect 4 — the first real game, proving the "sequential" phase type from
-// PLAN.md §4 end to end (plan 06). Two players drop discs into a 7-wide,
+// Connect 4 — the first real game, proving the "sequential" phase type end
+// to end. Two players drop discs into a 7-wide,
 // 6-tall board, alternating turns, until one connects four in a row or the
 // board fills.
 
 export const ROWS = 6;
 export const COLS = 7;
 
-// PLAN.md §5 "a chess turn auto-passes after 24h" — the binding turn
-// timeout for every sequential game, not just chess.
+// A turn auto-passes after 24h — the binding turn timeout for every
+// sequential game.
 export const TURN_TIMEOUT_MS = 24 * 60 * 60 * 1000;
 
 export type Cell = 0 | 1 | null;
@@ -66,7 +66,7 @@ const DIRECTIONS: Array<[dr: number, dc: number]> = [
   [1, -1], // diagonal \
 ];
 
-// Checks for a four-in-a-row through the just-placed disc only (§10.5: a
+// Checks for a four-in-a-row through the just-placed disc only (10 ms CPU budget: a
 // full-board scan is unnecessary work on every move; the four directions
 // through the last move are sufficient and cheap).
 function isWinningMove(board: Cell[][], row: number, col: number): boolean {
@@ -108,7 +108,7 @@ export function init(players: PlayerId[], seed: number): C4State {
     throw new Error("connect4 requires exactly 2 players");
   }
   const pair: [PlayerId, PlayerId] = [players[0], players[1]];
-  // §5 rule 3: even "who goes first" must go through the seeded PRNG, never
+  // Seeded PRNG rule: even "who goes first" must go through the seeded PRNG, never
   // Math.random(), and the advanced rng state is stored so later phases
   // (onDeadline's auto-move) can keep drawing from it deterministically.
   const [firstIndex, rng] = nextInt(seed, 2);
@@ -181,7 +181,7 @@ export function waitingOn(state: C4State): PlayerId[] {
 
 export function deadline(state: C4State): number | null {
   if (state.winner !== null || state.draw) return null;
-  // `init()` has no `now` (PLAN.md §5's signature is `init(players, seed)`),
+  // `init()` has no `now` (the `GameModule` signature is `init(players, seed)`),
   // so it cannot stamp a real wall-clock start for the very first turn —
   // `turnStartedAt` is left at its `0` sentinel until the first `reduce()`
   // call (which does get a real `now`) sets it for real. Treat `0` as "not
@@ -197,7 +197,7 @@ export function deadline(state: C4State): number | null {
 export function onDeadline(state: C4State, now: number): C4State {
   if (state.winner !== null || state.draw) return state;
 
-  // Idempotent (§5 rule 4, §10.6), keyed on the turn this deadline was for:
+  // Idempotent, keyed on the turn this deadline was for:
   // `deadline()` is `turnStartedAt + TURN_TIMEOUT_MS`, and placing a disc
   // (below) always resets `turnStartedAt` to `now`, pushing the deadline
   // 24h further out. So re-running `onDeadline` with the same (or an

@@ -1,6 +1,5 @@
-// A small, static, office-appropriate question bank (plan 07). Plain data,
-// no imports — curating real content is PLAN.md §12 step 7's job, not this
-// plan's; this is deliberately placeholder-quality.
+// A small, static, office-appropriate question bank. Plain data, no
+// imports; deliberately placeholder-quality until real content is curated.
 
 export interface Question {
   id: string;

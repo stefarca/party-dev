@@ -1,8 +1,7 @@
 # party-dev
 
 A collection of small async, turn-based party games for playing with coworkers, hosted on
-Cloudflare's free tier (Worker + Static Assets + Durable Objects + D1). See
-[`PLAN.md`](./PLAN.md) for the full technical plan.
+Cloudflare's free tier (Worker + Static Assets + Durable Objects + D1).
 
 **What works today:** nickname-only identity (no passwords), a dashboard that buckets your
 matches into "your turn" / "waiting on others" / "finished", two full games (Connect 4 and
@@ -42,7 +41,8 @@ Other useful scripts:
 - `npm run lint` — runs ESLint over the repo.
 - `npm run format` — formats the repo with Prettier.
 - `npm run format:check` — checks Prettier formatting without writing changes.
-- `npm test` — runs the Vitest suite (pure modules only; no Durable Object integration tests).
+- `npm test` — runs the Vitest suite under Node, including `MatchDO` tests (`worker/match.test.ts`)
+  that run against a hand-built Durable Object stub backed by `node:sqlite`, not real `workerd`.
 - `npm run build` — builds the client (`dist/client`) and the Worker bundle.
 - `npm run preview` — serves the production build locally.
 
@@ -51,9 +51,9 @@ pull request.
 
 ## Engine
 
-Every game is a `GameModule` (`shared/game.ts`, PLAN.md §5) run inside `MatchDO`. After every
-mutation — a player joining, the host starting, a submitted action, or an alarm firing —
-`MatchDO.commit()` runs the same pipeline, in this order:
+Every game is a `GameModule` (`shared/game.ts`) run inside `MatchDO`. After every mutation — a
+player joining, the host starting, a submitted action, or an alarm firing — `MatchDO.commit()`
+runs the same pipeline, in this order:
 
 1. persist the new state (+ `updatedAt`) to the DO's own SQLite,
 2. append the mutation's events to the append-only event log,
@@ -64,10 +64,10 @@ mutation — a player joining, the host starting, a submitted action, or an alar
 6. update the D1 index (`matches`/`match_players` — derived, dashboard-only),
 7. nudge newly-waited-on players who are not connected, via a Slack incoming webhook
    (`worker/nudge.ts`), rate-limited to one nudge per player per match per turn plus a hard
-   10-minute floor per player as a backstop (§8). Several players becoming waited-on in the same
-   commit (e.g. a trivia round start) produce one batched Slack message, never one per player.
+   10-minute floor per player as a backstop. Several players becoming waited-on in the same commit
+   (e.g. a trivia round start) produce one batched Slack message, never one per player.
 
-Four rules every `GameModule` must follow (PLAN.md §5):
+Four rules every `GameModule` must follow:
 
 - **Server-authoritative.** Clients send intents (`action`), never state; every inbound message is
   zod-validated (including via the module's own `actionSchema`).
@@ -81,9 +81,9 @@ Four rules every `GameModule` must follow (PLAN.md §5):
 A new game is a folder under `games/` plus one line each in `games/registry.ts`'s `serverGames`
 (server rules) and `gameUi` (lazily-imported client UI) — nothing else.
 
-Two reference implementations of PLAN.md §4's phase types live under `games/`: Connect 4
-(`games/connect4`, sequential turns — plan 06) and Trivia (`games/trivia`, simultaneous answers +
-deadline, with a reveal phase in between — plan 07).
+Two reference implementations of the phase types live under `games/`: Connect 4
+(`games/connect4`, sequential turns) and Trivia (`games/trivia`, simultaneous answers + deadline,
+with a reveal phase in between).
 
 ## Deploying (operator, requires a Cloudflare account)
 
@@ -98,10 +98,10 @@ values in at deploy time from a repo secret and a repo variable.
 1. `wrangler login`
 2. `wrangler d1 create party` — copy the `database_id` from the output. (The deploy workflow
    applies `migrations/*.sql` on every run, so there's no separate manual migration step.)
-3. `wrangler secret put SESSION_SECRET` — sets the HMAC key used to sign identity cookies
-   (PLAN.md §10.7). Generate a long random value; never reuse the `.dev.vars` dummy.
+3. `wrangler secret put SESSION_SECRET` — sets the HMAC key used to sign identity cookies.
+   Generate a long random value; never reuse the `.dev.vars` dummy.
 4. `wrangler secret put SLACK_WEBHOOK_URL` — optional. Sets the Slack incoming-webhook URL for
-   §8's nudges; if you skip this, `worker/nudge.ts` no-ops cleanly and the rest of the app is
+   turn nudges; if you skip this, `worker/nudge.ts` no-ops cleanly and the rest of the app is
    unaffected. Never commit a real value anywhere — it belongs only in this secret.
 5. In the GitHub repo settings, add:
    - **Settings → Secrets and variables → Actions → Secrets:**

@@ -1,4 +1,4 @@
-// Pure seeded PRNG (mulberry32). PLAN.md §5 rule 3: a seeded PRNG must live
+// Pure seeded PRNG (mulberry32). Binding game rule: a seeded PRNG must live
 // *in game state*, never as `Math.random()` inside `reduce` — determinism
 // buys replay, reconnect-by-replay, and eventually client-side prediction.
 //

@@ -5,14 +5,14 @@ else. Checklist, in order:
 
 1. **`games/<id>/game.ts`** implements `GameModule<S, A>` from `shared/game.ts`: `id`, `meta`,
    `actionSchema`, `init`, `reduce`, `view`, `waitingOn`, `deadline`, `onDeadline`, `result`.
-2. **Pick a phase type** (PLAN.md §4):
+2. **Pick a phase type:**
    - **Sequential** — `waitingOn(state)` returns exactly one player at a time; see
      `games/connect4/game.ts`.
    - **Simultaneous + deadline** — `waitingOn(state)` returns everyone who has not yet acted this
      round, and `deadline(state)` is non-null whenever anyone is waiting; see
      `games/trivia/game.ts` (which also shows the "resolve on all-submitted OR on alarm, via one
      shared function" pattern, and a reveal sub-phase in between rounds).
-3. **The four §5 rules are binding for every game:**
+3. **Four rules are binding for every game:**
    - Server-authoritative: `reduce` and `onDeadline` are the only things that ever produce state;
      clients send `action`s (validated by your own `actionSchema`), never state.
    - `view(state, forPlayer)` is mandatory: return a per-player projection, never raw `state` — it

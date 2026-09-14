@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import type { Result } from "../../shared/game";
 import type { PlayerId, PlayerInfo } from "../../shared/protocol";
 
-// PLAN.md §4's "who is the game waiting on" answer, rendered generically —
+// The engine's "who is the game waiting on" answer, rendered generically —
 // no game-specific knowledge belongs here, only `PlayerInfo`/`PlayerId`.
 
 function nameFor(players: PlayerInfo[], id: PlayerId): string {
@@ -42,7 +42,7 @@ export function TurnIndicator({ me, players, waitingOn, deadline, result }: Turn
 
   useEffect(() => {
     if (deadline === null) return;
-    // A plain browser `setInterval` — fine here. The PLAN.md §10.4 ban on
+    // A plain browser `setInterval` — fine here. The ban on
     // timer-based intervals is scoped to Durable Objects (which must use
     // `ctx.storage.setAlarm()` instead); a browser tab has no such
     // constraint.

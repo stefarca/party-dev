@@ -15,7 +15,7 @@ interface SessionValue {
   retry: () => void;
   // Called by any screen whose fetch comes back 401 (e.g. the cookie
   // expired between page loads) so the app falls back to the nickname gate
-  // instead of showing a raw error — see the plan's acceptance criteria.
+  // instead of showing a raw error.
   notifyUnauthorized: () => void;
 }
 

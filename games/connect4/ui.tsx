@@ -1,7 +1,7 @@
 import type { GameUiProps } from "../../shared/protocol";
 import { COLS, ROWS } from "./game";
 
-// Connect 4 board (plan 06). No game-specific countdown here — the turn
+// Connect 4 board. No game-specific countdown here — the turn
 // deadline is already shown once, generically, by `TurnIndicator` in
 // `MatchPage`; duplicating it here would just be two clocks disagreeing by
 // a second.

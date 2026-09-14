@@ -11,7 +11,7 @@ const app = new Hono<SessionBindings>();
 
 app.route("/api", api);
 
-// GET /ws/:id (PLAN.md §3): upgrade, forward to the DO. Session-gated the
+// GET /ws/:id: upgrade, forward to the DO. Session-gated the
 // same way /api/* is; the DO itself is the one that verifies the caller is
 // actually a player in this match (see MatchDO.handleWsUpgrade) once the
 // request reaches it, so there is no separate round-trip just to check
@@ -36,7 +36,7 @@ app.get("/ws/:id", async (c) => {
 
   // Forward the original request (preserving Upgrade/Sec-WebSocket-* headers
   // needed for the handshake) with the player's identity attached as
-  // headers, per the plan.
+  // headers.
   const headers = new Headers(c.req.raw.headers);
   headers.set("X-Player-Id", session.pid);
   headers.set("X-Player-Nickname", session.nick);

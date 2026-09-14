@@ -1,13 +1,13 @@
 import type { PlayerId } from "../shared/protocol";
 
-// Slack incoming-webhook nudges (PLAN.md §8, plan 08). Deliberately minimal:
+// Slack incoming-webhook nudges. Deliberately minimal:
 // one `fetch()` to a secret URL with Slack's plain `text` payload — no Block
 // Kit, no retries. A nudge is always best-effort: nothing in this file may
 // ever throw out of `sendSlackNudge`, because it is fired from
 // `MatchDO.nudgeHook()` via `ctx.waitUntil()`, and a throw reaching `alarm()`
-// would be retried up to 6 times (§10.6).
+// would be retried up to 6 times.
 
-// §8's binding rate limit, as a hard floor backstop (see `shouldNudge`
+// The binding rate limit, as a hard floor backstop (see `shouldNudge`
 // below) on top of the primary per-turn rule enforced in `worker/match.ts`.
 export const MIN_NUDGE_INTERVAL_MS = 10 * 60 * 1000;
 
@@ -41,7 +41,7 @@ export async function sendSlackNudge(env: Env, params: NudgeParams): Promise<voi
   const webhookUrl = env.SLACK_WEBHOOK_URL;
   if (!webhookUrl) {
     // Local dev and any contributor without the secret must still work —
-    // this is a no-op, not an error (§8).
+    // this is a no-op, not an error.
     console.log("SLACK_WEBHOOK_URL not set; skipping nudge", {
       matchId: params.matchId,
       players: params.players.map((p) => p.id),
@@ -55,7 +55,7 @@ export async function sendSlackNudge(env: Env, params: NudgeParams): Promise<voi
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ text: composeMessage(params) }),
       // A hung Slack request must not hold the calling Durable Object alive
-      // indefinitely via ctx.waitUntil() (Risks/notes).
+      // indefinitely via ctx.waitUntil().
       signal: AbortSignal.timeout(5000),
     });
   } catch (err) {
@@ -63,7 +63,7 @@ export async function sendSlackNudge(env: Env, params: NudgeParams): Promise<voi
   }
 }
 
-// The §8 rate-limit decision, extracted as a pure function so it is
+// The rate-limit decision, extracted as a pure function so it is
 // unit-testable without a Durable Object (worker/nudge.test.ts).
 //
 // `nudgedAt` is this player's own entry from the persisted
@@ -75,7 +75,7 @@ export async function sendSlackNudge(env: Env, params: NudgeParams): Promise<voi
 // own parameter (rather than folded into `now`) so the two rules below can
 // be exercised independently in tests.
 //
-// Two rules, both from §8:
+// Two rules:
 // 1. One nudge per player per match per turn: eligible once `nudgedAt`
 //    predates `becameWaitingAt` — i.e. nothing has nudged them since this
 //    waiting spell began. `MatchDO` never deletes a fired `nudgedAt` entry

@@ -2,14 +2,13 @@ import type { z } from "zod";
 
 import type { PlayerId } from "./protocol";
 
-// The binding interface (PLAN.md §5), reproduced verbatim, plus one
-// deliberate, documented addition: `actionSchema`. §5 rule 1 requires every
-// inbound message to be zod-validated; without a per-game schema on the
-// module itself, `MatchDO` would have to know each game's action shape to
-// validate it, which defeats "one DO class for all games" (§3). Requiring
-// every `GameModule` to carry its own `actionSchema` lets the DO validate an
-// untyped inbound `action` payload before ever calling `reduce`, with zero
-// game-specific knowledge.
+// The binding game interface, plus one deliberate addition: `actionSchema`.
+// Server authority requires every inbound message to be zod-validated;
+// without a per-game schema on the module itself, `MatchDO` would have to
+// know each game's action shape to validate it, which defeats "one DO class
+// for all games". Requiring every `GameModule` to carry its own
+// `actionSchema` lets the DO validate an untyped inbound `action` payload
+// before ever calling `reduce`, with zero game-specific knowledge.
 export interface GameModule<S, A> {
   id: string;
   meta: GameMeta;
@@ -22,7 +21,7 @@ export interface GameModule<S, A> {
   // async
   waitingOn(state: S): PlayerId[]; // [] when finished
   deadline(state: S): number | null; // epoch ms -> schedules the DO alarm
-  // Must be idempotent (§5 rule 4, §10.6): alarms are at-least-once with up
+  // Must be idempotent: alarms are at-least-once with up
   // to 6 retries on throw. Key the resolution on the round/phase number
   // inside `state` and no-op if that round has already resolved — re-running
   // `onDeadline` on an already-resolved round must return state that is

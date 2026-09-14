@@ -2,8 +2,8 @@ import { useState } from "react";
 
 import type { GameUiProps } from "../../shared/protocol";
 
-// The generic proof that the engine works before any real game exists
-// (plan 05 step 6) — a `<pre>` of the raw `view()` projection plus a
+// The generic proof that the engine works before any real game exists: a
+// `<pre>` of the raw `view()` projection plus a
 // textarea for a hand-typed JSON action. Reachable whenever no UI is
 // registered for a game (games/registry.ts's `gameUi` map), and stays in
 // the tree afterwards as a debugging aid for whatever isn't registered yet.
