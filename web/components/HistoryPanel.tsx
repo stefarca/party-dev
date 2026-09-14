@@ -8,8 +8,11 @@ export function HistoryPanel({ events }: { events: MatchEvent[] }) {
   const newestFirst = [...events].reverse();
 
   return (
-    <details className="card history-panel">
-      <summary>History ({events.length})</summary>
+    <details className="panel history-panel">
+      <summary className="history-summary">
+        History
+        <span className="chip">{events.length}</span>
+      </summary>
       <ul className="history-list">
         {newestFirst.map((event) => (
           <li key={event.seq} className="history-item">

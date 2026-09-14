@@ -1,10 +1,13 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import type { CSSProperties } from "react";
 
 import type { Result } from "../../shared/game";
 import type { PlayerId, PlayerInfo } from "../../shared/protocol";
 
 // The engine's "who is the game waiting on" answer, rendered generically —
 // no game-specific knowledge belongs here, only `PlayerInfo`/`PlayerId`.
+
+const URGENT_MS = 30_000;
 
 function nameFor(players: PlayerInfo[], id: PlayerId): string {
   return players.find((p) => p.id === id)?.nickname ?? id;
@@ -50,10 +53,21 @@ export function TurnIndicator({ me, players, waitingOn, deadline, result }: Turn
     return () => clearInterval(id);
   }, [deadline]);
 
+  // Tracks when the current deadline first appeared, purely so the
+  // depleting bar below has a duration to divide by — it never feeds back
+  // into the countdown text itself.
+  const spanRef = useRef<{ deadline: number; start: number } | null>(null);
+  if (deadline === null) {
+    spanRef.current = null;
+  } else if (spanRef.current?.deadline !== deadline) {
+    spanRef.current = { deadline, start: now };
+  }
+
   if (result) {
     return (
-      <div className="turn-indicator turn-indicator-done card">
-        <strong>Match finished.</strong> {resultText(result, players, me)}
+      <div className="turn-banner turn-banner-done">
+        <span className="turn-banner-label">Match finished.</span>
+        <p className="turn-banner-result">{resultText(result, players, me)}</p>
       </div>
     );
   }
@@ -66,12 +80,27 @@ export function TurnIndicator({ me, players, waitingOn, deadline, result }: Turn
       : `Waiting on ${waitingOn.map((id) => nameFor(players, id)).join(", ")}`;
 
   const remainingMs = deadline !== null ? Math.max(0, deadline - now) : null;
+  const span = spanRef.current;
+  const totalMs = span ? span.deadline - span.start : null;
+  const fraction =
+    remainingMs !== null && totalMs !== null && totalMs > 0
+      ? Math.min(1, remainingMs / totalMs)
+      : 1;
+  const urgent = remainingMs !== null && remainingMs > 0 && remainingMs <= URGENT_MS;
+  const expired = remainingMs === 0;
+
+  const classes = ["turn-banner", myTurn ? "turn-banner-mine" : "turn-banner-waiting"];
+  if (urgent) classes.push("turn-banner-urgent");
+  if (expired) classes.push("turn-banner-expired");
 
   return (
-    <div className={`turn-indicator card${myTurn ? " turn-indicator-mine" : ""}`}>
-      <strong>{label}</strong>
+    <div className={classes.join(" ")}>
+      <span className="turn-banner-label">{label}</span>
       {remainingMs !== null && (
-        <span className="turn-countdown">{formatCountdown(remainingMs)}</span>
+        <div className="turn-countdown" style={{ "--remaining": fraction } as CSSProperties}>
+          <span className="turn-countdown-bar" aria-hidden="true" />
+          <span className="turn-countdown-time">{formatCountdown(remainingMs)}</span>
+        </div>
       )}
     </div>
   );

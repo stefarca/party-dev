@@ -1,0 +1,355 @@
+/*
+ * The match room: header, share panel, lobby roster, turn banner, history
+ * drawer, connection badge, and the page's notice/error states. Nothing here
+ * may reference a specific game id — see games/catalog.ts for the generic
+ * data this markup is allowed to read.
+ */
+
+/* Header: game name, status chip, connection badge. */
+
+.match-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-4);
+}
+
+.match-header-title {
+  margin: 0;
+}
+
+.match-header-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+/* Share panel. */
+
+.share-panel {
+  text-align: center;
+}
+
+.share-code {
+  display: flex;
+  justify-content: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.share-code-tile {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.75rem;
+  font-family: var(--font-mono);
+  font-size: var(--text-xl);
+  font-weight: 700;
+  text-transform: uppercase;
+  background: var(--surface-inset);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-inset), var(--edge-highlight);
+}
+
+.share-url {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  text-align: center;
+  margin-bottom: var(--space-3);
+}
+
+.share-chip-wrap {
+  display: inline-flex;
+}
+
+.share-chip {
+  cursor: pointer;
+}
+
+.share-chip-code {
+  font-family: var(--font-mono);
+  letter-spacing: 0.1em;
+}
+
+/* Lobby roster. */
+
+.roster {
+  list-style: none;
+  margin: 0 0 var(--space-3);
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.roster-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+}
+
+.roster-row-empty {
+  background: transparent;
+  border: 1px dashed var(--border-subtle);
+  color: var(--text-muted);
+}
+
+.roster-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 2rem;
+  height: 2rem;
+  border-radius: var(--radius-pill);
+  font-weight: 700;
+  color: var(--accent-contrast);
+  background: var(--accent);
+}
+
+.roster-avatar-empty {
+  background: transparent;
+  border: 1px dashed var(--border-strong);
+  color: var(--text-muted);
+}
+
+.roster-name {
+  flex: 1;
+  font-weight: 600;
+}
+
+.roster-row-empty .roster-name {
+  font-weight: 400;
+  font-style: italic;
+}
+
+.roster-chips {
+  display: flex;
+  gap: var(--space-1);
+}
+
+/* Turn banner. */
+
+.turn-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  margin-bottom: var(--space-4);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  background: var(--surface-1);
+  box-shadow: var(--edge-highlight), var(--shadow-1);
+}
+
+.turn-banner-mine {
+  border-color: var(--border-accent);
+  background: var(--accent-soft);
+  box-shadow: var(--edge-highlight), var(--shadow-2), var(--glow-accent);
+}
+
+.turn-banner-waiting {
+  color: var(--text-secondary);
+}
+
+.turn-banner-done {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-1);
+}
+
+.turn-banner-label {
+  font-weight: 700;
+  font-size: var(--text-lg);
+}
+
+.turn-banner-result {
+  margin: 0;
+  color: var(--text-secondary);
+}
+
+.turn-countdown {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex: none;
+}
+
+.turn-countdown-bar {
+  position: relative;
+  width: 4rem;
+  height: 0.4rem;
+  border-radius: var(--radius-pill);
+  background: var(--surface-inset);
+  overflow: hidden;
+}
+
+.turn-countdown-bar::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: scaleX(var(--remaining, 1));
+  transform-origin: left center;
+  background: var(--accent);
+  border-radius: inherit;
+  transition: transform var(--dur-base) linear;
+}
+
+.turn-countdown-time {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  min-width: 2.5rem;
+  text-align: right;
+}
+
+.turn-banner-urgent .turn-countdown-bar::after {
+  background: var(--warn-fg);
+}
+
+.turn-banner-urgent .turn-countdown-time {
+  color: var(--warn-fg);
+}
+
+.turn-banner-expired .turn-countdown-bar::after {
+  background: var(--danger-fg);
+}
+
+.turn-banner-expired .turn-countdown-time {
+  color: var(--danger-fg);
+}
+
+/* Connection badge: fixed-width so a reconnect cycle never reflows. */
+
+.connection-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+}
+
+.connection-dot {
+  flex: none;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: var(--radius-pill);
+  background: var(--text-muted);
+}
+
+.connection-live .connection-dot {
+  background: var(--ok-fg);
+}
+
+.connection-connecting .connection-dot {
+  background: var(--warn-fg);
+}
+
+.connection-offline .connection-dot {
+  background: var(--danger-fg);
+}
+
+.connection-label {
+  display: inline-block;
+  min-width: 23ch;
+  text-align: left;
+}
+
+/* History drawer. */
+
+.history-panel {
+  padding: 0;
+}
+
+.history-summary {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  cursor: pointer;
+  font-weight: 600;
+  padding: var(--space-4);
+  list-style: none;
+}
+
+.history-summary::-webkit-details-marker {
+  display: none;
+}
+
+.history-list {
+  list-style: none;
+  margin: 0;
+  padding: 0 var(--space-4) var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  max-height: 16rem;
+  overflow-y: auto;
+}
+
+.history-item-head {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+.history-payload {
+  margin: var(--space-1) 0 0;
+  padding: var(--space-2);
+  font-size: var(--text-sm);
+  background: var(--surface-inset);
+  box-shadow: var(--shadow-inset);
+}
+
+/* Notices: loading / interstitial / error states. */
+
+.notice {
+  padding: var(--space-4);
+  margin-bottom: var(--space-4);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  background: var(--surface-1);
+  color: var(--text-secondary);
+}
+
+.notice p {
+  margin: 0 0 var(--space-2);
+}
+
+.notice p:last-child {
+  margin-bottom: 0;
+}
+
+.notice-danger {
+  border-color: var(--danger-border);
+  background: var(--danger-soft);
+  color: var(--danger-fg);
+}
+
+/* Debug game view (shown when no UI is registered for a game). */
+
+.debug-game-view-note {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.debug-game-view textarea {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  padding: var(--space-2);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  width: 100%;
+  resize: vertical;
+  margin-bottom: var(--space-2);
+  background: var(--surface-inset);
+  color: var(--text-primary);
+}
