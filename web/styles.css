@@ -4,4 +4,5 @@
 @import "./styles/components.css";
 @import "./styles/dashboard.css";
 @import "./styles/match.css";
+@import "./styles/game-surface.css";
 @import "./styles/games.css";

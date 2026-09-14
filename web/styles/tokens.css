@@ -52,6 +52,23 @@
   --edge-highlight: inset 0 1px 0 hsla(230, 20%, 100%, 0.06);
   --shadow-inset: inset 0 1px 3px hsla(230, 40%, 2%, 0.3);
 
+  /* Seat colours: a neutral ramp any game can assign to up to 4 players.
+     Colour is never the only signal — games pair these with a glyph or
+     label — but each still needs to pass contrast against its own
+     `-contrast` text colour in both themes. */
+  --seat-1: hsl(6, 72%, 52%);
+  --seat-1-contrast: hsl(0, 0%, 100%);
+  --seat-2: hsl(217, 80%, 58%);
+  --seat-2-contrast: hsl(0, 0%, 100%);
+  --seat-3: hsl(142, 55%, 40%);
+  --seat-3-contrast: hsl(0, 0%, 100%);
+  --seat-4: hsl(38, 85%, 50%);
+  --seat-4-contrast: hsl(230, 25%, 12%);
+
+  /* Shared shadow for game pieces (discs, tiles, tokens). */
+  --game-piece-shadow:
+    0 2px 4px hsla(230, 40%, 2%, 0.45), inset 0 1px 1px hsla(230, 20%, 100%, 0.35);
+
   /* Scales — theme-independent, declared once. */
   --space-1: 0.25rem;
   --space-2: 0.5rem;
@@ -129,4 +146,15 @@
   --glow-accent: 0 0 0 3px hsla(258, 80%, 50%, 0.2);
   --edge-highlight: inset 0 1px 0 hsla(0, 0%, 100%, 0.6);
   --shadow-inset: inset 0 1px 3px hsla(230, 20%, 10%, 0.12);
+
+  --seat-1: hsl(6, 70%, 45%);
+  --seat-1-contrast: hsl(0, 0%, 100%);
+  --seat-2: hsl(217, 75%, 46%);
+  --seat-2-contrast: hsl(0, 0%, 100%);
+  --seat-3: hsl(142, 55%, 32%);
+  --seat-3-contrast: hsl(0, 0%, 100%);
+  --seat-4: hsl(32, 90%, 40%);
+  --seat-4-contrast: hsl(0, 0%, 100%);
+
+  --game-piece-shadow: 0 2px 4px hsla(230, 20%, 10%, 0.2), inset 0 1px 1px hsla(0, 0%, 100%, 0.5);
 }

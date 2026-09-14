@@ -15,6 +15,7 @@ import { ApiError, getMatch, joinMatch } from "../api";
 import { clearMatchWaiting, setMatchWaiting } from "../badge";
 import { ConnectionBadge } from "../components/ConnectionBadge";
 import { DebugGameView } from "../components/DebugGameView";
+import { GameSurface } from "../components/GameSurface";
 import { HistoryPanel } from "../components/HistoryPanel";
 import { TurnIndicator } from "../components/TurnIndicator";
 import { useSession } from "../session";
@@ -214,15 +215,24 @@ function GameUiHost({
     send,
   };
 
+  const title = getGameMeta(gameId)?.name ?? gameId;
   const Lazy = getLazyUi(gameId);
-  if (!Lazy) return <DebugGameView {...props} />;
+  if (!Lazy) {
+    return (
+      <GameSurface title={title}>
+        <DebugGameView {...props} />
+      </GameSurface>
+    );
+  }
 
   return (
-    <GameErrorBoundary key={code} fallback={<DebugGameView {...props} />}>
-      <Suspense fallback={<div className="card">Loading game…</div>}>
-        <Lazy {...props} />
-      </Suspense>
-    </GameErrorBoundary>
+    <GameSurface title={title}>
+      <GameErrorBoundary key={code} fallback={<DebugGameView {...props} />}>
+        <Suspense fallback={<p className="game-muted">Loading game…</p>}>
+          <Lazy {...props} />
+        </Suspense>
+      </GameErrorBoundary>
+    </GameSurface>
   );
 }
 

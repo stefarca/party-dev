@@ -28,6 +28,16 @@ else. Checklist, in order:
    render `view`, call `send(action)` for intents, and use the shared `TurnIndicator` (mounted by
    `MatchPage`, not by your UI) for the generic "whose turn / deadline" display — do not duplicate
    it.
+   - **UI:** the shell mounts your component inside its own cabinet, so a game UI must not render
+     its own outer card — render the board/round content only. Reach for the shared classes and
+     tokens in `web/styles/game-surface.css` (`.game-panel`, `.game-heading`, `.game-text`,
+     `.game-muted`, `.game-actions`, `.game-choice`, `.game-list`, `.game-score-row`, the
+     `--seat-1`…`--seat-4` colour ramp, `--game-gap`/`--game-radius`/`--game-well`) instead of
+     hardcoding colours. Game-specific styles beyond that shared vocabulary go in
+     `web/styles/games.css`, never in a stylesheet imported from `ui.tsx` itself — `tsconfig.client.json`
+     has no ambient module declaration for `*.css`. Never render the deadline or a countdown; the
+     shell shows it once. Colour must never be the only signal for game state — pair it with text,
+     a glyph, or an aria attribute.
 5. **Register it** — one line in each map in `games/registry.ts`:
    - `serverGames`: `<id>: yourGame` (statically imported — the Worker bundle must contain every
      game's rules with no network round-trip).

@@ -1,0 +1,129 @@
+/*
+ * The "arcade cabinet" (`web/components/GameSurface.tsx`) plus the shared
+ * vocabulary game UIs may build their boards from. A game UI must not render
+ * its own outer card — the cabinet is the container — and should reach for
+ * these classes and tokens instead of inventing new colours.
+ */
+
+:root {
+  --game-gap: var(--space-2);
+  --game-radius: var(--radius-md);
+  --game-well: var(--surface-inset);
+}
+
+/* Cabinet. */
+
+.game-surface {
+  background: var(--surface-2);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-3), var(--edge-highlight);
+  overflow: hidden;
+  margin-bottom: var(--space-4);
+}
+
+.game-surface-bezel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.game-surface-title {
+  font-weight: 700;
+  font-size: var(--text-lg);
+}
+
+.game-surface-status {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+.game-surface-well {
+  padding: var(--space-4);
+  background: var(--game-well);
+  box-shadow: var(--shadow-inset);
+}
+
+/* Shared game vocabulary. */
+
+.game-panel {
+  background: var(--surface-1);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--game-radius);
+  padding: var(--space-3);
+}
+
+.game-heading {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-lg);
+  font-weight: 700;
+}
+
+.game-text {
+  margin: 0;
+  color: var(--text-secondary);
+}
+
+.game-muted {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.game-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--game-gap);
+}
+
+.game-choice {
+  font: inherit;
+  text-align: left;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--game-radius);
+  background: var(--surface-1);
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.game-choice:disabled {
+  cursor: not-allowed;
+}
+
+.game-choice-selected {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  font-weight: 700;
+}
+
+.game-choice-correct {
+  border-color: var(--ok-fg);
+  background: var(--ok-soft);
+  font-weight: 700;
+}
+
+.game-choice-muted {
+  color: var(--text-muted);
+  cursor: default;
+}
+
+.game-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.game-score-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--game-radius);
+  background: var(--surface-1);
+}

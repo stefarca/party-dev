@@ -337,7 +337,6 @@
 /* Debug game view (shown when no UI is registered for a game). */
 
 .debug-game-view-note {
-  color: var(--text-muted);
   font-style: italic;
 }
 

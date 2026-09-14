@@ -8,6 +8,9 @@ import type { GameUiProps } from "../../shared/protocol";
 // Renders nothing that is not present in `view` — in particular, never the
 // correct answer index or another player's pick while `phase === "answering"`,
 // since the server's `view()` does not send either.
+//
+// The shell (`GameSurface`) provides the surrounding cabinet — this
+// component renders only the round content that goes inside it.
 
 interface AnsweringView {
   phase: "answering";
@@ -47,6 +50,26 @@ function nameFor(players: GameUiProps["players"], id: string): string {
   return players.find((p) => p.id === id)?.nickname ?? id;
 }
 
+function RoundProgress({ round, totalRounds }: { round: number; totalRounds: number }) {
+  const pct = totalRounds > 0 ? ((round + 1) / totalRounds) * 100 : 0;
+  return (
+    <div className="trivia-progress-strip">
+      <p className="trivia-round game-text">
+        Round {round + 1} of {totalRounds}
+      </p>
+      <div
+        className="trivia-progress-bar"
+        role="progressbar"
+        aria-valuenow={round + 1}
+        aria-valuemin={1}
+        aria-valuemax={totalRounds}
+      >
+        <div className="trivia-progress-fill" style={{ width: `${pct}%` }} />
+      </div>
+    </div>
+  );
+}
+
 function Scoreboard({
   scores,
   players,
@@ -58,9 +81,9 @@ function Scoreboard({
 }) {
   const entries = Object.entries(scores).sort((a, b) => b[1] - a[1]);
   return (
-    <ul className="trivia-scoreboard">
+    <ul className="game-list trivia-scoreboard">
       {entries.map(([id, score]) => (
-        <li key={id} className={id === me ? "trivia-score-you" : undefined}>
+        <li key={id} className={`game-score-row${id === me ? " trivia-score-you" : ""}`}>
           <span>{nameFor(players, id)}</span>
           <span>{score}</span>
         </li>
@@ -88,11 +111,9 @@ function Answering({
   }
 
   return (
-    <div className="card trivia-card">
-      <p className="trivia-round">
-        Round {v.round + 1} of {v.totalRounds}
-      </p>
-      <h3 className="trivia-question">{v.question}</h3>
+    <div className="trivia-round-wrap">
+      <RoundProgress round={v.round} totalRounds={v.totalRounds} />
+      <h3 className="trivia-question game-heading">{v.question}</h3>
       <div role="radiogroup" aria-label="Answer choices" className="trivia-choices">
         {v.choices.map((choice, i) => (
           <button
@@ -101,15 +122,20 @@ function Answering({
             role="radio"
             aria-checked={v.yourAnswer === i}
             aria-pressed={v.yourAnswer === i}
-            className={`trivia-choice${v.yourAnswer === i ? " trivia-choice-selected" : ""}`}
+            className={`game-choice trivia-choice${v.yourAnswer === i ? " game-choice-selected" : ""}`}
             disabled={locked}
             onClick={() => pick(i)}
           >
+            {v.yourAnswer === i && (
+              <span className="trivia-choice-mark" aria-hidden="true">
+                ✓
+              </span>
+            )}
             {choice}
           </button>
         ))}
       </div>
-      <p className="trivia-progress">
+      <p className="trivia-progress game-text">
         {v.answeredCount} of {v.totalPlayers} answered
         {locked ? " — your answer is locked in." : ""}
       </p>
@@ -128,11 +154,10 @@ function Reveal({
   me: string;
 }) {
   return (
-    <div className="card trivia-card">
-      <p className="trivia-round">
-        Round {v.round + 1} of {v.totalRounds} — reveal
-      </p>
-      <h3 className="trivia-question">{v.question}</h3>
+    <div className="trivia-round-wrap">
+      <RoundProgress round={v.round} totalRounds={v.totalRounds} />
+      <p className="trivia-round game-text">reveal</p>
+      <h3 className="trivia-question game-heading">{v.question}</h3>
       <div role="list" className="trivia-choices">
         {v.choices.map((choice, i) => {
           const isCorrect = i === v.correctAnswer;
@@ -140,7 +165,9 @@ function Reveal({
             <div
               key={i}
               role="listitem"
-              className={`trivia-choice trivia-choice-reveal${isCorrect ? " trivia-choice-correct" : ""}`}
+              className={`game-choice trivia-choice trivia-choice-reveal${
+                isCorrect ? " game-choice-correct" : " game-choice-muted"
+              }`}
             >
               {choice}
               {isCorrect && <span className="trivia-correct-badge"> correct</span>}
@@ -148,7 +175,7 @@ function Reveal({
           );
         })}
       </div>
-      <ul className="trivia-picks">
+      <ul className="game-list trivia-picks">
         {players.map((p) => {
           const given = v.given[p.id] ?? null;
           const gotIt = given === v.correctAnswer;
@@ -172,11 +199,14 @@ function Done({ v, players, me }: { v: DoneView; players: GameUiProps["players"]
   const winners = entries.filter(([, score]) => score === topScore).map(([id]) => id);
 
   return (
-    <div className="card trivia-card">
-      <h3>Final scoreboard</h3>
-      <ul className="trivia-scoreboard">
+    <div className="trivia-round-wrap">
+      <h3 className="game-heading">Final scoreboard</h3>
+      <ul className="game-list trivia-scoreboard">
         {entries.map(([id, score]) => (
-          <li key={id} className={winners.includes(id) ? "trivia-score-winner" : undefined}>
+          <li
+            key={id}
+            className={`game-score-row${winners.includes(id) ? " trivia-score-winner" : ""}`}
+          >
             <span>
               {nameFor(players, id)}
               {id === me && " (you)"}
@@ -194,7 +224,7 @@ export default function TriviaUi({ view, players, me, send }: GameUiProps) {
   const v = view as TriviaView | null;
 
   if (!v) {
-    return <div className="card">Loading question…</div>;
+    return <p className="game-muted">Loading question…</p>;
   }
 
   if (v.phase === "done") return <Done v={v} players={players} me={me} />;
