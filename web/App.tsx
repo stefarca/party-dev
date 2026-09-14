@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { FormEvent } from "react";
 
 import { ApiError } from "./api";
+import { ThemeToggle } from "./components/ThemeToggle";
 import { Dashboard } from "./routes/Dashboard";
 import { MatchPage } from "./routes/MatchPage";
 import { NicknameGate } from "./routes/NicknameGate";
@@ -57,6 +58,7 @@ function Header() {
             {player.nickname} ✎
           </button>
         ))}
+      <ThemeToggle />
     </header>
   );
 }

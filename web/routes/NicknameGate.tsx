@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { FormEvent } from "react";
 
 import { ApiError } from "../api";
+import { ThemeToggle } from "../components/ThemeToggle";
 import { useSession } from "../session";
 
 // Mirrors the server's IdentityRequestSchema (shared/protocol.ts) so the
@@ -49,6 +50,7 @@ export function NicknameGate() {
 
   return (
     <main className="container gate">
+      <ThemeToggle />
       <h1>party-dev</h1>
       <p>Pick a nickname to join the game.</p>
       <form onSubmit={handleSubmit} className="card">

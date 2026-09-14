@@ -1,0 +1,317 @@
+.container {
+  max-width: var(--width-match);
+  margin: 0 auto;
+  padding: var(--space-4);
+}
+
+.container.gate {
+  padding-top: var(--space-7);
+}
+
+.card {
+  background: var(--surface-1);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+.card form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+label {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+input,
+select {
+  font-size: var(--text-base);
+  padding: var(--space-2);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  width: 100%;
+  background: var(--surface-inset);
+  color: var(--text-primary);
+}
+
+button {
+  font-size: var(--text-base);
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-md);
+  background: var(--accent);
+  color: var(--text-on-accent);
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+button[type="button"] {
+  background: var(--surface-2);
+  color: var(--text-primary);
+  border-color: var(--border-strong);
+}
+
+.error {
+  color: var(--danger-fg);
+  background: var(--danger-soft);
+  padding: var(--space-2);
+  border-radius: var(--radius-md);
+  margin: var(--space-1) 0;
+}
+
+.empty-state {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.match-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.match-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  background: var(--surface-1);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: var(--space-3);
+  text-decoration: none;
+  color: inherit;
+}
+
+.match-row-main {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.match-row-players {
+  color: var(--text-secondary);
+}
+
+.match-row-meta {
+  display: flex;
+  gap: var(--space-3);
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+.your-turn .match-row {
+  border-left: 4px solid var(--warn-fg);
+}
+
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  background: var(--surface-1);
+  border-bottom: 1px solid var(--border-subtle);
+  flex-wrap: wrap;
+}
+
+.app-title {
+  font-weight: 700;
+  text-decoration: none;
+  color: var(--text-primary);
+}
+
+.nickname-badge {
+  background: var(--surface-2);
+  color: var(--text-primary);
+  border: 1px solid var(--border-strong);
+}
+
+.rename-form {
+  display: flex;
+  gap: var(--space-1);
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.rename-form input {
+  width: auto;
+  min-width: 8rem;
+}
+
+.match-code {
+  font-size: var(--text-2xl);
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-align: center;
+  margin-bottom: var(--space-2);
+}
+
+.player-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.badge {
+  display: inline-block;
+  margin-left: var(--space-2);
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  background: var(--surface-2);
+  border-radius: var(--radius-sm);
+  padding: 0.1rem var(--space-2);
+}
+
+pre {
+  background: var(--surface-inset);
+  padding: var(--space-4);
+  overflow-x: auto;
+  border-radius: var(--radius-sm);
+}
+
+/* Theme toggle. */
+
+.theme-toggle {
+  display: flex;
+  gap: var(--space-1);
+  padding: var(--space-1);
+  background: var(--surface-2);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-pill);
+}
+
+.theme-toggle-option {
+  font-size: var(--text-sm);
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid transparent;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.theme-toggle-option[aria-pressed="true"] {
+  background: var(--accent-soft);
+  border-color: var(--border-accent);
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+/* Live match transport UI. */
+
+.turn-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.turn-indicator-mine {
+  border-color: var(--warn-fg);
+  background: var(--warn-soft);
+}
+
+.turn-indicator-done {
+  border-color: var(--border-strong);
+}
+
+.turn-countdown {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  background: var(--surface-inset);
+  border-radius: var(--radius-sm);
+  padding: 0.15rem var(--space-2);
+}
+
+.history-panel summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.history-list {
+  list-style: none;
+  margin: var(--space-3) 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  max-height: 16rem;
+  overflow-y: auto;
+}
+
+.history-item-head {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+.history-item pre {
+  margin: var(--space-1) 0 0;
+  padding: var(--space-2);
+  font-size: var(--text-sm);
+}
+
+.match-footer {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: var(--space-4);
+}
+
+.connection-badge {
+  font-size: var(--text-xs);
+  padding: 0.15rem var(--space-2);
+  border-radius: var(--radius-pill);
+  border: 1px solid transparent;
+}
+
+.connection-live {
+  background: var(--ok-soft);
+  color: var(--ok-fg);
+  border-color: var(--ok-border);
+}
+
+.connection-connecting {
+  background: var(--warn-soft);
+  color: var(--warn-fg);
+  border-color: var(--warn-border);
+}
+
+.connection-offline {
+  background: var(--danger-soft);
+  color: var(--danger-fg);
+  border-color: var(--danger-border);
+}
+
+.debug-game-view-note {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.debug-game-view textarea {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  padding: var(--space-2);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  width: 100%;
+  resize: vertical;
+  margin-bottom: var(--space-2);
+  background: var(--surface-inset);
+  color: var(--text-primary);
+}
