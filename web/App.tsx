@@ -2,6 +2,9 @@ import { useState } from "react";
 import type { FormEvent } from "react";
 
 import { ApiError } from "./api";
+import { Spinner } from "./components/states";
+import { ThemeToggle } from "./components/ThemeToggle";
+import { WordMark } from "./components/WordMark";
 import { Dashboard } from "./routes/Dashboard";
 import { MatchPage } from "./routes/MatchPage";
 import { NicknameGate } from "./routes/NicknameGate";
@@ -35,28 +38,38 @@ function Header() {
           navigate("/");
         }}
       >
+        <WordMark />
         party-dev
       </a>
-      {player &&
-        (editing ? (
-          <form className="rename-form" onSubmit={handleRename}>
-            <input
-              value={value}
-              onChange={(e) => setValue(e.target.value)}
-              maxLength={24}
-              autoFocus
-            />
-            <button type="submit">Save</button>
-            <button type="button" onClick={() => setEditing(false)}>
-              Cancel
+      <div className="app-header-right">
+        {player &&
+          (editing ? (
+            <form className="rename-form" onSubmit={handleRename}>
+              <input
+                value={value}
+                onChange={(e) => setValue(e.target.value)}
+                maxLength={24}
+                autoFocus
+              />
+              <button type="submit" className="btn btn-primary btn-sm">
+                Save
+              </button>
+              <button
+                type="button"
+                className="btn btn-quiet btn-sm"
+                onClick={() => setEditing(false)}
+              >
+                Cancel
+              </button>
+              {error && <span className="error">{error}</span>}
+            </form>
+          ) : (
+            <button className="btn btn-ghost btn-sm" onClick={() => setEditing(true)}>
+              {player.nickname} ✎
             </button>
-            {error && <span className="error">{error}</span>}
-          </form>
-        ) : (
-          <button className="nickname-badge" onClick={() => setEditing(true)}>
-            {player.nickname} ✎
-          </button>
-        ))}
+          ))}
+        <ThemeToggle />
+      </div>
     </header>
   );
 }
@@ -66,7 +79,7 @@ function RouteContent() {
   if (route.name === "dashboard") return <Dashboard />;
   if (route.name === "match") return <MatchPage code={route.code} />;
   return (
-    <main className="container">
+    <main id="main-content" className="container">
       <p>Page not found.</p>
     </main>
   );
@@ -77,8 +90,9 @@ function AppShell() {
 
   if (state === "loading") {
     return (
-      <main className="container">
-        <p>Loading…</p>
+      <main id="main-content" className="splash">
+        <WordMark className="splash-mark" />
+        <Spinner label="Loading party-dev" />
       </main>
     );
   }
@@ -98,6 +112,10 @@ function AppShell() {
 export function App() {
   return (
     <SessionProvider>
+      <div className="app-bg" aria-hidden="true" />
+      <a href="#main-content" className="skip-link">
+        Skip to content
+      </a>
       <AppShell />
     </SessionProvider>
   );

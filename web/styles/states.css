@@ -1,0 +1,52 @@
+/*
+ * The shared loading/empty/error vocabulary (web/components/states.tsx):
+ * Spinner, Skeleton, EmptyState (reuses .empty-shelf from dashboard.css),
+ * and Notice (reuses .notice/.notice-danger from match.css). Only the
+ * pieces with no existing home — the spinner and the skeleton shimmer —
+ * get their own rules here.
+ */
+
+.spinner {
+  display: inline-flex;
+}
+
+.spinner-ring {
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: var(--radius-pill);
+  border: 2px solid var(--border-strong);
+  border-top-color: var(--accent);
+  animation: party-spin 800ms linear infinite;
+}
+
+@keyframes party-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* A skeleton reserves its own box (callers pass width/height inline so the
+   real content that replaces it doesn't shift the layout) and sweeps a
+   translated gradient across it — the sweep never resizes anything. */
+.skeleton {
+  display: block;
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+}
+
+.skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, var(--border-strong), transparent);
+  transform: translateX(-100%);
+  animation: party-skeleton-sweep 1.6s ease-in-out infinite;
+}
+
+@keyframes party-skeleton-sweep {
+  100% {
+    transform: translateX(100%);
+  }
+}
