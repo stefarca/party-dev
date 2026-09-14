@@ -4,3 +4,5 @@ dist/
 .dev.vars
 *.local
 *.tsbuildinfo
+/PLAN.md
+/.claude/plans/
