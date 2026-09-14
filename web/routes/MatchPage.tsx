@@ -4,7 +4,7 @@ import type { ComponentType, LazyExoticComponent, ReactNode } from "react";
 import { getGameMeta } from "../../games/catalog";
 import { gameUi } from "../../games/registry";
 import type { GameUiProps, MatchEvent, MatchSnapshot, MatchSummary } from "../../shared/protocol";
-import { ApiError, getMatch } from "../api";
+import { ApiError, getMatch, joinMatch } from "../api";
 import { clearMatchWaiting, setMatchWaiting } from "../badge";
 import { ConnectionBadge } from "../components/ConnectionBadge";
 import { DebugGameView } from "../components/DebugGameView";
@@ -233,7 +233,20 @@ export function MatchPage({ code }: { code: string }) {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const result = await getMatch(code);
+      let result = await getMatch(code);
+      // A visitor who landed here via the shared "Copy link" URL (rather
+      // than the dashboard's "Join a match" form) has never called
+      // `/join` — reading the lobby doesn't require membership, but
+      // rendering it as if they're in it would be misleading, and the live
+      // transport's own /view check would 403 them as `not_a_player`. Join
+      // on their behalf the first time they see a lobby they're not part of.
+      if (
+        result.status === "lobby" &&
+        player &&
+        !result.players.some((p) => p.id === player.playerId)
+      ) {
+        result = await joinMatch(code);
+      }
       setMatch(result);
       setError(null);
     } catch (err) {
@@ -243,17 +256,31 @@ export function MatchPage({ code }: { code: string }) {
       }
       if (err instanceof ApiError && err.status === 404) {
         setError("No match with that code.");
+      } else if (err instanceof ApiError && err.status === 409) {
+        setError(
+          err.code === "lobby_full" ? "This lobby is full." : "This match has already started.",
+        );
       } else {
         setError(err instanceof Error ? err.message : "Failed to load this match.");
       }
     } finally {
       setLoading(false);
     }
-  }, [code, notifyUnauthorized]);
+  }, [code, notifyUnauthorized, player]);
 
   useEffect(() => {
     load();
   }, [load]);
+
+  const myPlayerId = player?.playerId ?? "";
+
+  // Only open the live transport once `load()` has confirmed this player is
+  // actually in the roster (joining them first if they arrived via a shared
+  // link). Connecting any earlier races that join — see useMatch's own
+  // comment on `ready` for why that race turns into a permanent failure
+  // rather than a transient one.
+  const ready =
+    !loading && !error && match !== null && match.players.some((p) => p.id === myPlayerId);
 
   const {
     snapshot,
@@ -262,9 +289,7 @@ export function MatchPage({ code }: { code: string }) {
     error: transportError,
     send,
     start,
-  } = useMatch(code, notifyUnauthorized);
-
-  const myPlayerId = player?.playerId ?? "";
+  } = useMatch(code, ready, notifyUnauthorized);
 
   // Tab badge (§8 item 2): keep it live from this match's own snapshot
   // stream between dashboard visits — a WS push that makes it this player's

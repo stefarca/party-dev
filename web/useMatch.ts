@@ -49,7 +49,11 @@ function toMatchError(err: unknown, fallbackCode: string, fallbackMessage: strin
   return { code: fallbackCode, message: err instanceof Error ? err.message : fallbackMessage };
 }
 
-export function useMatch(matchId: string, onUnauthorized?: () => void): UseMatchResult {
+export function useMatch(
+  matchId: string,
+  ready: boolean,
+  onUnauthorized?: () => void,
+): UseMatchResult {
   const [snapshot, setSnapshot] = useState<MatchSnapshot | null>(null);
   const [events, setEvents] = useState<MatchEvent[]>([]);
   const [connection, setConnection] = useState<ConnectionState>("connecting");
@@ -95,6 +99,17 @@ export function useMatch(matchId: string, onUnauthorized?: () => void): UseMatch
   }, []);
 
   useEffect(() => {
+    // A visitor who just landed on a lobby they aren't a member of yet is
+    // joined asynchronously by the caller (MatchPage's `load()`) before this
+    // becomes true. Connecting eagerly would race that join: the very first
+    // `/view` fetch below would 403 as `not_a_player`, which this hook (for
+    // good reason — a match that will never exist doesn't get better on
+    // retry) treats as fatal and never reconnects from, even once the join
+    // completes moments later. Simply not connecting until membership is
+    // confirmed avoids the race entirely rather than trying to distinguish
+    // "permanently not a player" from "not a player yet".
+    if (!ready) return;
+
     let cancelled = false;
     let fatal = false;
 
@@ -279,7 +294,7 @@ export function useMatch(matchId: string, onUnauthorized?: () => void): UseMatch
         socketRef.current = null;
       }
     };
-  }, [matchId, applySnapshot, applyEvents]);
+  }, [matchId, ready, applySnapshot, applyEvents]);
 
   // The client never sends state, only intents (PLAN.md §5 rule 1) — these
   // two are the only two ways this hook ever talks to the server.
