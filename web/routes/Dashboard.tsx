@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { FormEvent } from "react";
+import type { CSSProperties, FormEvent } from "react";
 
 import type { GameMeta } from "../../games/catalog";
 import { normalizeMatchCode } from "../../shared/ids";
-import type { MatchSummary } from "../../shared/protocol";
+import type { MatchStatus, MatchSummary } from "../../shared/protocol";
 import { ApiError, createMatch, getGames, joinMatch, listMatches } from "../api";
 import type { MatchBuckets } from "../api";
 import { setDashboardYourTurn } from "../badge";
@@ -17,32 +17,57 @@ function gameName(games: GameMeta[], gameId: string): string {
   return games.find((g) => g.id === gameId)?.name ?? gameId;
 }
 
+// A deterministic, game-agnostic hue derived from the id string — never a
+// hardcoded per-game colour or asset.
+function hueForId(id: string): number {
+  let hash = 0;
+  for (let i = 0; i < id.length; i++) {
+    hash = (hash * 31 + id.charCodeAt(i)) >>> 0;
+  }
+  return hash % 360;
+}
+
+function playerRange(meta: GameMeta): string {
+  return meta.minPlayers === meta.maxPlayers
+    ? `${meta.minPlayers} players`
+    : `${meta.minPlayers}-${meta.maxPlayers} players`;
+}
+
+function statusChipClass(status: MatchStatus): string {
+  if (status === "lobby") return "chip chip-accent";
+  if (status === "active") return "chip chip-ok";
+  return "chip";
+}
+
 function MatchRow({
   match,
   games,
   myPlayerId,
+  accent,
 }: {
   match: MatchSummary;
   games: GameMeta[];
   myPlayerId: string;
+  accent?: boolean;
 }) {
   const others = match.players.filter((p) => p.id !== myPlayerId);
   const otherNames =
     others.length > 0 ? others.map((p) => p.nickname).join(", ") : "waiting for others to join";
   return (
     <a
-      className="card match-row"
+      className={`panel match-card${accent ? " match-card-accent" : ""}`}
       href={`/m/${match.id}`}
       onClick={(e) => {
         e.preventDefault();
         navigate(`/m/${match.id}`);
       }}
     >
-      <div className="match-row-main">
+      <div className="match-card-main">
         <strong>{gameName(games, match.gameId)}</strong>
-        <span className="match-row-players">{otherNames}</span>
+        <span className={statusChipClass(match.status)}>{match.status}</span>
       </div>
-      <div className="match-row-meta">
+      <span className="match-card-players">{otherNames}</span>
+      <div className="match-card-meta">
         <span>{relativeTime(match.updatedAt)}</span>
         {match.deadline !== null && <span>{formatDeadline(match.deadline)}</span>}
       </div>
@@ -66,17 +91,22 @@ function Section({
   accent?: boolean;
 }) {
   return (
-    <section className={accent ? "your-turn" : undefined}>
-      <h2>
-        {title}
-        {matches.length > 0 ? ` (${matches.length})` : ""}
-      </h2>
+    <section className="shelf">
+      <div className="shelf-header">
+        <h2 className="shelf-title">{title}</h2>
+        <span className="chip">{matches.length}</span>
+      </div>
       {matches.length === 0 ? (
-        <p className="empty-state">{emptyText}</p>
+        <div className="empty-shelf">
+          <span className="empty-shelf-glyph" aria-hidden="true">
+            ○
+          </span>
+          <p>{emptyText}</p>
+        </div>
       ) : (
         <div className="match-list">
           {matches.map((m) => (
-            <MatchRow key={m.id} match={m} games={games} myPlayerId={myPlayerId} />
+            <MatchRow key={m.id} match={m} games={games} myPlayerId={myPlayerId} accent={accent} />
           ))}
         </div>
       )}
@@ -205,7 +235,7 @@ export function Dashboard() {
 
   if (loading) {
     return (
-      <main className="container">
+      <main className="page">
         <p>Loading…</p>
       </main>
     );
@@ -213,9 +243,11 @@ export function Dashboard() {
 
   if (error) {
     return (
-      <main className="container">
+      <main className="page">
         <p className="error">{error}</p>
-        <button onClick={() => refresh()}>Retry</button>
+        <button className="btn btn-ghost" onClick={() => refresh()}>
+          Retry
+        </button>
       </main>
     );
   }
@@ -224,7 +256,7 @@ export function Dashboard() {
   const data = buckets ?? { yourTurn: [], waiting: [], finished: [] };
 
   return (
-    <main className="container">
+    <main className="page">
       <Section
         title="Your turn"
         emptyText="Nothing needs your move right now."
@@ -248,43 +280,71 @@ export function Dashboard() {
         myPlayerId={myPlayerId}
       />
 
-      <section className="card">
-        <h2>Start a new match</h2>
-        <form onSubmit={handleCreate}>
-          <label htmlFor="game-select">Game</label>
-          <select
-            id="game-select"
-            value={selectedGame}
-            onChange={(e) => setSelectedGame(e.target.value)}
-          >
-            {games.map((g) => (
-              <option key={g.id} value={g.id}>
-                {g.name} ({g.minPlayers}-{g.maxPlayers} players)
-              </option>
-            ))}
-          </select>
-          {createError && <p className="error">{createError}</p>}
-          <button type="submit" disabled={creating || !selectedGame}>
-            {creating ? "Creating…" : "Create"}
-          </button>
-        </form>
+      <section className="panel panel-accent">
+        <div className="panel-header">
+          <h2>Start a new match</h2>
+        </div>
+        <div className="panel-body">
+          <form onSubmit={handleCreate} className="stack">
+            <fieldset className="game-picker">
+              <legend>Game</legend>
+              {games.map((g) => {
+                const hue = hueForId(g.id);
+                return (
+                  <label key={g.id} className="game-picker-option">
+                    <input
+                      type="radio"
+                      name="game"
+                      className="game-picker-input"
+                      value={g.id}
+                      checked={selectedGame === g.id}
+                      onChange={() => setSelectedGame(g.id)}
+                    />
+                    <span className="game-picker-card">
+                      <span
+                        className="game-tile"
+                        style={{ "--tile-hue": hue } as CSSProperties}
+                        aria-hidden="true"
+                      >
+                        {g.name.charAt(0).toUpperCase()}
+                      </span>
+                      <span className="game-picker-name">{g.name}</span>
+                      <span className="game-picker-range">{playerRange(g)}</span>
+                    </span>
+                  </label>
+                );
+              })}
+            </fieldset>
+            {createError && <p className="error">{createError}</p>}
+            <button type="submit" className="btn btn-primary" disabled={creating || !selectedGame}>
+              {creating ? "Creating…" : "Create"}
+            </button>
+          </form>
+        </div>
       </section>
 
-      <section className="card">
-        <h2>Join a match</h2>
-        <form onSubmit={handleJoin}>
-          <label htmlFor="join-code">Match code</label>
-          <input
-            id="join-code"
-            value={joinCode}
-            onChange={(e) => setJoinCode(e.target.value)}
-            placeholder="e.g. AB23CD"
-          />
-          {joinError && <p className="error">{joinError}</p>}
-          <button type="submit" disabled={joining}>
-            {joining ? "Joining…" : "Join"}
-          </button>
-        </form>
+      <section className="panel">
+        <div className="panel-header">
+          <h2>Join a match</h2>
+        </div>
+        <div className="panel-body">
+          <form onSubmit={handleJoin} className="stack">
+            <label htmlFor="join-code">Match code</label>
+            <div className="join-form-row">
+              <input
+                id="join-code"
+                className="input-code"
+                value={joinCode}
+                onChange={(e) => setJoinCode(e.target.value)}
+                placeholder="e.g. AB23CD"
+              />
+              <button type="submit" className="btn btn-ghost" disabled={joining}>
+                {joining ? "Joining…" : "Join"}
+              </button>
+            </div>
+            {joinError && <p className="error">{joinError}</p>}
+          </form>
+        </div>
       </section>
     </main>
   );

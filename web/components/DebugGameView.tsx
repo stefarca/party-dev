@@ -38,7 +38,9 @@ export function DebugGameView({ view, waitingOn, deadline, result, send }: GameU
         placeholder={'{"t":"increment"}'}
       />
       {parseError && <p className="error">{parseError}</p>}
-      <button onClick={submit}>Send</button>
+      <button className="btn btn-primary" onClick={submit}>
+        Send
+      </button>
     </div>
   );
 }

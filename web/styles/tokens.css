@@ -50,6 +50,7 @@
   --shadow-3: 0 12px 32px hsla(230, 40%, 2%, 0.55);
   --glow-accent: 0 0 0 3px hsla(258, 90%, 66%, 0.28);
   --edge-highlight: inset 0 1px 0 hsla(230, 20%, 100%, 0.06);
+  --shadow-inset: inset 0 1px 3px hsla(230, 40%, 2%, 0.3);
 
   /* Scales — theme-independent, declared once. */
   --space-1: 0.25rem;
@@ -127,4 +128,5 @@
   --shadow-3: 0 12px 32px hsla(230, 20%, 10%, 0.14);
   --glow-accent: 0 0 0 3px hsla(258, 80%, 50%, 0.2);
   --edge-highlight: inset 0 1px 0 hsla(0, 0%, 100%, 0.6);
+  --shadow-inset: inset 0 1px 3px hsla(230, 20%, 10%, 0.12);
 }

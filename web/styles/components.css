@@ -4,10 +4,6 @@
   padding: var(--space-4);
 }
 
-.container.gate {
-  padding-top: var(--space-7);
-}
-
 .card {
   background: var(--surface-1);
   border: 1px solid var(--border-subtle);
@@ -28,124 +24,12 @@ label {
   color: var(--text-secondary);
 }
 
-input,
-select {
-  font-size: var(--text-base);
-  padding: var(--space-2);
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-md);
-  width: 100%;
-  background: var(--surface-inset);
-  color: var(--text-primary);
-}
-
-button {
-  font-size: var(--text-base);
-  padding: var(--space-2) var(--space-4);
-  border: 1px solid var(--accent);
-  border-radius: var(--radius-md);
-  background: var(--accent);
-  color: var(--text-on-accent);
-  cursor: pointer;
-}
-
-button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-button[type="button"] {
-  background: var(--surface-2);
-  color: var(--text-primary);
-  border-color: var(--border-strong);
-}
-
 .error {
   color: var(--danger-fg);
   background: var(--danger-soft);
   padding: var(--space-2);
   border-radius: var(--radius-md);
   margin: var(--space-1) 0;
-}
-
-.empty-state {
-  color: var(--text-muted);
-  font-style: italic;
-}
-
-.match-list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-
-.match-row {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  background: var(--surface-1);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-lg);
-  padding: var(--space-3);
-  text-decoration: none;
-  color: inherit;
-}
-
-.match-row-main {
-  display: flex;
-  justify-content: space-between;
-  gap: var(--space-2);
-  flex-wrap: wrap;
-}
-
-.match-row-players {
-  color: var(--text-secondary);
-}
-
-.match-row-meta {
-  display: flex;
-  gap: var(--space-3);
-  font-size: var(--text-xs);
-  color: var(--text-muted);
-}
-
-.your-turn .match-row {
-  border-left: 4px solid var(--warn-fg);
-}
-
-.app-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2);
-  padding: var(--space-3) var(--space-4);
-  background: var(--surface-1);
-  border-bottom: 1px solid var(--border-subtle);
-  flex-wrap: wrap;
-}
-
-.app-title {
-  font-weight: 700;
-  text-decoration: none;
-  color: var(--text-primary);
-}
-
-.nickname-badge {
-  background: var(--surface-2);
-  color: var(--text-primary);
-  border: 1px solid var(--border-strong);
-}
-
-.rename-form {
-  display: flex;
-  gap: var(--space-1);
-  align-items: center;
-  flex-wrap: wrap;
-}
-
-.rename-form input {
-  width: auto;
-  min-width: 8rem;
 }
 
 .match-code {

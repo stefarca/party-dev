@@ -39,7 +39,9 @@ function CopyCode({ code }: { code: string }) {
     <div className="card">
       <div className="match-code">{code}</div>
       <input id="match-share-url" readOnly value={`${window.location.origin}/m/${code}`} />
-      <button onClick={copy}>{copied ? "Copied!" : "Copy link"}</button>
+      <button className="btn btn-ghost" onClick={copy}>
+        {copied ? "Copied!" : "Copy link"}
+      </button>
     </div>
   );
 }
@@ -179,7 +181,7 @@ function MatchBody({
           </p>
         )}
         {isHost && (
-          <button onClick={start} disabled={!canStart}>
+          <button className="btn btn-primary" onClick={start} disabled={!canStart}>
             Start match
           </button>
         )}
@@ -316,7 +318,9 @@ export function MatchPage({ code }: { code: string }) {
       {!loading && error && (
         <div className="card">
           <p className="error">{error}</p>
-          <button onClick={() => load()}>Retry</button>
+          <button className="btn btn-ghost" onClick={() => load()}>
+            Retry
+          </button>
         </div>
       )}
 

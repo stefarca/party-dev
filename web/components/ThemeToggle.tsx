@@ -16,7 +16,7 @@ export function ThemeToggle() {
         <button
           key={option.value}
           type="button"
-          className="theme-toggle-option"
+          className="btn btn-quiet btn-sm theme-toggle-option"
           aria-pressed={preference === option.value}
           onClick={() => setThemePreference(option.value)}
         >
