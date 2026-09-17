@@ -54,7 +54,7 @@ function RoundProgress({ round, totalRounds }: { round: number; totalRounds: num
   const fraction = totalRounds > 0 ? (round + 1) / totalRounds : 0;
   return (
     <div className="flex flex-col gap-1">
-      <p className="m-0 text-secondary">
+      <p className="m-0 text-[var(--text-secondary)]">
         Round {round + 1} of {totalRounds}
       </p>
       <div
@@ -147,7 +147,7 @@ function Answering({
           </button>
         ))}
       </div>
-      <p className="m-0 text-secondary">
+      <p className="m-0 text-[var(--text-secondary)]">
         {v.answeredCount} of {v.totalPlayers} answered
         {locked ? " — your answer is locked in." : ""}
       </p>
@@ -168,7 +168,7 @@ function Reveal({
   return (
     <div className="flex flex-col gap-3">
       <RoundProgress round={v.round} totalRounds={v.totalRounds} />
-      <p className="m-0 text-secondary">reveal</p>
+      <p className="m-0 text-[var(--text-secondary)]">reveal</p>
       <h3 className="m-0 mb-2 text-lg font-bold">{v.question}</h3>
       <div role="list" className="flex flex-col gap-2">
         {v.choices.map((choice, i) => {

@@ -123,7 +123,7 @@ function ShareCode({ code, collapsed }: { code: string; collapsed: boolean }) {
         <button
           type="button"
           onClick={copy}
-          className="inline-flex min-h-11 items-center gap-2 rounded-full border border-border bg-surface-secondary px-3 py-1 text-xs font-semibold tracking-wide text-secondary uppercase shadow-[var(--edge-highlight)] transition-transform hover:-translate-y-0.5 active:translate-y-0"
+          className="inline-flex min-h-11 items-center gap-2 rounded-full border border-border bg-surface-secondary px-3 py-1 text-xs font-semibold tracking-wide text-[var(--text-secondary)] uppercase shadow-[var(--edge-highlight)] transition-transform hover:-translate-y-0.5 active:translate-y-0"
         >
           <span className="font-mono tracking-[0.1em]">{code}</span>
           {copied ? "Copied!" : "Copy link"}

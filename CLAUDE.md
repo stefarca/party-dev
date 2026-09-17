@@ -97,6 +97,14 @@ including deep-linked SPA routes like `/m/ABCDEF`, is served by Static Assets wi
   `@types/node`). Engine tests run against `games/__fixtures__/counter.ts`, a test-only game that
   is deliberately left out of the registry; the test adds it to `serverGames` and removes it
   afterwards.
+- Styling is Tailwind CSS v4 + HeroUI v3. `web/styles.css` is the only stylesheet in the repo —
+  it imports `tailwindcss` before `@heroui/styles` (that order is mandatory: HeroUI's own rules
+  must be able to override Tailwind's base layer), declares the `@source` globs, the design-token
+  palette, and the HeroUI theme-variable bridge, and keeps only the handful of rules that
+  genuinely cannot be Tailwind utilities. Game UI modules must not import a `.css` file of their
+  own. Theme switching is `web/theme.ts` writing the `data-theme` attribute and a `dark` class on
+  `<html>`, mirrored by the inline bootstrap script in `index.html` so the first paint never
+  flashes the wrong theme.
 - Prettier: `printWidth` 100; `.claude/` and generated files are ignored. ESLint flat
   config enables only `rules-of-hooks` and `exhaustive-deps` from react-hooks — the
   React-Compiler-era rules flag deliberate patterns in `web/useMatch.ts`. `prettier` stays last in

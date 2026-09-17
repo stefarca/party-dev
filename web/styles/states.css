@@ -1,5 +1,0 @@
-/*
- * The shared loading/empty/error vocabulary (web/components/states.tsx) is
- * built entirely on HeroUI components (Spinner, Skeleton, EmptyState, Alert)
- * plus Tailwind utilities now, so there is nothing left to hand-write here.
- */

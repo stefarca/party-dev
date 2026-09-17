@@ -104,7 +104,9 @@ export function TurnIndicator({ me, players, waitingOn, deadline, result }: Turn
           : "border-border bg-surface"
       }`}
     >
-      <span className={`text-lg font-bold ${myTurn ? "text-foreground" : "text-secondary"}`}>
+      <span
+        className={`text-lg font-bold ${myTurn ? "text-foreground" : "text-[var(--text-secondary)]"}`}
+      >
         {label}
       </span>
       {remainingMs !== null && (

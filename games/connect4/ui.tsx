@@ -177,7 +177,7 @@ export default function Connect4Ui({ view, players, result, send }: GameUiProps)
       </div>
 
       {!result && (
-        <p className="m-0 text-secondary">
+        <p className="m-0 text-[var(--text-secondary)]">
           {v.winner !== null
             ? "Match finished."
             : v.yourTurn
