@@ -29,7 +29,7 @@ export function Skeleton({
   if (height !== undefined) style.height = height;
   return (
     <span
-      className={className ? `skeleton ${className}` : "skeleton"}
+      className={className ? `app-skeleton ${className}` : "app-skeleton"}
       style={style}
       aria-hidden="true"
     />

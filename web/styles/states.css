@@ -27,8 +27,12 @@
 
 /* A skeleton reserves its own box (callers pass width/height inline so the
    real content that replaces it doesn't shift the layout) and sweeps a
-   translated gradient across it — the sweep never resizes anything. */
-.skeleton {
+   translated gradient across it — the sweep never resizes anything.
+   Named `.app-skeleton` (not `.skeleton`) because HeroUI's own Skeleton
+   component renders its root with no `data-slot` attribute, so there is no
+   way to distinguish the two by selector — the only fix is not to share
+   the name. */
+.app-skeleton {
   display: block;
   position: relative;
   overflow: hidden;
@@ -36,7 +40,7 @@
   background: var(--surface-2);
 }
 
-.skeleton::after {
+.app-skeleton::after {
   content: "";
   position: absolute;
   inset: 0;

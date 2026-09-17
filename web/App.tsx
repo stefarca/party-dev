@@ -79,7 +79,7 @@ function RouteContent() {
   if (route.name === "dashboard") return <Dashboard />;
   if (route.name === "match") return <MatchPage code={route.code} />;
   return (
-    <main id="main-content" className="container">
+    <main id="main-content" className="app-container">
       <p>Page not found.</p>
     </main>
   );

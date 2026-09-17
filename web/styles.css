@@ -1,9 +1,185 @@
-@import "./styles/tokens.css";
-@import "./styles/base.css";
-@import "./styles/shell.css";
-@import "./styles/components.css";
-@import "./styles/states.css";
-@import "./styles/dashboard.css";
-@import "./styles/match.css";
-@import "./styles/game-surface.css";
-@import "./styles/games.css";
+/*
+ * Cascade layer order for the whole app, declared before anything else so it
+ * governs precedence for every layer introduced later regardless of import
+ * order: Tailwind's `theme`/`base` (preflight) rank lowest, the not-yet-
+ * migrated hand-written stylesheets rank above preflight but below Tailwind's
+ * `components`/`utilities` and HeroUI's own styles (unlayered CSS always
+ * outranks layered CSS, so this is what stops `web/styles/*.css` element
+ * selectors from beating Tailwind utilities and HeroUI components).
+ */
+@layer theme, base, legacy, components, utilities;
+
+@import "tailwindcss";
+@import "@heroui/styles";
+
+@import "./styles/tokens.css" layer(legacy);
+@import "./styles/base.css" layer(legacy);
+@import "./styles/shell.css" layer(legacy);
+@import "./styles/components.css" layer(legacy);
+@import "./styles/states.css" layer(legacy);
+@import "./styles/dashboard.css" layer(legacy);
+@import "./styles/match.css" layer(legacy);
+@import "./styles/game-surface.css" layer(legacy);
+@import "./styles/games.css" layer(legacy);
+
+@source "./**/*.{ts,tsx}";
+@source "../games/**/*.tsx";
+@source "../index.html";
+
+/* `@heroui/styles` already ships a `dark` custom variant keyed off the same
+   `.dark` class / `[data-theme="dark"]` attribute that `web/theme.ts` writes,
+   so `dark:` utilities and HeroUI's own dark styles already share one
+   switch — nothing to redeclare here. */
+
+@theme {
+  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: ui-monospace, monospace;
+
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-pill: 999px;
+
+  --spacing-1: 0.25rem;
+  --spacing-2: 0.5rem;
+  --spacing-3: 0.75rem;
+  --spacing-4: 1rem;
+  --spacing-5: 1.5rem;
+  --spacing-6: 2rem;
+  --spacing-7: 3rem;
+  --spacing-8: 4rem;
+
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/*
+ * Point HeroUI's semantic colour variables at this project's own palette
+ * (declared in web/styles/tokens.css) instead of HeroUI's default theme.
+ * Unlayered, so it outranks both HeroUI's `theme` layer and the `legacy`
+ * layer tokens.css lives in. Colour values are not repeated here — every
+ * rule below reads the token, so tokens.css stays the single source of
+ * truth (and its contrast audit keeps applying unchanged).
+ *
+ * Same declarations regardless of theme — each references a token that
+ * already carries its own light/dark override in web/styles/tokens.css, so
+ * there is nothing theme-specific to say here.
+ */
+:root,
+[data-theme="light"],
+.dark,
+[data-theme="dark"] {
+  --background: var(--surface-void);
+  --foreground: var(--text-primary);
+
+  --surface: var(--surface-1);
+  --surface-foreground: var(--text-primary);
+  --surface-secondary: var(--surface-2);
+  --surface-secondary-foreground: var(--text-primary);
+  --surface-tertiary: var(--surface-3);
+  --surface-tertiary-foreground: var(--text-primary);
+
+  --overlay: var(--surface-2);
+  --overlay-foreground: var(--text-primary);
+
+  --muted: var(--text-muted);
+
+  --default: var(--surface-3);
+  --default-foreground: var(--text-primary);
+
+  --field-background: var(--surface-1);
+  --field-foreground: var(--text-primary);
+  --field-placeholder: var(--text-muted);
+  --field-border: var(--border-strong);
+
+  /* `--accent` itself is not re-declared: web/styles/tokens.css already
+     defines it per theme at these same selectors, in a layer that outranks
+     HeroUI's default, so it cascades through untouched. */
+  --accent-foreground: var(--text-on-accent);
+
+  --success: var(--ok-fg);
+  --success-foreground: var(--text-on-accent);
+
+  --warning: var(--warn-fg);
+  --warning-foreground: var(--text-on-accent);
+
+  --danger: var(--danger-fg);
+  --danger-foreground: var(--text-on-accent);
+
+  --border: var(--border-subtle);
+  --separator: var(--border-subtle);
+  --focus: var(--accent);
+  --link: var(--accent);
+}
+
+/*
+ * `@heroui/styles` ships plain, unscoped base classes for every component
+ * (`.chip`, `.spinner`, …) in the `components` layer, which this file ranks
+ * above `legacy` on purpose. Two of those names happen to already be used,
+ * for an unrelated purpose, by hand-written markup that isn't moving to
+ * HeroUI in this change (web/routes/*, web/components/states.tsx). Every
+ * element HeroUI itself renders carries a `data-slot` attribute, so this
+ * restores the pre-existing look only for the elements that are not one of
+ * HeroUI's own components.
+ */
+:where(.chip):not([data-slot]) {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  width: auto;
+  padding: 0.15rem var(--space-2);
+  border-radius: var(--radius-pill);
+  font-size: var(--text-xs);
+  line-height: normal;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background-color: var(--surface-2);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-subtle);
+}
+
+/* The app's own chip modifiers (web/styles/shell.css) and .share-chip
+   (web/styles/match.css) rely on ordinary same-layer source order to win
+   over the base .chip look above, but that base fix is unlayered — which
+   outranks every layered rule regardless of source order or specificity.
+   Restate the modifiers here, at higher specificity than the base fix
+   above, so they keep winning. */
+.chip.chip-ok:not([data-slot]) {
+  background-color: var(--ok-soft);
+  color: var(--ok-fg);
+  border-color: var(--ok-border);
+}
+
+.chip.chip-warn:not([data-slot]) {
+  background-color: var(--warn-soft);
+  color: var(--warn-fg);
+  border-color: var(--warn-border);
+}
+
+.chip.chip-danger:not([data-slot]) {
+  background-color: var(--danger-soft);
+  color: var(--danger-fg);
+  border-color: var(--danger-border);
+}
+
+.chip.chip-accent:not([data-slot]) {
+  background-color: var(--accent-soft);
+  color: var(--accent-on-soft);
+  border-color: var(--border-accent);
+}
+
+.chip.share-chip:not([data-slot]) {
+  min-height: 2.75rem;
+  padding: var(--space-2) var(--space-3);
+  cursor: pointer;
+}
+
+:where(.spinner):not([data-slot]) {
+  display: inline-flex;
+  pointer-events: auto;
+  width: auto;
+  height: auto;
+  flex-shrink: initial;
+  animation: none;
+}

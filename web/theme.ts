@@ -35,6 +35,10 @@ function resolve(preference: ThemePreference): ResolvedTheme {
 
 function apply(resolved: ResolvedTheme): void {
   document.documentElement.dataset.theme = resolved;
+  // HeroUI's dark-mode variant matches either `.dark`/`[data-theme="dark"]` —
+  // set both so it's driven by this one switch.
+  document.documentElement.classList.toggle("dark", resolved === "dark");
+  document.documentElement.classList.toggle("light", resolved === "light");
 }
 
 let preference: ThemePreference = readStoredPreference();
