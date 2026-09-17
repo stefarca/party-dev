@@ -1,5 +1,6 @@
-import { Component, Suspense, lazy, useCallback, useEffect, useState } from "react";
-import type { ComponentType, LazyExoticComponent, ReactNode } from "react";
+import { Avatar, Button, Card, Chip } from "@heroui/react";
+import { Component, Suspense, lazy, useCallback, useEffect, useRef, useState } from "react";
+import type { ComponentProps, ComponentType, LazyExoticComponent, ReactNode } from "react";
 
 import type { GameMeta } from "../../games/catalog";
 import { getGameMeta } from "../../games/catalog";
@@ -23,10 +24,10 @@ import { useSession } from "../session";
 import type { ConnectionState, MatchError } from "../useMatch";
 import { useMatch } from "../useMatch";
 
-function statusChipClass(status: MatchStatus): string {
-  if (status === "lobby") return "chip chip-accent";
-  if (status === "active") return "chip chip-ok";
-  return "chip";
+function statusChipColor(status: MatchStatus): ComponentProps<typeof Chip>["color"] {
+  if (status === "lobby") return "accent";
+  if (status === "active") return "success";
+  return "default";
 }
 
 function MatchHeader({
@@ -39,10 +40,12 @@ function MatchHeader({
   connection: ConnectionState;
 }) {
   return (
-    <div className="match-header">
-      <h1 className="match-header-title">{name}</h1>
-      <div className="match-header-meta">
-        <span className={statusChipClass(status)}>{status}</span>
+    <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+      <h1 className="m-0 text-xl font-bold text-foreground">{name}</h1>
+      <div className="flex items-center gap-3">
+        <Chip color={statusChipColor(status)} size="sm">
+          {status}
+        </Chip>
         <ConnectionBadge connection={connection} />
       </div>
     </div>
@@ -54,12 +57,12 @@ function MatchHeader({
 function MatchSkeleton() {
   return (
     <>
-      <div className="match-header">
+      <div className="mb-4 flex items-center justify-between gap-3">
         <Skeleton width="10rem" height="1.5rem" />
         <Skeleton width="5rem" height="1.3rem" />
       </div>
-      <div className="panel">
-        <Skeleton width="60%" height="1.1rem" />
+      <div className="mb-4 rounded-lg border border-border bg-surface p-4 shadow-[var(--edge-highlight),var(--shadow-2)]">
+        <Skeleton width="60%" height="1.1rem" className="mb-3" />
         <Skeleton height="4rem" />
       </div>
     </>
@@ -71,11 +74,11 @@ function MatchSkeleton() {
 // actually arriving.
 function GameSurfaceSkeleton() {
   return (
-    <div className="game-surface game-surface-skeleton">
-      <div className="game-surface-bezel">
+    <div className="mb-4 overflow-hidden rounded-3xl shadow-[var(--shadow-3),var(--edge-highlight)]">
+      <div className="flex items-center justify-between gap-3 border-b border-border bg-surface px-4 py-3">
         <Skeleton width="8rem" height="1.2rem" />
       </div>
-      <div className="game-surface-well">
+      <div className="flex flex-col gap-2 bg-[var(--surface-inset)] p-2 shadow-[var(--shadow-inset)] sm:p-4">
         <Skeleton height="12rem" />
       </div>
     </div>
@@ -84,6 +87,7 @@ function GameSurfaceSkeleton() {
 
 function ShareCode({ code, collapsed }: { code: string; collapsed: boolean }) {
   const [copied, setCopied] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
   const url = `${window.location.origin}/m/${code}`;
 
   async function copy() {
@@ -99,25 +103,29 @@ function ShareCode({ code, collapsed }: { code: string; collapsed: boolean }) {
     }
     // Clipboard API needs a secure context; on plain http (non-localhost) or
     // if it's unavailable, select the text so the user can copy manually.
-    const input = document.getElementById("match-share-url") as HTMLInputElement | null;
-    input?.select();
+    inputRef.current?.select();
   }
 
   const shareInput = (
     <input
+      ref={inputRef}
       id="match-share-url"
       readOnly
       value={url}
-      className={collapsed ? "visually-hidden" : "share-url"}
+      className={collapsed ? "sr-only" : "mb-3 text-center font-mono text-sm text-muted"}
       tabIndex={collapsed ? -1 : undefined}
     />
   );
 
   if (collapsed) {
     return (
-      <div className="share-chip-wrap">
-        <button type="button" className="chip share-chip" onClick={copy}>
-          <span className="share-chip-code">{code}</span>
+      <div className="mb-4 inline-flex">
+        <button
+          type="button"
+          onClick={copy}
+          className="inline-flex min-h-11 items-center gap-2 rounded-full border border-border bg-surface-secondary px-3 py-1 text-xs font-semibold tracking-wide text-secondary uppercase shadow-[var(--edge-highlight)] transition-transform hover:-translate-y-0.5 active:translate-y-0"
+        >
+          <span className="font-mono tracking-[0.1em]">{code}</span>
           {copied ? "Copied!" : "Copy link"}
         </button>
         {shareInput}
@@ -126,24 +134,23 @@ function ShareCode({ code, collapsed }: { code: string; collapsed: boolean }) {
   }
 
   return (
-    <section className="panel panel-accent share-panel">
-      <div className="panel-header">
-        <h2>Invite players</h2>
-      </div>
-      <div className="panel-body">
-        <div className="share-code" aria-hidden="true">
+    <Card className="mb-4 border-[var(--border-accent)] text-center shadow-[var(--edge-highlight),var(--shadow-2),var(--glow-accent)]">
+      <Card.Content className="items-center gap-3">
+        <Card.Title>Invite players</Card.Title>
+        <div aria-hidden="true" className="mb-3 flex justify-center gap-2">
           {code.split("").map((ch, i) => (
-            <span key={i} className="share-code-tile">
+            <span
+              key={i}
+              className="flex h-9 w-7 items-center justify-center rounded-md bg-[var(--surface-inset)] font-mono text-xl font-bold uppercase shadow-[var(--shadow-inset),var(--edge-highlight)] sm:h-11 sm:w-9"
+            >
               {ch}
             </span>
           ))}
         </div>
         {shareInput}
-        <button type="button" className="btn btn-primary" onClick={copy}>
-          {copied ? "Copied!" : "Copy link"}
-        </button>
-      </div>
-    </section>
+        <Button onPress={copy}>{copied ? "Copied!" : "Copy link"}</Button>
+      </Card.Content>
+    </Card>
   );
 }
 
@@ -161,25 +168,41 @@ function Roster({
   const emptySeats = meta ? Math.max(0, meta.maxPlayers - players.length) : 0;
 
   return (
-    <ul className="roster">
+    <ul className="m-0 mb-3 flex list-none flex-col gap-2 p-0">
       {players.map((p) => (
-        <li key={p.id} className="roster-row">
-          <span className="roster-avatar" aria-hidden="true">
-            {p.nickname.charAt(0).toUpperCase()}
-          </span>
-          <span className="roster-name">{p.nickname}</span>
-          <span className="roster-chips">
-            {p.id === hostId && <span className="chip">host</span>}
-            {p.id === myPlayerId && <span className="chip chip-accent">you</span>}
+        <li key={p.id} className="flex items-center gap-3 rounded-md bg-surface-secondary p-2">
+          <Avatar size="sm" aria-hidden="true">
+            <Avatar.Fallback
+              className="font-bold"
+              style={{ backgroundColor: "var(--accent)", color: "var(--accent-contrast)" }}
+            >
+              {p.nickname.charAt(0).toUpperCase()}
+            </Avatar.Fallback>
+          </Avatar>
+          <span className="flex-1 font-semibold text-foreground">{p.nickname}</span>
+          <span className="flex gap-1">
+            {p.id === hostId && <Chip size="sm">host</Chip>}
+            {p.id === myPlayerId && (
+              <Chip size="sm" color="accent">
+                you
+              </Chip>
+            )}
           </span>
         </li>
       ))}
       {Array.from({ length: emptySeats }).map((_, i) => (
-        <li key={`seat-${i}`} className="roster-row roster-row-empty">
-          <span className="roster-avatar roster-avatar-empty" aria-hidden="true">
-            ?
-          </span>
-          <span className="roster-name">Open seat</span>
+        <li
+          key={`seat-${i}`}
+          className="flex items-center gap-3 rounded-md border border-dashed border-border p-2 text-muted"
+        >
+          <Avatar
+            size="sm"
+            aria-hidden="true"
+            className="border border-dashed border-[var(--border-strong)] bg-transparent"
+          >
+            <Avatar.Fallback className="bg-transparent text-muted">?</Avatar.Fallback>
+          </Avatar>
+          <span className="flex-1 italic">Open seat</span>
         </li>
       ))}
     </ul>
@@ -265,7 +288,7 @@ function GameUiHost({
         <Suspense
           fallback={
             <div role="status">
-              <span className="visually-hidden">Loading game…</span>
+              <span className="sr-only">Loading game…</span>
               <Skeleton height="12rem" />
             </div>
           }
@@ -316,31 +339,29 @@ function MatchBody({
       isHost && meta !== undefined && count >= meta.minPlayers && count <= meta.maxPlayers;
 
     return (
-      <section className="panel">
-        <div className="panel-header">
-          <h2>Players</h2>
-        </div>
-        <div className="panel-body">
+      <Card className="mb-4">
+        <Card.Content className="gap-3">
+          <Card.Title>Players</Card.Title>
           <Roster players={players} meta={meta} hostId={match.hostId} myPlayerId={myPlayerId} />
           {meta && (
-            <p>
+            <p className="m-0 text-muted">
               {meta.name} needs {meta.minPlayers}
               {meta.maxPlayers !== meta.minPlayers ? `-${meta.maxPlayers}` : ""} players.
               {isHost ? "" : " Waiting for the host to start."}
             </p>
           )}
           {isHost && (
-            <button className="btn btn-primary" onClick={start} disabled={!canStart}>
+            <Button onPress={start} isDisabled={!canStart} className="self-start">
               Start match
-            </button>
+            </Button>
           )}
           {transportError && (
             <Notice tone="danger" role="status">
               {transportError.message}
             </Notice>
           )}
-        </div>
-      </section>
+        </Card.Content>
+      </Card>
     );
   }
 
@@ -462,7 +483,7 @@ export function MatchPage({ code }: { code: string }) {
   const status = snapshot?.status ?? match?.status;
 
   return (
-    <main id="main-content" className="page page-narrow">
+    <main id="main-content" className="app-container">
       {match && (
         <MatchHeader
           name={meta?.name ?? match.gameId}

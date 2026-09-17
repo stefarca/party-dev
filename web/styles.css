@@ -114,66 +114,13 @@
 /*
  * `@heroui/styles` ships plain, unscoped base classes for every component
  * (`.chip`, `.spinner`, …) in the `components` layer, which this file ranks
- * above `legacy` on purpose. Two of those names happen to already be used,
- * for an unrelated purpose, by hand-written markup that isn't moving to
- * HeroUI in this change (web/routes/*, web/components/states.tsx). Every
- * element HeroUI itself renders carries a `data-slot` attribute, so this
- * restores the pre-existing look only for the elements that are not one of
- * HeroUI's own components.
+ * above `legacy` on purpose. `.spinner` happens to already be used, for an
+ * unrelated purpose, by hand-written markup that isn't moving to HeroUI in
+ * this change (web/components/states.tsx). Every element HeroUI itself
+ * renders carries a `data-slot` attribute, so this restores the
+ * pre-existing look only for the elements that are not one of HeroUI's own
+ * components.
  */
-:where(.chip):not([data-slot]) {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-  width: auto;
-  padding: 0.15rem var(--space-2);
-  border-radius: var(--radius-pill);
-  font-size: var(--text-xs);
-  line-height: normal;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  background-color: var(--surface-2);
-  color: var(--text-secondary);
-  border: 1px solid var(--border-subtle);
-}
-
-/* The app's own chip modifiers (web/styles/shell.css) and .share-chip
-   (web/styles/match.css) rely on ordinary same-layer source order to win
-   over the base .chip look above, but that base fix is unlayered — which
-   outranks every layered rule regardless of source order or specificity.
-   Restate the modifiers here, at higher specificity than the base fix
-   above, so they keep winning. */
-.chip.chip-ok:not([data-slot]) {
-  background-color: var(--ok-soft);
-  color: var(--ok-fg);
-  border-color: var(--ok-border);
-}
-
-.chip.chip-warn:not([data-slot]) {
-  background-color: var(--warn-soft);
-  color: var(--warn-fg);
-  border-color: var(--warn-border);
-}
-
-.chip.chip-danger:not([data-slot]) {
-  background-color: var(--danger-soft);
-  color: var(--danger-fg);
-  border-color: var(--danger-border);
-}
-
-.chip.chip-accent:not([data-slot]) {
-  background-color: var(--accent-soft);
-  color: var(--accent-on-soft);
-  border-color: var(--border-accent);
-}
-
-.chip.share-chip:not([data-slot]) {
-  min-height: 2.75rem;
-  padding: var(--space-2) var(--space-3);
-  cursor: pointer;
-}
-
 :where(.spinner):not([data-slot]) {
   display: inline-flex;
   pointer-events: auto;

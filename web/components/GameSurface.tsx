@@ -1,3 +1,4 @@
+import { Card } from "@heroui/react";
 import type { ReactNode } from "react";
 
 // The "arcade cabinet" every game's UI is mounted into: a bezel strip
@@ -15,12 +16,14 @@ export function GameSurface({
   status?: ReactNode;
 }) {
   return (
-    <div className="game-surface">
-      <div className="game-surface-bezel">
-        <span className="game-surface-title">{title}</span>
-        {status !== undefined && <span className="game-surface-status">{status}</span>}
-      </div>
-      <div className="game-surface-well">{children}</div>
-    </div>
+    <Card className="mb-4 animate-in gap-0 overflow-hidden fade-in p-0 shadow-[var(--shadow-3),var(--edge-highlight)] duration-500 fill-mode-both">
+      <Card.Header className="flex flex-row items-center justify-between gap-3 border-b border-border px-4 py-3">
+        <Card.Title className="text-lg font-bold text-foreground">{title}</Card.Title>
+        {status !== undefined && <span className="text-sm text-muted">{status}</span>}
+      </Card.Header>
+      <Card.Content className="gap-0 bg-[var(--surface-inset)] p-2 shadow-[var(--shadow-inset)] sm:p-4">
+        {children}
+      </Card.Content>
+    </Card>
   );
 }

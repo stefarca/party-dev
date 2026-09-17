@@ -1,5 +1,6 @@
+import { ProgressBar } from "@heroui/react";
 import { useEffect, useRef, useState } from "react";
-import type { CSSProperties } from "react";
+import type { ComponentProps } from "react";
 
 import type { Result } from "../../shared/game";
 import type { PlayerId, PlayerInfo } from "../../shared/protocol";
@@ -65,9 +66,9 @@ export function TurnIndicator({ me, players, waitingOn, deadline, result }: Turn
 
   if (result) {
     return (
-      <div className="turn-banner turn-banner-done">
-        <span className="turn-banner-label">Match finished.</span>
-        <p className="turn-banner-result">{resultText(result, players, me)}</p>
+      <div className="mb-4 flex flex-col items-start gap-1 rounded-lg border border-border bg-surface p-4 shadow-[var(--edge-highlight),var(--shadow-1)]">
+        <span className="text-lg font-bold text-foreground">Match finished.</span>
+        <p className="m-0 text-muted">{resultText(result, players, me)}</p>
       </div>
     );
   }
@@ -89,17 +90,43 @@ export function TurnIndicator({ me, players, waitingOn, deadline, result }: Turn
   const urgent = remainingMs !== null && remainingMs > 0 && remainingMs <= URGENT_MS;
   const expired = remainingMs === 0;
 
-  const classes = ["turn-banner", myTurn ? "turn-banner-mine" : "turn-banner-waiting"];
-  if (urgent) classes.push("turn-banner-urgent");
-  if (expired) classes.push("turn-banner-expired");
+  const barColor: ComponentProps<typeof ProgressBar>["color"] = expired
+    ? "danger"
+    : urgent
+      ? "warning"
+      : "accent";
 
   return (
-    <div className={classes.join(" ")}>
-      <span className="turn-banner-label">{label}</span>
+    <div
+      className={`mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border p-4 shadow-[var(--edge-highlight),var(--shadow-1)] ${
+        myTurn
+          ? "turn-pulse border-[var(--border-accent)] bg-[var(--accent-soft)] shadow-[var(--edge-highlight),var(--shadow-2),var(--glow-accent)]"
+          : "border-border bg-surface"
+      }`}
+    >
+      <span className={`text-lg font-bold ${myTurn ? "text-foreground" : "text-secondary"}`}>
+        {label}
+      </span>
       {remainingMs !== null && (
-        <div className="turn-countdown" style={{ "--remaining": fraction } as CSSProperties}>
-          <span className="turn-countdown-bar" aria-hidden="true" />
-          <span className="turn-countdown-time">{formatCountdown(remainingMs)}</span>
+        <div className="flex flex-none items-center gap-2">
+          <ProgressBar
+            aria-label="Time remaining"
+            value={fraction * 100}
+            color={barColor}
+            size="sm"
+            className="w-16"
+          >
+            <ProgressBar.Track>
+              <ProgressBar.Fill />
+            </ProgressBar.Track>
+          </ProgressBar>
+          <span
+            className={`min-w-10 text-right font-mono text-sm ${
+              expired ? "text-danger" : urgent ? "text-warning" : "text-muted"
+            }`}
+          >
+            {formatCountdown(remainingMs)}
+          </span>
         </div>
       )}
     </div>
