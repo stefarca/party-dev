@@ -120,28 +120,6 @@
   color: var(--text-muted);
 }
 
-.empty-shelf {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-6) var(--space-4);
-  color: var(--text-muted);
-  background: var(--surface-1);
-  border: 1px dashed var(--border-subtle);
-  border-radius: var(--radius-lg);
-  text-align: center;
-}
-
-.empty-shelf p {
-  margin: 0;
-}
-
-.empty-shelf-glyph {
-  font-size: var(--text-2xl);
-  color: var(--text-muted);
-}
-
 /* Game picker: a radio group styled as a card grid. */
 
 .game-picker {

@@ -332,31 +332,6 @@
   box-shadow: var(--shadow-inset);
 }
 
-/* Notices: loading / interstitial / error states. */
-
-.notice {
-  padding: var(--space-4);
-  margin-bottom: var(--space-4);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-lg);
-  background: var(--surface-1);
-  color: var(--text-secondary);
-}
-
-.notice p {
-  margin: 0 0 var(--space-2);
-}
-
-.notice p:last-child {
-  margin-bottom: 0;
-}
-
-.notice-danger {
-  border-color: var(--danger-border);
-  background: var(--danger-soft);
-  color: var(--danger-fg);
-}
-
 /* Debug game view (shown when no UI is registered for a game). */
 
 .debug-game-view-note {

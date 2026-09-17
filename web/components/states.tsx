@@ -1,3 +1,10 @@
+import {
+  Alert,
+  Button,
+  EmptyState as HeroEmptyState,
+  Skeleton as HeroSkeleton,
+  Spinner as HeroSpinner,
+} from "@heroui/react";
 import type { CSSProperties, ReactNode } from "react";
 
 // The shared loading/empty/error vocabulary every route routes its
@@ -5,11 +12,7 @@ import type { CSSProperties, ReactNode } from "react";
 // designed rather than like a stray "Loading…" string.
 
 export function Spinner({ label = "Loading" }: { label?: string }) {
-  return (
-    <span className="spinner" role="status" aria-label={label}>
-      <span className="spinner-ring" aria-hidden="true" />
-    </span>
-  );
+  return <HeroSpinner role="status" aria-label={label} />;
 }
 
 // A single reserved-size placeholder. Callers pass `width`/`height` so the
@@ -27,23 +30,17 @@ export function Skeleton({
   const style: CSSProperties = {};
   if (width !== undefined) style.width = width;
   if (height !== undefined) style.height = height;
-  return (
-    <span
-      className={className ? `app-skeleton ${className}` : "app-skeleton"}
-      style={style}
-      aria-hidden="true"
-    />
-  );
+  return <HeroSkeleton className={className} style={style} aria-hidden="true" />;
 }
 
 export function EmptyState({ glyph = "○", children }: { glyph?: string; children: ReactNode }) {
   return (
-    <div className="empty-shelf">
-      <span className="empty-shelf-glyph" aria-hidden="true">
+    <HeroEmptyState className="flex flex-col items-center gap-2 rounded-lg border border-dashed border-border bg-surface px-4 py-6 text-center text-muted">
+      <span className="text-2xl" aria-hidden="true">
         {glyph}
       </span>
-      <p>{children}</p>
-    </div>
+      <p className="m-0">{children}</p>
+    </HeroEmptyState>
   );
 }
 
@@ -71,13 +68,16 @@ export function Notice({
 }) {
   const resolvedRole = role ?? (tone === "danger" ? "alert" : "status");
   return (
-    <div className={tone === "danger" ? "notice notice-danger" : "notice"} role={resolvedRole}>
-      <p>{children}</p>
-      {action && (
-        <button type="button" className="btn btn-ghost" onClick={action.onClick}>
-          {action.label}
-        </button>
-      )}
-    </div>
+    <Alert status={tone === "danger" ? "danger" : "accent"} role={resolvedRole}>
+      <Alert.Indicator />
+      <Alert.Content>
+        <Alert.Description>{children}</Alert.Description>
+        {action && (
+          <Button variant="ghost" size="sm" className="mt-2 self-start" onPress={action.onClick}>
+            {action.label}
+          </Button>
+        )}
+      </Alert.Content>
+    </Alert>
   );
 }
