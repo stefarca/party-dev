@@ -17,7 +17,6 @@
 @import "./styles/shell.css" layer(legacy);
 @import "./styles/components.css" layer(legacy);
 @import "./styles/states.css" layer(legacy);
-@import "./styles/dashboard.css" layer(legacy);
 @import "./styles/match.css" layer(legacy);
 @import "./styles/game-surface.css" layer(legacy);
 @import "./styles/games.css" layer(legacy);
