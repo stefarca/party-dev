@@ -1,9 +1,380 @@
-@import "./styles/tokens.css";
-@import "./styles/base.css";
-@import "./styles/shell.css";
-@import "./styles/components.css";
-@import "./styles/states.css";
-@import "./styles/dashboard.css";
-@import "./styles/match.css";
-@import "./styles/game-surface.css";
-@import "./styles/games.css";
+@import "tailwindcss";
+@import "@heroui/styles";
+
+@source "./**/*.{ts,tsx}";
+@source "../games/**/*.tsx";
+@source "../index.html";
+
+/* `@heroui/styles` already ships a `dark` custom variant keyed off the same
+   `.dark` class / `[data-theme="dark"]` attribute that `web/theme.ts` writes,
+   so `dark:` utilities and HeroUI's own dark styles already share one
+   switch — nothing to redeclare here. */
+
+@theme {
+  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: ui-monospace, monospace;
+
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-pill: 999px;
+
+  --spacing-1: 0.25rem;
+  --spacing-2: 0.5rem;
+  --spacing-3: 0.75rem;
+  --spacing-4: 1rem;
+  --spacing-5: 1.5rem;
+  --spacing-6: 2rem;
+  --spacing-7: 3rem;
+  --spacing-8: 4rem;
+
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/*
+ * This project's own palette, one set of values per theme. No rule below may
+ * hardcode a colour literal outside this block — every colour used anywhere
+ * reads one of these custom properties.
+ *
+ * Contrast audit (WCAG 2.1 formula, colours composited over the surface a
+ * reader actually sees them on — an `hsla()` foreground or background is
+ * flattened onto its parent surface before the ratio is computed). Re-check
+ * this table whenever a value below changes.
+ *
+ *                                                          dark    light
+ *   text-secondary on surface-1 (body copy)                8.32    8.01   >= 4.5
+ *   text-muted on surface-1 (meta text that carries info)  4.61    4.74   >= 4.5
+ *   ok-fg on ok-soft (chip/status text)                    7.74    4.81   >= 4.5
+ *   warn-fg on warn-soft (chip/status text)                7.47    4.74   >= 4.5
+ *   danger-fg on danger-soft (chip/status text)            4.94    4.72   >= 4.5
+ *   accent-on-soft on accent-soft (chip-accent text)       5.49    6.56   >= 4.5
+ *   text-on-accent on accent (primary button label)        4.31    7.83   >= 4.5
+ *   border-strong on surface-1 (input/button borders)      3.23    3.42   >= 3.0
+ *   seat-1 on surface-void (board background)              4.43    4.87   >= 3.0
+ *   seat-2 on surface-void (board background)              5.06    5.09   >= 3.0
+ *   accent focus ring on surface-3 (header, tightest case) 3.12    6.59   >= 3.0
+ */
+:root {
+  color-scheme: dark;
+
+  /* Surfaces, darkest to lightest. */
+  --surface-void: hsl(230, 22%, 6%);
+  --surface-1: hsl(230, 18%, 11%);
+  --surface-2: hsl(230, 16%, 15%);
+  --surface-3: hsl(230, 14%, 20%);
+  --surface-inset: hsl(230, 26%, 4%);
+
+  /* Borders. */
+  --border-subtle: hsla(230, 20%, 90%, 0.08);
+  --border-strong: hsla(230, 20%, 90%, 0.4);
+  --border-accent: hsl(258, 90%, 66%);
+
+  /* Text. */
+  --text-primary: hsl(230, 25%, 95%);
+  --text-secondary: hsl(230, 12%, 72%);
+  --text-muted: hsl(230, 10%, 54%);
+  --text-on-accent: hsl(0, 0%, 100%);
+
+  /* Accent ("arcade" hue). */
+  --accent: hsl(258, 90%, 66%);
+  --accent-strong: hsl(258, 90%, 58%);
+  --accent-soft: hsla(258, 90%, 66%, 0.16);
+  --accent-contrast: hsl(0, 0%, 100%);
+  /* A lighter tint of the accent hue for text painted directly on
+     `--accent-soft` (e.g. chip-accent labels) — `--accent` itself is tuned
+     for buttons and focus rings, not for that low-alpha background. */
+  --accent-on-soft: hsl(258, 90%, 76%);
+
+  /* Status triplets: -fg / -soft / -border. */
+  --ok-fg: hsl(142, 70%, 60%);
+  --ok-soft: hsla(142, 70%, 60%, 0.14);
+  --ok-border: hsla(142, 70%, 60%, 0.35);
+
+  --warn-fg: hsl(38, 95%, 62%);
+  --warn-soft: hsla(38, 95%, 62%, 0.14);
+  --warn-border: hsla(38, 95%, 62%, 0.35);
+
+  --danger-fg: hsl(6, 85%, 66%);
+  --danger-soft: hsla(6, 85%, 66%, 0.14);
+  --danger-border: hsla(6, 85%, 66%, 0.35);
+
+  /* Elevation. */
+  --shadow-1: 0 1px 2px hsla(230, 40%, 2%, 0.4);
+  --shadow-2: 0 4px 12px hsla(230, 40%, 2%, 0.45);
+  --shadow-3: 0 12px 32px hsla(230, 40%, 2%, 0.55);
+  --glow-accent: 0 0 0 3px hsla(258, 90%, 66%, 0.28);
+  --glow-accent-strong: 0 0 0 6px hsla(258, 90%, 66%, 0.4);
+  --edge-highlight: inset 0 1px 0 hsla(230, 20%, 100%, 0.06);
+  --shadow-inset: inset 0 1px 3px hsla(230, 40%, 2%, 0.3);
+
+  /* Seat colours: a neutral ramp any game can assign to up to 4 players.
+     Colour is never the only signal — games pair these with a glyph or
+     label — but each still needs to pass contrast against its own
+     `-contrast` text colour in both themes. */
+  --seat-1: hsl(6, 72%, 52%);
+  --seat-1-contrast: hsl(0, 0%, 100%);
+  --seat-2: hsl(217, 80%, 58%);
+  --seat-2-contrast: hsl(0, 0%, 100%);
+  --seat-3: hsl(142, 55%, 40%);
+  --seat-3-contrast: hsl(0, 0%, 100%);
+  --seat-4: hsl(38, 85%, 50%);
+  --seat-4-contrast: hsl(230, 25%, 12%);
+
+  /* Shared shadow for game pieces (discs, tiles, tokens). */
+  --game-piece-shadow:
+    0 2px 4px hsla(230, 40%, 2%, 0.45), inset 0 1px 1px hsla(230, 20%, 100%, 0.35);
+
+  --dur-fast: 100ms;
+  --dur-base: 180ms;
+  --dur-pulse: 2200ms;
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+
+  --surface-void: hsl(230, 20%, 95%);
+  --surface-1: hsl(0, 0%, 100%);
+  --surface-2: hsl(230, 20%, 97%);
+  --surface-3: hsl(230, 16%, 93%);
+  --surface-inset: hsl(230, 20%, 92%);
+
+  --border-subtle: hsla(230, 20%, 10%, 0.1);
+  --border-strong: hsla(230, 20%, 10%, 0.5);
+  --border-accent: hsl(258, 80%, 50%);
+
+  --text-primary: hsl(230, 25%, 12%);
+  --text-secondary: hsl(230, 12%, 34%);
+  --text-muted: hsl(230, 10%, 48%);
+  --text-on-accent: hsl(0, 0%, 100%);
+
+  --accent: hsl(258, 80%, 50%);
+  --accent-strong: hsl(258, 80%, 42%);
+  --accent-soft: hsla(258, 80%, 50%, 0.1);
+  --accent-contrast: hsl(0, 0%, 100%);
+  --accent-on-soft: hsl(258, 80%, 50%);
+
+  --ok-fg: hsl(142, 65%, 28%);
+  --ok-soft: hsla(142, 65%, 28%, 0.12);
+  --ok-border: hsla(142, 65%, 28%, 0.3);
+
+  --warn-fg: hsl(32, 90%, 32%);
+  --warn-soft: hsla(32, 90%, 32%, 0.12);
+  --warn-border: hsla(32, 90%, 32%, 0.3);
+
+  --danger-fg: hsl(4, 75%, 45%);
+  --danger-soft: hsla(4, 75%, 45%, 0.1);
+  --danger-border: hsla(4, 75%, 45%, 0.3);
+
+  --shadow-1: 0 1px 2px hsla(230, 20%, 10%, 0.08);
+  --shadow-2: 0 4px 12px hsla(230, 20%, 10%, 0.1);
+  --shadow-3: 0 12px 32px hsla(230, 20%, 10%, 0.14);
+  --glow-accent: 0 0 0 3px hsla(258, 80%, 50%, 0.2);
+  --glow-accent-strong: 0 0 0 6px hsla(258, 80%, 50%, 0.3);
+  --edge-highlight: inset 0 1px 0 hsla(0, 0%, 100%, 0.6);
+  --shadow-inset: inset 0 1px 3px hsla(230, 20%, 10%, 0.12);
+
+  --seat-1: hsl(6, 70%, 45%);
+  --seat-1-contrast: hsl(0, 0%, 100%);
+  --seat-2: hsl(217, 75%, 46%);
+  --seat-2-contrast: hsl(0, 0%, 100%);
+  --seat-3: hsl(142, 55%, 32%);
+  --seat-3-contrast: hsl(0, 0%, 100%);
+  --seat-4: hsl(32, 90%, 40%);
+  --seat-4-contrast: hsl(0, 0%, 100%);
+
+  --game-piece-shadow: 0 2px 4px hsla(230, 20%, 10%, 0.2), inset 0 1px 1px hsla(0, 0%, 100%, 0.5);
+}
+
+/*
+ * Point HeroUI's semantic colour variables at this project's own palette
+ * declared above instead of HeroUI's default theme. Unlayered, so it
+ * outranks HeroUI's own `theme` layer. Colour values are not repeated here —
+ * every rule below reads a token, so the palette above stays the single
+ * source of truth (and its contrast audit keeps applying unchanged).
+ *
+ * Same declarations regardless of theme — each references a token that
+ * already carries its own light/dark override above, so there is nothing
+ * theme-specific to say here.
+ */
+:root,
+[data-theme="light"],
+.dark,
+[data-theme="dark"] {
+  --background: var(--surface-void);
+  --foreground: var(--text-primary);
+
+  --surface: var(--surface-1);
+  --surface-foreground: var(--text-primary);
+  --surface-secondary: var(--surface-2);
+  --surface-secondary-foreground: var(--text-primary);
+  --surface-tertiary: var(--surface-3);
+  --surface-tertiary-foreground: var(--text-primary);
+
+  --overlay: var(--surface-2);
+  --overlay-foreground: var(--text-primary);
+
+  --muted: var(--text-muted);
+
+  --default: var(--surface-3);
+  --default-foreground: var(--text-primary);
+
+  --field-background: var(--surface-1);
+  --field-foreground: var(--text-primary);
+  --field-placeholder: var(--text-muted);
+  --field-border: var(--border-strong);
+
+  /* `--accent` itself is not re-declared: the palette above already defines
+     it per theme at these same selectors, in a rule that outranks HeroUI's
+     default, so it cascades through untouched. */
+  --accent-foreground: var(--text-on-accent);
+
+  --success: var(--ok-fg);
+  --success-foreground: var(--text-on-accent);
+
+  --warning: var(--warn-fg);
+  --warning-foreground: var(--text-on-accent);
+
+  --danger: var(--danger-fg);
+  --danger-foreground: var(--text-on-accent);
+
+  --border: var(--border-subtle);
+  --separator: var(--border-subtle);
+  --focus: var(--accent);
+  --link: var(--accent);
+}
+
+/* Base document look: the app paints its own background/text colour (behind
+   the ambient backdrop below and before React mounts), which neither
+   Tailwind's preflight nor `@heroui/styles` sets on its own. */
+html,
+body {
+  background: var(--surface-void);
+  color: var(--text-primary);
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+::selection {
+  background: var(--accent-soft);
+  color: var(--text-primary);
+}
+
+/* Skip-to-content link: the first tab stop, invisible until focused. Hidden
+ * with `transform`, not `display`/`visibility`, so it stays in the
+ * accessibility tree and reachable by keyboard. */
+.skip-link {
+  position: fixed;
+  top: var(--spacing-2);
+  left: var(--spacing-2);
+  z-index: 100;
+  padding: var(--spacing-2) var(--spacing-4);
+  background: var(--surface-1);
+  color: var(--text-primary);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-3), var(--edge-highlight);
+  transform: translateY(-150%);
+  transition: transform var(--dur-fast) var(--ease-out);
+}
+
+.skip-link:focus-visible {
+  transform: translateY(0);
+}
+
+/* Ambient background. A fixed, non-interactive paint behind the app — never
+ * a scroll container, never something that can trap clicks. */
+.app-bg {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 80% 50% at 15% -10%, var(--accent-soft), transparent 60%),
+    radial-gradient(ellipse 60% 40% at 100% 0%, var(--accent-soft), transparent 55%),
+    radial-gradient(ellipse 70% 60% at 50% 120%, var(--surface-2), transparent 60%),
+    var(--surface-void);
+}
+
+.app-bg::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(var(--border-subtle) 1px, transparent 1px);
+  background-size: 28px 28px;
+  opacity: 0.4;
+}
+
+/* Shared page-width wrapper reused by every route's main content — the one
+ * layout primitive not worth repeating as a class string at every call
+ * site. */
+.app-container {
+  max-width: 40rem;
+  margin-inline: auto;
+  padding: var(--spacing-4);
+}
+
+/* A slow, low-amplitude pulse on the box-shadow only — never the layout —
+   so it reads as "this needs you" without becoming a strobe. */
+.turn-pulse {
+  animation: party-turn-glow var(--dur-pulse) var(--ease-out) infinite;
+}
+
+@keyframes party-turn-glow {
+  0%,
+  100% {
+    box-shadow: var(--edge-highlight), var(--shadow-2), var(--glow-accent);
+  }
+  50% {
+    box-shadow: var(--edge-highlight), var(--shadow-3), var(--glow-accent-strong);
+  }
+}
+
+/*
+ * Named keyframes referenced from `games/**\/*.tsx` via Tailwind's
+ * `animate-[name_duration_easing]` arbitrary-value syntax — an animation
+ * name has to resolve against a `@keyframes` rule that exists somewhere in
+ * the stylesheet, and game UI modules cannot import a stylesheet of their
+ * own to define it locally.
+ */
+@keyframes party-disc-drop {
+  from {
+    transform: translateY(-12px);
+    opacity: 0.6;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes party-choice-press {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(0.97);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* Global motion escape hatch. Lives last in this file (and uses
+ * `!important`) so it overrides every animation/transition declared anywhere
+ * — HeroUI's own included — regardless of selector specificity. Durations
+ * are pushed near-zero rather than removed outright — the animation still
+ * runs (and lands on its end state), so nothing stays mid-transition (e.g.
+ * stuck at `opacity: 0`). */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

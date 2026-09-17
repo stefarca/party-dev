@@ -48,17 +48,26 @@ function Disc({
     if (previewSeat !== undefined) {
       return (
         <span
-          className="c4-disc c4-disc-preview"
+          className="flex aspect-square w-full min-w-5 items-center justify-center rounded-full opacity-40 shadow-[var(--shadow-inset)]"
           style={{ backgroundColor: SEAT_COLOR[previewSeat] }}
           aria-hidden="true"
         />
       );
     }
-    return <span className="c4-disc c4-disc-empty" aria-hidden="true" />;
+    return (
+      <span
+        className="flex aspect-square w-full min-w-5 items-center justify-center rounded-full bg-[var(--surface-inset)] shadow-[var(--shadow-inset)]"
+        aria-hidden="true"
+      />
+    );
   }
   return (
     <span
-      className={`c4-disc c4-disc-filled${isLastMove ? " c4-disc-last" : ""}`}
+      className={`flex aspect-square w-full min-w-5 items-center justify-center rounded-full bg-[image:radial-gradient(circle_at_35%_30%,hsla(0,0%,100%,0.35),hsla(0,0%,100%,0)_55%)] text-xs font-bold shadow-[var(--game-piece-shadow)] ${
+        isLastMove
+          ? "animate-[party-disc-drop_var(--dur-base)_var(--ease-spring)_both] shadow-[var(--game-piece-shadow),0_0_0_3px_var(--accent),var(--glow-accent)]"
+          : ""
+      }`}
       style={{ backgroundColor: SEAT_COLOR[seat], color: SEAT_CONTRAST[seat] }}
       role="img"
       aria-label={`${SEAT_LABEL[seat]} disc${isLastMove ? " (last move)" : ""}`}
@@ -81,7 +90,7 @@ export default function Connect4Ui({ view, players, result, send }: GameUiProps)
   const [activeCol, setActiveCol] = useState<number | null>(null);
 
   if (!v) {
-    return <p className="game-muted">Loading board…</p>;
+    return <p className="m-0 text-muted">Loading board…</p>;
   }
 
   const disabled = v.winner !== null || v.draw || !v.yourTurn;
@@ -105,10 +114,13 @@ export default function Connect4Ui({ view, players, result, send }: GameUiProps)
   }
 
   return (
-    <div className="c4-board-wrap">
-      <div className="c4-seats">
+    <div className="flex flex-col gap-3">
+      <div className="flex flex-wrap justify-between gap-2">
         {([0, 1] as const).map((seat) => (
-          <div key={seat} className={`c4-seat${v.you === seat ? " c4-seat-you" : ""}`}>
+          <div
+            key={seat}
+            className={`flex items-center gap-1 text-base ${v.you === seat ? "font-bold" : ""}`}
+          >
             <Disc seat={seat} isLastMove={false} />
             <span>
               {nameFor(players, seat)}
@@ -119,7 +131,7 @@ export default function Connect4Ui({ view, players, result, send }: GameUiProps)
       </div>
 
       <div
-        className="c4-board"
+        className="grid gap-1 rounded-md bg-[var(--surface-void)] p-1 shadow-[var(--shadow-inset)] sm:gap-2 sm:p-2"
         aria-label="Connect 4 board, 7 columns by 6 rows"
         style={{ gridTemplateColumns: `repeat(${COLS}, 1fr)` }}
       >
@@ -132,7 +144,9 @@ export default function Connect4Ui({ view, players, result, send }: GameUiProps)
             <button
               key={col}
               type="button"
-              className={`c4-column${canPreview && activeCol === col ? " c4-column-live" : ""}`}
+              className={`flex cursor-pointer flex-col gap-1 rounded-md border-none p-[0.2rem] focus-visible:outline focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] disabled:cursor-not-allowed sm:gap-2 ${
+                canPreview && activeCol === col ? "bg-[var(--accent-soft)]" : "bg-transparent"
+              }`}
               disabled={colDisabled}
               aria-label={
                 full
@@ -163,7 +177,7 @@ export default function Connect4Ui({ view, players, result, send }: GameUiProps)
       </div>
 
       {!result && (
-        <p className="c4-status game-text">
+        <p className="m-0 text-[var(--text-secondary)]">
           {v.winner !== null
             ? "Match finished."
             : v.yourTurn

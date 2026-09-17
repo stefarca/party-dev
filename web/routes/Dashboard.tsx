@@ -1,6 +1,18 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { CSSProperties, FormEvent } from "react";
 
+import {
+  Button,
+  Card,
+  Chip,
+  FieldError,
+  Form,
+  Input,
+  TextField,
+  ToggleButton,
+  ToggleButtonGroup,
+} from "@heroui/react";
+
 import type { GameMeta } from "../../games/catalog";
 import { normalizeMatchCode } from "../../shared/ids";
 import type { MatchStatus, MatchSummary } from "../../shared/protocol";
@@ -34,10 +46,10 @@ function playerRange(meta: GameMeta): string {
     : `${meta.minPlayers}-${meta.maxPlayers} players`;
 }
 
-function statusChipClass(status: MatchStatus): string {
-  if (status === "lobby") return "chip chip-accent";
-  if (status === "active") return "chip chip-ok";
-  return "chip";
+function statusChipColor(status: MatchStatus): "accent" | "success" | "default" {
+  if (status === "lobby") return "accent";
+  if (status === "active") return "success";
+  return "default";
 }
 
 function MatchRow({
@@ -45,30 +57,39 @@ function MatchRow({
   games,
   myPlayerId,
   accent,
+  style,
 }: {
   match: MatchSummary;
   games: GameMeta[];
   myPlayerId: string;
   accent?: boolean;
+  style?: CSSProperties;
 }) {
   const others = match.players.filter((p) => p.id !== myPlayerId);
   const otherNames =
     others.length > 0 ? others.map((p) => p.nickname).join(", ") : "waiting for others to join";
   return (
     <a
-      className={`panel match-card${accent ? " match-card-accent" : ""}`}
+      className={`group flex animate-in fade-in slide-in-from-bottom-2 flex-col gap-2 rounded-lg border bg-surface p-4 no-underline shadow-[var(--edge-highlight),var(--shadow-2)] duration-500 fill-mode-both transition-[transform,box-shadow] hover:-translate-y-0.5 hover:shadow-[var(--edge-highlight),var(--shadow-3)] ${
+        accent
+          ? "border-[var(--border-accent)] shadow-[var(--edge-highlight),var(--shadow-2),var(--glow-accent)]"
+          : "border-border"
+      }`}
       href={`/m/${match.id}`}
+      style={style}
       onClick={(e) => {
         e.preventDefault();
         navigate(`/m/${match.id}`);
       }}
     >
-      <div className="match-card-main">
-        <strong>{gameName(games, match.gameId)}</strong>
-        <span className={statusChipClass(match.status)}>{match.status}</span>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <strong className="text-foreground">{gameName(games, match.gameId)}</strong>
+        <Chip size="sm" color={statusChipColor(match.status)}>
+          {match.status}
+        </Chip>
       </div>
-      <span className="match-card-players">{otherNames}</span>
-      <div className="match-card-meta">
+      <span className="text-muted">{otherNames}</span>
+      <div className="flex gap-3 text-xs text-muted">
         <span>{relativeTime(match.updatedAt)}</span>
         {match.deadline !== null && <span>{formatDeadline(match.deadline)}</span>}
       </div>
@@ -92,17 +113,24 @@ function Section({
   accent?: boolean;
 }) {
   return (
-    <section className="shelf">
-      <div className="shelf-header">
-        <h2 className="shelf-title">{title}</h2>
-        <span className="chip">{matches.length}</span>
+    <section className="mb-8 animate-in fade-in slide-in-from-bottom-2 duration-500 fill-mode-both">
+      <div className="mb-3 flex items-center gap-2">
+        <h2 className="m-0 text-lg font-semibold text-foreground">{title}</h2>
+        <Chip size="sm">{matches.length}</Chip>
       </div>
       {matches.length === 0 ? (
         <EmptyState>{emptyText}</EmptyState>
       ) : (
-        <div className="match-list">
-          {matches.map((m) => (
-            <MatchRow key={m.id} match={m} games={games} myPlayerId={myPlayerId} accent={accent} />
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-[repeat(auto-fill,minmax(260px,1fr))]">
+          {matches.map((m, i) => (
+            <MatchRow
+              key={m.id}
+              match={m}
+              games={games}
+              myPlayerId={myPlayerId}
+              accent={accent}
+              style={{ animationDelay: `${Math.min(i * 40, 320)}ms` }}
+            />
           ))}
         </div>
       )}
@@ -114,12 +142,12 @@ function Section({
 // take, so the first fetch doesn't cause a layout jump when it resolves.
 function ShelfSkeleton() {
   return (
-    <section className="shelf">
-      <div className="shelf-header">
+    <section className="mb-8">
+      <div className="mb-3 flex items-center gap-2">
         <Skeleton width="8rem" height="1.3rem" />
         <Skeleton width="2rem" height="1.3rem" />
       </div>
-      <div className="match-list">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-[repeat(auto-fill,minmax(260px,1fr))]">
         <Skeleton height="6.5rem" />
         <Skeleton height="6.5rem" />
       </div>
@@ -134,6 +162,18 @@ function DashboardSkeleton() {
       <ShelfSkeleton />
       <ShelfSkeleton />
     </>
+  );
+}
+
+function GameTile({ meta, hue }: { meta: GameMeta; hue: number }) {
+  return (
+    <span
+      aria-hidden="true"
+      className="flex size-10 items-center justify-center rounded-md text-lg font-bold"
+      style={{ backgroundColor: `hsl(${hue} 70% 45%)`, color: "var(--accent-contrast)" }}
+    >
+      {meta.name.charAt(0).toUpperCase()}
+    </span>
   );
 }
 
@@ -258,7 +298,7 @@ export function Dashboard() {
 
   if (loading) {
     return (
-      <main id="main-content" className="page">
+      <main id="main-content" className="app-container">
         <DashboardSkeleton />
       </main>
     );
@@ -266,7 +306,7 @@ export function Dashboard() {
 
   if (error) {
     return (
-      <main id="main-content" className="page">
+      <main id="main-content" className="app-container">
         <Notice tone="danger" action={{ label: "Retry", onClick: () => refresh() }}>
           {error}
         </Notice>
@@ -278,7 +318,7 @@ export function Dashboard() {
   const data = buckets ?? { yourTurn: [], waiting: [], finished: [] };
 
   return (
-    <main id="main-content" className="page">
+    <main id="main-content" className="app-container">
       <Section
         title="Your turn"
         emptyText="Nothing needs your move right now."
@@ -302,72 +342,72 @@ export function Dashboard() {
         myPlayerId={myPlayerId}
       />
 
-      <section className="panel panel-accent">
-        <div className="panel-header">
-          <h2>Start a new match</h2>
-        </div>
-        <div className="panel-body">
-          <form onSubmit={handleCreate} className="stack">
-            <fieldset className="game-picker">
-              <legend>Game</legend>
-              {games.map((g) => {
-                const hue = hueForId(g.id);
-                return (
-                  <label key={g.id} className="game-picker-option">
-                    <input
-                      type="radio"
-                      name="game"
-                      className="game-picker-input"
-                      value={g.id}
-                      checked={selectedGame === g.id}
-                      onChange={() => setSelectedGame(g.id)}
-                    />
-                    <span className="game-picker-card">
-                      <span
-                        className="game-tile"
-                        style={{ "--tile-hue": hue } as CSSProperties}
-                        aria-hidden="true"
-                      >
-                        {g.name.charAt(0).toUpperCase()}
-                      </span>
-                      <span className="game-picker-name">{g.name}</span>
-                      <span className="game-picker-range">{playerRange(g)}</span>
-                    </span>
-                  </label>
-                );
-              })}
-            </fieldset>
-            {createError && <p className="error">{createError}</p>}
-            <button type="submit" className="btn btn-primary" disabled={creating || !selectedGame}>
-              {creating ? "Creating…" : "Create"}
-            </button>
-          </form>
-        </div>
-      </section>
-
-      <section className="panel">
-        <div className="panel-header">
-          <h2>Join a match</h2>
-        </div>
-        <div className="panel-body">
-          <form onSubmit={handleJoin} className="stack">
-            <label htmlFor="join-code">Match code</label>
-            <div className="join-form-row">
-              <input
-                id="join-code"
-                className="input-code"
-                value={joinCode}
-                onChange={(e) => setJoinCode(e.target.value)}
-                placeholder="e.g. AB23CD"
-              />
-              <button type="submit" className="btn btn-ghost" disabled={joining}>
-                {joining ? "Joining…" : "Join"}
-              </button>
+      <Card className="mb-4 border-[var(--border-accent)] shadow-[var(--edge-highlight),var(--shadow-2),var(--glow-accent)]">
+        <Card.Content className="flex flex-col gap-3">
+          <Card.Title>Start a new match</Card.Title>
+          <Form onSubmit={handleCreate} className="flex flex-col gap-3">
+            <div className="flex flex-col gap-2">
+              <span className="text-sm font-semibold text-muted">Game</span>
+              <ToggleButtonGroup
+                aria-label="Game"
+                selectionMode="single"
+                disallowEmptySelection
+                selectedKeys={selectedGame ? [selectedGame] : []}
+                onSelectionChange={(keys) => {
+                  const next = [...keys][0] as string | undefined;
+                  if (next) setSelectedGame(next);
+                }}
+                className="grid grid-cols-2 gap-2 sm:grid-cols-3"
+              >
+                {games.map((g) => (
+                  <ToggleButton
+                    key={g.id}
+                    id={g.id}
+                    aria-label={`${g.name}, ${playerRange(g)}`}
+                    className="flex h-auto flex-col items-center gap-1 p-3 text-center"
+                  >
+                    <GameTile meta={g} hue={hueForId(g.id)} />
+                    <span className="font-semibold">{g.name}</span>
+                    <span className="text-xs text-muted">{playerRange(g)}</span>
+                  </ToggleButton>
+                ))}
+              </ToggleButtonGroup>
             </div>
-            {joinError && <p className="error">{joinError}</p>}
-          </form>
-        </div>
-      </section>
+            {createError && (
+              <p role="alert" className="m-0 text-sm text-danger">
+                {createError}
+              </p>
+            )}
+            <Button type="submit" isDisabled={creating || !selectedGame}>
+              {creating ? "Creating…" : "Create"}
+            </Button>
+          </Form>
+        </Card.Content>
+      </Card>
+
+      <Card className="mb-4">
+        <Card.Content className="flex flex-col gap-3">
+          <Card.Title>Join a match</Card.Title>
+          <Form onSubmit={handleJoin} className="flex flex-col gap-3">
+            <TextField value={joinCode} onChange={setJoinCode} isInvalid={!!joinError}>
+              <label className="text-sm font-semibold text-muted" htmlFor="join-code">
+                Match code
+              </label>
+              <div className="flex items-start gap-2">
+                <Input
+                  id="join-code"
+                  className="flex-1 font-mono tracking-[0.2em] uppercase"
+                  placeholder="e.g. AB23CD"
+                />
+                <Button type="submit" variant="ghost" isDisabled={joining}>
+                  {joining ? "Joining…" : "Join"}
+                </Button>
+              </div>
+              {joinError && <FieldError>{joinError}</FieldError>}
+            </TextField>
+          </Form>
+        </Card.Content>
+      </Card>
     </main>
   );
 }

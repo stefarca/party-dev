@@ -1,3 +1,4 @@
+import { Button, FieldError, Form, Label, TextArea, TextField } from "@heroui/react";
 import { useState } from "react";
 
 import type { GameUiProps } from "../../shared/protocol";
@@ -24,23 +25,27 @@ export function DebugGameView({ view, waitingOn, deadline, result, send }: GameU
   }
 
   return (
-    <div className="debug-game-view">
-      <p className="game-muted debug-game-view-note">
+    <div className="flex flex-col gap-3">
+      <p className="m-0 text-muted italic">
         No UI is registered for this game — showing the raw engine view.
       </p>
-      <pre>{JSON.stringify({ view, waitingOn, deadline, result }, null, 2)}</pre>
-      <label htmlFor="debug-action">Action (JSON)</label>
-      <textarea
-        id="debug-action"
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        rows={3}
-        placeholder={'{"t":"increment"}'}
-      />
-      {parseError && <p className="error">{parseError}</p>}
-      <button className="btn btn-primary" onClick={submit}>
-        Send
-      </button>
+      <pre className="m-0 overflow-auto rounded-md bg-[var(--surface-inset)] p-3 font-mono text-sm text-foreground">
+        {JSON.stringify({ view, waitingOn, deadline, result }, null, 2)}
+      </pre>
+      <Form
+        onSubmit={(e) => {
+          e.preventDefault();
+          submit();
+        }}
+        className="flex flex-col gap-2"
+      >
+        <TextField value={text} onChange={setText} isInvalid={!!parseError}>
+          <Label>Action (JSON)</Label>
+          <TextArea rows={3} placeholder={'{"t":"increment"}'} className="font-mono" />
+          {parseError && <FieldError>{parseError}</FieldError>}
+        </TextField>
+        <Button type="submit">Send</Button>
+      </Form>
     </div>
   );
 }

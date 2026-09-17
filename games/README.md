@@ -29,15 +29,21 @@ else. Checklist, in order:
    `MatchPage`, not by your UI) for the generic "whose turn / deadline" display — do not duplicate
    it.
    - **UI:** the shell mounts your component inside its own cabinet, so a game UI must not render
-     its own outer card — render the board/round content only. Reach for the shared classes and
-     tokens in `web/styles/game-surface.css` (`.game-panel`, `.game-heading`, `.game-text`,
-     `.game-muted`, `.game-actions`, `.game-choice`, `.game-list`, `.game-score-row`, the
-     `--seat-1`…`--seat-4` colour ramp, `--game-gap`/`--game-radius`/`--game-well`) instead of
-     hardcoding colours. Game-specific styles beyond that shared vocabulary go in
-     `web/styles/games.css`, never in a stylesheet imported from `ui.tsx` itself — `tsconfig.client.json`
-     has no ambient module declaration for `*.css`. Never render the deadline or a countdown; the
-     shell shows it once. Colour must never be the only signal for game state — pair it with text,
-     a glyph, or an aria attribute.
+     its own outer card — render the board/round content only. Style with Tailwind utility classes
+     and the shared theme tokens (`web/styles/tokens.css`, wired into Tailwind's `@theme` in
+     `web/styles.css`) — colours in particular should read a `var(--token)` (e.g. the
+     `--seat-1`…`--seat-4` seat ramp, `--accent`, `--ok-fg`/`--ok-soft`) rather than a hardcoded
+     literal. `games/**/*.tsx` may import components from `@heroui/react` (the worker's
+     `tsconfig.worker.json` parses these files without DOM types but with `skipLibCheck`, so HeroUI's
+     own `.d.ts` type-checks fine — verify with `npm run typecheck` if you add a new import from
+     there). A game UI must never import a `.css` file — `tsconfig.client.json` has no ambient
+     module declaration for `*.css` — so any rule that cannot be expressed as a utility class (a
+     `@keyframes` a Tailwind arbitrary-value animation refers to, for instance) belongs in
+     `web/styles.css` instead. Never render the deadline or a countdown; the shell shows it once.
+     Colour must never be the only signal for game state — pair it with text, a glyph, or an aria
+     attribute. Tailwind only emits classes it can see statically, so never build a class name from
+     a runtime value (e.g. `` `bg-seat-${n}` ``) — use a static lookup table of complete class
+     strings, or set a CSS custom property inline instead.
 5. **Register it** — one line in each map in `games/registry.ts`:
    - `serverGames`: `<id>: yourGame` (statically imported — the Worker bundle must contain every
      game's rules with no network round-trip).

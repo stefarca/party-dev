@@ -1,6 +1,6 @@
 // A generic diamond-of-tiles glyph next to the "party-dev" wordmark — no
 // game-specific imagery, just an abstract mark for the brand itself.
-export function WordMark({ className = "app-mark" }: { className?: string }) {
+export function WordMark({ className = "size-5 text-current" }: { className?: string }) {
   return (
     <svg
       className={className}

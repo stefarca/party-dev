@@ -1,3 +1,5 @@
+import { ToggleButton, ToggleButtonGroup } from "@heroui/react";
+
 import { setThemePreference, useThemePreference } from "../theme";
 import type { ThemePreference } from "../theme";
 
@@ -11,20 +13,23 @@ export function ThemeToggle() {
   const preference = useThemePreference();
 
   return (
-    <div className="theme-toggle" role="group" aria-label="Theme">
+    <ToggleButtonGroup
+      aria-label="Theme"
+      selectionMode="single"
+      disallowEmptySelection
+      selectedKeys={[preference]}
+      onSelectionChange={(keys) => {
+        const next = [...keys][0] as ThemePreference | undefined;
+        if (next) setThemePreference(next);
+      }}
+      size="sm"
+    >
       {OPTIONS.map((option) => (
-        <button
-          key={option.value}
-          type="button"
-          className="btn btn-quiet btn-sm theme-toggle-option"
-          aria-pressed={preference === option.value}
-          aria-label={option.label}
-          onClick={() => setThemePreference(option.value)}
-        >
+        <ToggleButton key={option.value} id={option.value} aria-label={option.label}>
           <span aria-hidden="true">{option.glyph}</span>
-          <span className="theme-toggle-label">{option.label}</span>
-        </button>
+          <span className="hidden sm:inline">{option.label}</span>
+        </ToggleButton>
       ))}
-    </div>
+    </ToggleButtonGroup>
   );
 }

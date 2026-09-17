@@ -1,6 +1,8 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
 
+import { Button, Card, FieldError, Form, Input, Label, TextField } from "@heroui/react";
+
 import { ApiError } from "../api";
 import { ThemeToggle } from "../components/ThemeToggle";
 import { WordMark } from "../components/WordMark";
@@ -50,29 +52,34 @@ export function NicknameGate() {
   }
 
   return (
-    <main id="main-content" className="page page-narrow gate">
-      <div className="panel gate-panel">
-        <div className="gate-header">
-          <WordMark className="gate-mark" />
-          <h1>party-dev</h1>
-        </div>
-        <p className="gate-tagline">Async party games you play a move at a time.</p>
-        <form onSubmit={handleSubmit} className="stack">
-          <label htmlFor="nickname">Nickname</label>
-          <input
-            id="nickname"
-            value={nickname}
-            onChange={(e) => setNickname(e.target.value)}
-            maxLength={MAX_LEN}
-            autoFocus
-            placeholder="e.g. alice"
-          />
-          {error && <p className="error">{error}</p>}
-          <button type="submit" className="btn btn-primary" disabled={submitting}>
-            {submitting ? "Joining…" : "Continue"}
-          </button>
-        </form>
-      </div>
+    <main
+      id="main-content"
+      className="relative flex min-h-dvh flex-col items-center justify-center gap-6 px-4 py-10"
+    >
+      <Card className="w-full max-w-sm animate-in fade-in slide-in-from-bottom-2 duration-500 fill-mode-both">
+        <Card.Content className="flex flex-col items-center gap-5 py-2 text-center">
+          <div className="flex flex-col items-center gap-2">
+            <WordMark className="size-10 text-accent" />
+            <h1 className="m-0 text-xl font-bold text-foreground">party-dev</h1>
+          </div>
+          <p className="m-0 text-muted">Async party games you play a move at a time.</p>
+          <Form onSubmit={handleSubmit} className="flex w-full flex-col gap-3 text-left">
+            <TextField
+              value={nickname}
+              onChange={setNickname}
+              maxLength={MAX_LEN}
+              isInvalid={!!error}
+            >
+              <Label>Nickname</Label>
+              <Input autoFocus placeholder="e.g. alice" />
+              {error && <FieldError>{error}</FieldError>}
+            </TextField>
+            <Button type="submit" isDisabled={submitting} className="w-full">
+              {submitting ? "Joining…" : "Continue"}
+            </Button>
+          </Form>
+        </Card.Content>
+      </Card>
       <ThemeToggle />
     </main>
   );
