@@ -5,6 +5,30 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Party</title>
     <link rel="icon" href="/favicon.svg" />
+    <meta name="color-scheme" content="dark light" />
+    <!--
+      Flash-free theme bootstrap: runs before the stylesheet loads so
+      `data-theme` is already correct for the first paint. Must stay a
+      blocking, non-module script ahead of the stylesheet link.
+      "party-theme" duplicates THEME_STORAGE_KEY from web/theme.ts on
+      purpose — this inline script can't import a module.
+    -->
+    <script>
+      (function () {
+        try {
+          var stored = window.localStorage.getItem("party-theme");
+          var theme = stored === "light" || stored === "dark" ? stored : null;
+          if (!theme) {
+            var prefersLight =
+              window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches;
+            theme = prefersLight ? "light" : "dark";
+          }
+          document.documentElement.dataset.theme = theme;
+        } catch (e) {
+          document.documentElement.dataset.theme = "dark";
+        }
+      })();
+    </script>
     <link rel="stylesheet" href="/web/styles.css" />
   </head>
   <body>

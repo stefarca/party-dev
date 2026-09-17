@@ -1,0 +1,90 @@
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  background: var(--surface-void);
+  color: var(--text-primary);
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+}
+
+h1 {
+  font-size: var(--text-xl);
+  margin: 0 0 var(--space-2);
+}
+
+h2 {
+  font-size: var(--text-lg);
+  margin: var(--space-5) 0 var(--space-2);
+}
+
+a {
+  color: var(--accent);
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+::selection {
+  background: var(--accent-soft);
+  color: var(--text-primary);
+}
+
+/* Skip-to-content link: the first tab stop, invisible until focused. Hidden
+ * with `transform`, not `display`/`visibility`, so it stays in the
+ * accessibility tree and reachable by keyboard. */
+.skip-link {
+  position: fixed;
+  top: var(--space-2);
+  left: var(--space-2);
+  z-index: 100;
+  padding: var(--space-2) var(--space-4);
+  background: var(--surface-1);
+  color: var(--text-primary);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-3), var(--edge-highlight);
+  transform: translateY(-150%);
+  transition: transform var(--dur-fast) var(--ease-out);
+}
+
+.skip-link:focus-visible {
+  transform: translateY(0);
+}
+
+/* Shared one-shot entrance: a fade plus a small rise, used by panels and
+ * shelves that should announce themselves once on mount and never again —
+ * see the components that opt in via `animation: party-fade-in ...`. */
+@keyframes party-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Global motion escape hatch. Lives last in this file (and uses
+ * `!important`) so it overrides every animation/transition declared in every
+ * stylesheet loaded after it, regardless of selector specificity. Durations
+ * are pushed near-zero rather than removed outright — the animation still
+ * runs (and lands on its end state), so nothing stays mid-transition (e.g.
+ * stuck at `opacity: 0`). */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

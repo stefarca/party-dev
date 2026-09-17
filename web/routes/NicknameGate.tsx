@@ -2,6 +2,8 @@ import { useState } from "react";
 import type { FormEvent } from "react";
 
 import { ApiError } from "../api";
+import { ThemeToggle } from "../components/ThemeToggle";
+import { WordMark } from "../components/WordMark";
 import { useSession } from "../session";
 
 // Mirrors the server's IdentityRequestSchema (shared/protocol.ts) so the
@@ -48,24 +50,30 @@ export function NicknameGate() {
   }
 
   return (
-    <main className="container gate">
-      <h1>party-dev</h1>
-      <p>Pick a nickname to join the game.</p>
-      <form onSubmit={handleSubmit} className="card">
-        <label htmlFor="nickname">Nickname</label>
-        <input
-          id="nickname"
-          value={nickname}
-          onChange={(e) => setNickname(e.target.value)}
-          maxLength={MAX_LEN}
-          autoFocus
-          placeholder="e.g. alice"
-        />
-        {error && <p className="error">{error}</p>}
-        <button type="submit" disabled={submitting}>
-          {submitting ? "Joining…" : "Continue"}
-        </button>
-      </form>
+    <main id="main-content" className="page page-narrow gate">
+      <div className="panel gate-panel">
+        <div className="gate-header">
+          <WordMark className="gate-mark" />
+          <h1>party-dev</h1>
+        </div>
+        <p className="gate-tagline">Async party games you play a move at a time.</p>
+        <form onSubmit={handleSubmit} className="stack">
+          <label htmlFor="nickname">Nickname</label>
+          <input
+            id="nickname"
+            value={nickname}
+            onChange={(e) => setNickname(e.target.value)}
+            maxLength={MAX_LEN}
+            autoFocus
+            placeholder="e.g. alice"
+          />
+          {error && <p className="error">{error}</p>}
+          <button type="submit" className="btn btn-primary" disabled={submitting}>
+            {submitting ? "Joining…" : "Continue"}
+          </button>
+        </form>
+      </div>
+      <ThemeToggle />
     </main>
   );
 }

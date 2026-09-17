@@ -1,24 +1,92 @@
 import { Component, Suspense, lazy, useCallback, useEffect, useState } from "react";
 import type { ComponentType, LazyExoticComponent, ReactNode } from "react";
 
+import type { GameMeta } from "../../games/catalog";
 import { getGameMeta } from "../../games/catalog";
 import { gameUi } from "../../games/registry";
-import type { GameUiProps, MatchEvent, MatchSnapshot, MatchSummary } from "../../shared/protocol";
+import type {
+  GameUiProps,
+  MatchEvent,
+  MatchStatus,
+  MatchSnapshot,
+  MatchSummary,
+} from "../../shared/protocol";
 import { ApiError, getMatch, joinMatch } from "../api";
 import { clearMatchWaiting, setMatchWaiting } from "../badge";
 import { ConnectionBadge } from "../components/ConnectionBadge";
 import { DebugGameView } from "../components/DebugGameView";
+import { GameSurface } from "../components/GameSurface";
 import { HistoryPanel } from "../components/HistoryPanel";
+import { Notice, Skeleton } from "../components/states";
 import { TurnIndicator } from "../components/TurnIndicator";
 import { useSession } from "../session";
 import type { ConnectionState, MatchError } from "../useMatch";
 import { useMatch } from "../useMatch";
 
-function CopyCode({ code }: { code: string }) {
+function statusChipClass(status: MatchStatus): string {
+  if (status === "lobby") return "chip chip-accent";
+  if (status === "active") return "chip chip-ok";
+  return "chip";
+}
+
+function MatchHeader({
+  name,
+  status,
+  connection,
+}: {
+  name: string;
+  status: MatchStatus;
+  connection: ConnectionState;
+}) {
+  return (
+    <div className="match-header">
+      <h1 className="match-header-title">{name}</h1>
+      <div className="match-header-meta">
+        <span className={statusChipClass(status)}>{status}</span>
+        <ConnectionBadge connection={connection} />
+      </div>
+    </div>
+  );
+}
+
+// Reserves roughly the header + share panel + roster panel footprint while
+// the initial `getMatch()` fetch is in flight.
+function MatchSkeleton() {
+  return (
+    <>
+      <div className="match-header">
+        <Skeleton width="10rem" height="1.5rem" />
+        <Skeleton width="5rem" height="1.3rem" />
+      </div>
+      <div className="panel">
+        <Skeleton width="60%" height="1.1rem" />
+        <Skeleton height="4rem" />
+      </div>
+    </>
+  );
+}
+
+// Reserves roughly the cabinet's footprint for the brief window between the
+// lobby summary reporting the match has started and the live snapshot
+// actually arriving.
+function GameSurfaceSkeleton() {
+  return (
+    <div className="game-surface game-surface-skeleton">
+      <div className="game-surface-bezel">
+        <Skeleton width="8rem" height="1.2rem" />
+      </div>
+      <div className="game-surface-well">
+        <Skeleton height="12rem" />
+      </div>
+    </div>
+  );
+}
+
+function ShareCode({ code, collapsed }: { code: string; collapsed: boolean }) {
   const [copied, setCopied] = useState(false);
+  const url = `${window.location.origin}/m/${code}`;
 
   async function copy() {
-    const url = `${window.location.origin}/m/${code}`;
     if (navigator.clipboard) {
       try {
         await navigator.clipboard.writeText(url);
@@ -35,12 +103,86 @@ function CopyCode({ code }: { code: string }) {
     input?.select();
   }
 
+  const shareInput = (
+    <input
+      id="match-share-url"
+      readOnly
+      value={url}
+      className={collapsed ? "visually-hidden" : "share-url"}
+      tabIndex={collapsed ? -1 : undefined}
+    />
+  );
+
+  if (collapsed) {
+    return (
+      <div className="share-chip-wrap">
+        <button type="button" className="chip share-chip" onClick={copy}>
+          <span className="share-chip-code">{code}</span>
+          {copied ? "Copied!" : "Copy link"}
+        </button>
+        {shareInput}
+      </div>
+    );
+  }
+
   return (
-    <div className="card">
-      <div className="match-code">{code}</div>
-      <input id="match-share-url" readOnly value={`${window.location.origin}/m/${code}`} />
-      <button onClick={copy}>{copied ? "Copied!" : "Copy link"}</button>
-    </div>
+    <section className="panel panel-accent share-panel">
+      <div className="panel-header">
+        <h2>Invite players</h2>
+      </div>
+      <div className="panel-body">
+        <div className="share-code" aria-hidden="true">
+          {code.split("").map((ch, i) => (
+            <span key={i} className="share-code-tile">
+              {ch}
+            </span>
+          ))}
+        </div>
+        {shareInput}
+        <button type="button" className="btn btn-primary" onClick={copy}>
+          {copied ? "Copied!" : "Copy link"}
+        </button>
+      </div>
+    </section>
+  );
+}
+
+function Roster({
+  players,
+  meta,
+  hostId,
+  myPlayerId,
+}: {
+  players: MatchSummary["players"];
+  meta: GameMeta | undefined;
+  hostId: string;
+  myPlayerId: string;
+}) {
+  const emptySeats = meta ? Math.max(0, meta.maxPlayers - players.length) : 0;
+
+  return (
+    <ul className="roster">
+      {players.map((p) => (
+        <li key={p.id} className="roster-row">
+          <span className="roster-avatar" aria-hidden="true">
+            {p.nickname.charAt(0).toUpperCase()}
+          </span>
+          <span className="roster-name">{p.nickname}</span>
+          <span className="roster-chips">
+            {p.id === hostId && <span className="chip">host</span>}
+            {p.id === myPlayerId && <span className="chip chip-accent">you</span>}
+          </span>
+        </li>
+      ))}
+      {Array.from({ length: emptySeats }).map((_, i) => (
+        <li key={`seat-${i}`} className="roster-row roster-row-empty">
+          <span className="roster-avatar roster-avatar-empty" aria-hidden="true">
+            ?
+          </span>
+          <span className="roster-name">Open seat</span>
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -107,15 +249,31 @@ function GameUiHost({
     send,
   };
 
+  const title = getGameMeta(gameId)?.name ?? gameId;
   const Lazy = getLazyUi(gameId);
-  if (!Lazy) return <DebugGameView {...props} />;
+  if (!Lazy) {
+    return (
+      <GameSurface title={title}>
+        <DebugGameView {...props} />
+      </GameSurface>
+    );
+  }
 
   return (
-    <GameErrorBoundary key={code} fallback={<DebugGameView {...props} />}>
-      <Suspense fallback={<div className="card">Loading game…</div>}>
-        <Lazy {...props} />
-      </Suspense>
-    </GameErrorBoundary>
+    <GameSurface title={title}>
+      <GameErrorBoundary key={code} fallback={<DebugGameView {...props} />}>
+        <Suspense
+          fallback={
+            <div role="status">
+              <span className="visually-hidden">Loading game…</span>
+              <Skeleton height="12rem" />
+            </div>
+          }
+        >
+          <Lazy {...props} />
+        </Suspense>
+      </GameErrorBoundary>
+    </GameSurface>
   );
 }
 
@@ -134,7 +292,6 @@ function MatchBody({
   match,
   snapshot,
   events,
-  connection,
   transportError,
   send,
   start,
@@ -143,7 +300,6 @@ function MatchBody({
   match: MatchSummary;
   snapshot: MatchSnapshot | null;
   events: MatchEvent[];
-  connection: ConnectionState;
   transportError: MatchError | null;
   send: (action: unknown) => void;
   start: () => void;
@@ -160,31 +316,31 @@ function MatchBody({
       isHost && meta !== undefined && count >= meta.minPlayers && count <= meta.maxPlayers;
 
     return (
-      <div className="card">
-        <h2>Players</h2>
-        <ul className="player-list">
-          {players.map((p) => (
-            <li key={p.id}>
-              {p.nickname}
-              {p.id === match.hostId && <span className="badge">host</span>}
-              {p.id === myPlayerId && <span className="badge">you</span>}
-            </li>
-          ))}
-        </ul>
-        {meta && (
-          <p>
-            {meta.name} needs {meta.minPlayers}
-            {meta.maxPlayers !== meta.minPlayers ? `-${meta.maxPlayers}` : ""} players.
-            {isHost ? "" : " Waiting for the host to start."}
-          </p>
-        )}
-        {isHost && (
-          <button onClick={start} disabled={!canStart}>
-            Start match
-          </button>
-        )}
-        {transportError && <p className="error">{transportError.message}</p>}
-      </div>
+      <section className="panel">
+        <div className="panel-header">
+          <h2>Players</h2>
+        </div>
+        <div className="panel-body">
+          <Roster players={players} meta={meta} hostId={match.hostId} myPlayerId={myPlayerId} />
+          {meta && (
+            <p>
+              {meta.name} needs {meta.minPlayers}
+              {meta.maxPlayers !== meta.minPlayers ? `-${meta.maxPlayers}` : ""} players.
+              {isHost ? "" : " Waiting for the host to start."}
+            </p>
+          )}
+          {isHost && (
+            <button className="btn btn-primary" onClick={start} disabled={!canStart}>
+              Start match
+            </button>
+          )}
+          {transportError && (
+            <Notice tone="danger" role="status">
+              {transportError.message}
+            </Notice>
+          )}
+        </div>
+      </section>
     );
   }
 
@@ -192,11 +348,7 @@ function MatchBody({
   // still be in flight for a brief instant right after the lobby summary
   // (loaded first) reports the match has already started elsewhere.
   if (!snapshot) {
-    return (
-      <div className="card">
-        <p>Loading match…</p>
-      </div>
-    );
+    return <GameSurfaceSkeleton />;
   }
 
   return (
@@ -215,11 +367,12 @@ function MatchBody({
         me={myPlayerId}
         send={send}
       />
-      {transportError && <p className="error">{transportError.message}</p>}
+      {transportError && (
+        <Notice tone="danger" role="status">
+          {transportError.message}
+        </Notice>
+      )}
       <HistoryPanel events={events} />
-      <div className="match-footer">
-        <ConnectionBadge connection={connection} />
-      </div>
     </>
   );
 }
@@ -306,35 +459,33 @@ export function MatchPage({ code }: { code: string }) {
   }, [code]);
 
   const meta = match ? getGameMeta(match.gameId) : undefined;
+  const status = snapshot?.status ?? match?.status;
 
   return (
-    <main className="container">
-      <CopyCode code={code} />
+    <main id="main-content" className="page page-narrow">
+      {match && (
+        <MatchHeader
+          name={meta?.name ?? match.gameId}
+          status={status ?? match.status}
+          connection={connection}
+        />
+      )}
 
-      {loading && <p>Loading…</p>}
+      {loading && <MatchSkeleton />}
 
       {!loading && error && (
-        <div className="card">
-          <p className="error">{error}</p>
-          <button onClick={() => load()}>Retry</button>
-        </div>
+        <Notice tone="danger" action={{ label: "Retry", onClick: () => load() }}>
+          {error}
+        </Notice>
       )}
 
       {!loading && !error && match && (
         <>
-          <div className="card">
-            <p>
-              Game: <strong>{meta?.name ?? match.gameId}</strong>
-            </p>
-            <p>
-              Status: <strong>{snapshot?.status ?? match.status}</strong>
-            </p>
-          </div>
+          <ShareCode code={code} collapsed={status !== "lobby"} />
           <MatchBody
             match={match}
             snapshot={snapshot}
             events={events}
-            connection={connection}
             transportError={transportError}
             send={send}
             start={start}
