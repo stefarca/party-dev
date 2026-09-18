@@ -66,6 +66,24 @@ optionally, one in `games/icons.ts`) — nothing else. Checklist, in order:
      time),
    - view leakage (`view(state, p)` never contains another player's hidden information or, once
      applicable, the correct answer/outcome before it should be visible).
+8. **`games/<id>/ui.spec.ts`** plays the game in real browsers with Playwright
+   (`npm run test:e2e`, or `npm run test:e2e:ui` to watch it while you work on `ui.tsx`). Import
+   `test` and `expect` from `e2e/fixtures.ts`:
+   - `const { players: [first, second] } = await startMatch("<id>")` signs in two players, then
+     creates, starts and opens a match for both. `players[0]` is the player the game waits on
+     first, since who opens is drawn at random.
+   - Find the board's controls by role and accessible name (`page.getByRole("button", { name })`).
+     These are the labels your UI already gives screen readers, so if a spec cannot find something
+     by name, a screen-reader user cannot either.
+   - After each move, wait for the mover's turn banner to go
+     (`await expect(player.yourTurn).toBeHidden()`) before the other player acts. Otherwise a page
+     that has not yet received its own move can move again.
+   - Cover at least: the opening move reaching the other player's board and passing the turn, a
+     finished game ("You won!" for the winner, "<name> won." for everyone else), and each rule the
+     board enforces (a full column, a forced capture). `game.test.ts` proves the rules. The spec
+     proves the board offers and shows them.
+
+   `games/tictactoe/ui.spec.ts` is the shortest example.
 
 That's it — `MatchDO` (`worker/match.ts`) never needs a game-specific change: `commit()`'s
 persist/broadcast/D1-index/nudge pipeline, the WebSocket transport, and the dashboard all run

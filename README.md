@@ -43,11 +43,21 @@ Other useful scripts:
 - `npm run format:check` — checks Prettier formatting without writing changes.
 - `npm test` — runs the Vitest suite under Node, including `MatchDO` tests (`worker/match.test.ts`)
   that run against a hand-built Durable Object stub backed by `node:sqlite`, not real `workerd`.
+- `npm run test:e2e` — runs the Playwright suite in Chromium: every game played end to end by two
+  browser contexts, plus the hub, lobby and transport flows. It starts its own server (see
+  `e2e:serve` below), or reuses one already running. `npm run test:e2e:ui` opens Playwright's
+  interactive runner instead. Install the browser once with `npx playwright install chromium`;
+  on Linux, also install its system libraries with `sudo npx playwright install-deps chromium`.
+- `npm run e2e:serve` — the server the Playwright suite runs against, on
+  <http://localhost:5199>. It is `npm run dev` with its own D1/DO state in `.wrangler/e2e` (so it
+  can run alongside `npm run dev`), and it reads only `SESSION_SECRET`, so it never sends Slack
+  nudges. Open it in two browser profiles to play a match against yourself.
 - `npm run build` — builds the client (`dist/client`) and the Worker bundle.
 - `npm run preview` — serves the production build locally.
 
 `.github/workflows/ci.yml` runs `lint`, `format:check`, `typecheck`, `test` and `build` on every
-pull request.
+pull request, and the Playwright suite in a separate `e2e` job. When that job fails, its
+`playwright-report` artifact holds the HTML report, with a trace of every retried test.
 
 ## Engine
 

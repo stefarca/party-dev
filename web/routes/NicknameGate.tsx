@@ -68,9 +68,14 @@ export function NicknameGate() {
         </div>
 
         <Form onSubmit={handleSubmit} className="flex w-full flex-col gap-4 text-left">
+          {/* The error clears on every edit: while `isInvalid` is set, the input carries a
+              custom validity and the browser refuses to submit the form at all. */}
           <TextField
             value={nickname}
-            onChange={setNickname}
+            onChange={(value) => {
+              setNickname(value);
+              setError(null);
+            }}
             maxLength={MAX_LEN}
             isInvalid={!!error}
           >

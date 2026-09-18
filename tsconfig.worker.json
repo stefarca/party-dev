@@ -26,5 +26,7 @@
     "games/**/*.ts",
     "games/**/*.tsx",
     "worker-configuration.d.ts"
-  ]
+  ],
+  // Playwright specs live beside each game but run in Node (tsconfig.e2e.json).
+  "exclude": ["games/**/*.spec.ts"]
 }

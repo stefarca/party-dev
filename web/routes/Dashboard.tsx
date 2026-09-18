@@ -431,7 +431,12 @@ export function Dashboard() {
           <JoinTile
             index={playable.length}
             code={joinCode}
-            onCodeChange={setJoinCode}
+            // The error clears on every edit: while the field is `isInvalid`, the browser
+            // refuses to submit the form, so a mistyped code could never be corrected.
+            onCodeChange={(value) => {
+              setJoinCode(value);
+              setJoinError(null);
+            }}
             onSubmit={handleJoin}
             joining={joining}
             error={joinError}
