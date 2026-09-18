@@ -159,10 +159,12 @@
   --board-well: hsl(266, 44%, 19%);
   --board-rim: hsl(266, 40%, 26%);
   --board-hole: hsl(268, 54%, 7%);
-  /* Marks a board cell as part of the last move. A warm hue, because any
-     tint of the purple accent over `--board-hole` lands on `--board-rim`
-     and reads as just another board square. */
-  --board-mark: hsl(40, 70%, 30%);
+  /* Marks a board cell as part of the last move: the board's own violet,
+     lifted well clear of `--board-rim` in both saturation and lightness so
+     a marked cell never reads as just another board square. A fixed value
+     rather than a tint of `--accent`, which changes between themes and at
+     low alpha over `--board-hole` lands right on `--board-rim`. */
+  --board-mark: hsl(268, 62%, 42%);
 
   /* Seat colours: a game-agnostic ramp any game can assign to up to 4
      players. Colour is never the only signal — games pair these with a glyph
