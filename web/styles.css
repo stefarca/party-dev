@@ -159,6 +159,10 @@
   --board-well: hsl(266, 44%, 19%);
   --board-rim: hsl(266, 40%, 26%);
   --board-hole: hsl(268, 54%, 7%);
+  /* Marks a board cell as part of the last move. A warm hue, because any
+     tint of the purple accent over `--board-hole` lands on `--board-rim`
+     and reads as just another board square. */
+  --board-mark: hsl(40, 70%, 30%);
 
   /* Seat colours: a game-agnostic ramp any game can assign to up to 4
      players. Colour is never the only signal — games pair these with a glyph

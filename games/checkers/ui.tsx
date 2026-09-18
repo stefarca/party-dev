@@ -271,14 +271,15 @@ export default function CheckersUi({ view, players, result, send }: GameUiProps)
                   playable ? "cursor-pointer" : ""
                 }`}
               >
-                {(lastPath.has(square) || inProgress) && (
-                  // `--accent-soft` is tuned for the page's surfaces and all
-                  // but vanishes on the near-black squares, so mix the accent
-                  // itself in instead.
+                {inProgress ? (
                   <span
                     aria-hidden="true"
-                    className={`absolute inset-0 bg-[var(--accent)]/30 ${inProgress ? "ring-2 ring-[var(--accent)] ring-inset" : ""}`}
+                    className="absolute inset-0 bg-[var(--accent)]/30 ring-2 ring-[var(--accent)] ring-inset"
                   />
+                ) : (
+                  lastPath.has(square) && (
+                    <span aria-hidden="true" className="absolute inset-0 bg-[var(--board-mark)]" />
+                  )
                 )}
 
                 {piece !== null ? (
