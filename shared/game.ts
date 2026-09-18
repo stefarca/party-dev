@@ -36,6 +36,10 @@ export interface GameMeta {
   name: string;
   minPlayers: number;
   maxPlayers: number;
+  // Still listed, but greyed out and shelved after every playable game, and
+  // `POST /api/matches` refuses to start a new match of it. The module stays
+  // registered, so matches already in flight keep running to the end.
+  comingSoon?: boolean;
 }
 
 export type Result =

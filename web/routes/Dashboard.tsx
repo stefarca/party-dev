@@ -42,7 +42,8 @@ function staggerStyle(index: number): CSSProperties {
 
 // One game on the shelf. The whole tile is the button — pressing it creates
 // a match and goes straight to its lobby, so starting a game is one tap
-// rather than a form.
+// rather than a form. A `comingSoon` game keeps its tile, drained of colour
+// and permanently disabled, so the shelf still shows what is on the way.
 function GameTile({
   meta,
   index,
@@ -56,18 +57,29 @@ function GameTile({
   disabled: boolean;
   onPlay: () => void;
 }) {
+  const comingSoon = meta.comingSoon === true;
   return (
     <button
       type="button"
       onClick={onPlay}
-      disabled={disabled}
-      aria-label={`Start a new ${meta.name} match, ${playerRange(meta)}`}
+      disabled={disabled || comingSoon}
+      aria-label={
+        comingSoon
+          ? `${meta.name}, coming soon`
+          : `Start a new ${meta.name} match, ${playerRange(meta)}`
+      }
       style={staggerStyle(index)}
-      className="party-pop group relative flex cursor-pointer flex-col items-start gap-3 overflow-hidden rounded-[var(--radius-xl)] border-2 border-[var(--border-subtle)] bg-[var(--surface-1)] p-5 text-left shadow-[var(--shadow-2),var(--edge-highlight)] transition-[transform,box-shadow,border-color] duration-[var(--dur-base)] ease-[var(--ease-spring)] disabled:cursor-not-allowed disabled:opacity-60 not-disabled:hover:-translate-y-1.5 not-disabled:hover:border-[var(--border-accent)] not-disabled:hover:shadow-[var(--shadow-3),var(--glow-accent)] not-disabled:active:translate-y-0 not-disabled:active:scale-[0.98]"
+      className={`party-pop group relative flex cursor-pointer flex-col items-start gap-3 overflow-hidden rounded-[var(--radius-xl)] border-2 border-[var(--border-subtle)] bg-[var(--surface-1)] p-5 text-left shadow-[var(--shadow-2),var(--edge-highlight)] transition-[transform,box-shadow,border-color] duration-[var(--dur-base)] ease-[var(--ease-spring)] disabled:cursor-not-allowed disabled:opacity-60 not-disabled:hover:-translate-y-1.5 not-disabled:hover:border-[var(--border-accent)] not-disabled:hover:shadow-[var(--shadow-3),var(--glow-accent)] not-disabled:active:translate-y-0 not-disabled:active:scale-[0.98] ${
+        comingSoon ? "border-dashed grayscale" : ""
+      }`}
     >
       <GameGlyph
         gameId={meta.id}
-        className="size-14 transition-transform duration-[var(--dur-base)] ease-[var(--ease-bounce)] group-hover:-rotate-12 group-hover:scale-110"
+        className={
+          comingSoon
+            ? "size-14"
+            : "size-14 transition-transform duration-[var(--dur-base)] ease-[var(--ease-bounce)] group-hover:-rotate-12 group-hover:scale-110"
+        }
       />
       <div className="flex flex-col gap-0.5">
         <span className="font-display text-lg font-bold text-[var(--text-primary)]">
@@ -75,19 +87,28 @@ function GameTile({
         </span>
         <span className="text-sm text-[var(--text-muted)]">{playerRange(meta)}</span>
       </div>
-      <span
-        aria-hidden="true"
-        className="mt-1 inline-flex items-center gap-1.5 rounded-[var(--radius-pill)] px-3 py-1.5 text-sm font-bold transition-transform duration-[var(--dur-base)] ease-[var(--ease-spring)] group-hover:scale-105"
-        style={{ background: "var(--accent-soft)", color: "var(--accent-on-soft)" }}
-      >
-        {busy ? "Starting…" : "▸ Play"}
-      </span>
+      {comingSoon ? (
+        <span
+          aria-hidden="true"
+          className="mt-1 inline-flex items-center gap-1.5 rounded-[var(--radius-pill)] bg-[var(--surface-3)] px-3 py-1.5 text-sm font-bold text-[var(--text-secondary)]"
+        >
+          Coming soon
+        </span>
+      ) : (
+        <span
+          aria-hidden="true"
+          className="mt-1 inline-flex items-center gap-1.5 rounded-[var(--radius-pill)] px-3 py-1.5 text-sm font-bold transition-transform duration-[var(--dur-base)] ease-[var(--ease-spring)] group-hover:scale-105"
+          style={{ background: "var(--accent-soft)", color: "var(--accent-on-soft)" }}
+        >
+          {busy ? "Starting…" : "▸ Play"}
+        </span>
+      )}
     </button>
   );
 }
 
-// The shelf's last tile: the same footprint as a game, but it takes a code
-// from someone else's invite instead of starting something new.
+// The tile after the playable games: the same footprint as a game, but it
+// takes a code from someone else's invite instead of starting something new.
 function JoinTile({
   index,
   code,
@@ -369,6 +390,10 @@ export function Dashboard() {
   const myPlayerId = player?.playerId ?? "";
   const data = buckets ?? { yourTurn: [], waiting: [], finished: [] };
   const turnCount = data.yourTurn.length;
+  // Coming-soon games go at the very end, after the join tile, so every
+  // tile that does something sits together at the front of the shelf.
+  const playable = games.filter((g) => !g.comingSoon);
+  const comingSoon = games.filter((g) => g.comingSoon);
 
   return (
     <main id="main-content" className="app-container">
@@ -393,7 +418,7 @@ export function Dashboard() {
           </div>
         )}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {games.map((g, i) => (
+          {playable.map((g, i) => (
             <GameTile
               key={g.id}
               meta={g}
@@ -404,13 +429,23 @@ export function Dashboard() {
             />
           ))}
           <JoinTile
-            index={games.length}
+            index={playable.length}
             code={joinCode}
             onCodeChange={setJoinCode}
             onSubmit={handleJoin}
             joining={joining}
             error={joinError}
           />
+          {comingSoon.map((g, i) => (
+            <GameTile
+              key={g.id}
+              meta={g}
+              index={playable.length + 1 + i}
+              busy={false}
+              disabled
+              onPlay={() => {}}
+            />
+          ))}
         </div>
       </section>
 
