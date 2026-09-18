@@ -1,9 +1,11 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
 
-import { Avatar, Button, Form, Input, Label, Popover, TextField } from "@heroui/react";
+import { Button, Form, Input, Label, Popover, TextField } from "@heroui/react";
 
 import { ApiError } from "./api";
+import { AppBackground } from "./components/AppBackground";
+import { PlayerAvatar } from "./components/PlayerAvatar";
 import { Spinner } from "./components/states";
 import { ThemeToggle } from "./components/ThemeToggle";
 import { WordMark } from "./components/WordMark";
@@ -43,17 +45,20 @@ function RenameControl() {
 
   return (
     <Popover isOpen={editing} onOpenChange={setOpen}>
-      <Button variant="ghost" size="sm" className="max-w-28 gap-2 sm:max-w-none">
-        <Avatar size="sm">
-          <Avatar.Fallback>{player.nickname.slice(0, 1).toUpperCase()}</Avatar.Fallback>
-        </Avatar>
-        <span className="truncate">{player.nickname}</span>
+      <Button
+        variant="ghost"
+        size="sm"
+        aria-label={`Signed in as ${nickname}. Change nickname`}
+        className="max-w-32 gap-2 rounded-[var(--radius-pill)] border border-[var(--border-subtle)] bg-[var(--surface-2)] pr-3 pl-1 transition-transform duration-[var(--dur-fast)] ease-[var(--ease-spring)] hover:scale-105 sm:max-w-none"
+      >
+        <PlayerAvatar id={player.playerId} nickname={nickname} size="sm" />
+        <span className="truncate text-sm font-bold">{nickname}</span>
       </Button>
       <Popover.Content placement="bottom end">
         <Popover.Dialog aria-label="Rename nickname">
-          <Form onSubmit={handleRename} className="flex w-56 flex-col gap-2 p-3">
+          <Form onSubmit={handleRename} className="flex w-60 flex-col gap-3 p-4">
             <TextField value={value} onChange={setValue} maxLength={24}>
-              <Label className="sr-only">Nickname</Label>
+              <Label className="text-xs font-bold text-[var(--text-muted)]">Nickname</Label>
               <Input autoFocus />
             </TextField>
             {error && (
@@ -78,21 +83,26 @@ function RenameControl() {
 
 function Header() {
   return (
-    <header className="sticky top-0 z-10 flex flex-wrap items-center justify-between gap-3 border-b border-border bg-surface/80 px-4 py-3 backdrop-blur-md">
-      <a
-        href="/"
-        className="inline-flex items-center gap-2 text-lg font-bold text-foreground no-underline"
-        onClick={(e) => {
-          e.preventDefault();
-          navigate("/");
-        }}
-      >
-        <WordMark className="size-5 text-accent" />
-        party-dev
-      </a>
-      <div className="flex flex-wrap items-center gap-2">
-        <RenameControl />
-        <ThemeToggle />
+    <header className="sticky top-0 z-20 border-b border-[var(--border-subtle)] bg-[var(--surface-void)]/75 backdrop-blur-xl">
+      <div className="mx-auto flex w-full max-w-5xl items-center justify-between gap-3 px-4 py-3">
+        <a
+          href="/"
+          className="group inline-flex items-center gap-2 font-display text-lg font-bold text-[var(--text-primary)] no-underline"
+          onClick={(e) => {
+            e.preventDefault();
+            navigate("/");
+          }}
+        >
+          <WordMark
+            animated
+            className="size-7 text-accent transition-transform duration-[var(--dur-base)] ease-[var(--ease-bounce)] group-hover:rotate-12 group-hover:scale-110"
+          />
+          <span>party</span>
+        </a>
+        <div className="flex items-center gap-2">
+          <RenameControl />
+          <ThemeToggle />
+        </div>
       </div>
     </header>
   );
@@ -104,7 +114,12 @@ function RouteContent() {
   if (route.name === "match") return <MatchPage code={route.code} />;
   return (
     <main id="main-content" className="app-container">
-      <p>Page not found.</p>
+      <div className="flex flex-col items-center gap-4 py-16 text-center">
+        <WordMark animated className="size-14 text-accent opacity-60" />
+        <h1 className="m-0 font-display text-2xl font-bold">Nothing here</h1>
+        <p className="m-0 text-[var(--text-muted)]">That link does not point at a match.</p>
+        <Button onPress={() => navigate("/")}>Back to the hub</Button>
+      </div>
     </main>
   );
 }
@@ -116,10 +131,10 @@ function AppShell() {
     return (
       <main
         id="main-content"
-        className="flex min-h-dvh flex-col items-center justify-center gap-4 animate-in fade-in duration-500"
+        className="flex min-h-dvh animate-in flex-col items-center justify-center gap-5 duration-500 fade-in"
       >
-        <WordMark className="size-10 text-accent" />
-        <Spinner label="Loading party-dev" />
+        <WordMark animated className="size-14 text-accent" />
+        <Spinner label="Loading party" />
       </main>
     );
   }
@@ -139,7 +154,7 @@ function AppShell() {
 export function App() {
   return (
     <SessionProvider>
-      <div className="app-bg" aria-hidden="true" />
+      <AppBackground />
       <a href="#main-content" className="skip-link">
         Skip to content
       </a>

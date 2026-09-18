@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Party</title>
+    <meta name="description" content="Async party games you play a move at a time." />
     <link rel="icon" href="/favicon.svg" />
     <meta name="color-scheme" content="dark light" />
     <!--
@@ -32,6 +33,17 @@
         document.documentElement.classList.add(theme);
       })();
     </script>
+    <!--
+      Rounded display + text faces. `display=swap` and a full system fallback
+      chain in web/styles.css mean a blocked or slow font request costs
+      nothing but a different first paint — never a blank page.
+    -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@400;600;700;800&display=swap"
+    />
     <link rel="stylesheet" href="/web/styles.css" />
   </head>
   <body>

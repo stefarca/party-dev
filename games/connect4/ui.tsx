@@ -3,13 +3,15 @@ import { useState } from "react";
 import type { GameUiProps } from "../../shared/protocol";
 import { COLS, ROWS } from "./game";
 
-// Connect 4 board. No game-specific countdown here — the turn
-// deadline is already shown once, generically, by `TurnIndicator` in
-// `MatchPage`; duplicating it here would just be two clocks disagreeing by
-// a second.
+// Connect 4 board. No game-specific countdown here — the turn deadline is
+// already shown once, generically, by `TurnIndicator` in `MatchPage`;
+// duplicating it here would just be two clocks disagreeing by a second.
 //
 // The shell (`GameSurface`) provides the surrounding cabinet — this
-// component renders only the board content that goes inside it.
+// component renders only the board content that goes inside it. The board
+// itself is painted with the theme-independent `--board-*` tokens, so the
+// frame stays a dark plastic object and the discs stay vivid in both light
+// and dark mode.
 
 type Cell = 0 | 1 | null;
 
@@ -32,8 +34,12 @@ const SEAT_CONTRAST: Record<0 | 1, string> = {
   0: "var(--seat-1-contrast)",
   1: "var(--seat-2-contrast)",
 };
-const SEAT_GLYPH: Record<0 | 1, string> = { 0: "X", 1: "O" };
-const SEAT_LABEL: Record<0 | 1, string> = { 0: "red X", 1: "blue O" };
+const SEAT_GLYPH: Record<0 | 1, string> = { 0: "✕", 1: "●" };
+const SEAT_LABEL: Record<0 | 1, string> = { 0: "red cross", 1: "blue circle" };
+
+// The glossy sheen every filled disc carries, built from the palette's
+// `--gloss-*` tokens rather than a hardcoded white.
+const GLOSS = "radial-gradient(circle at 34% 28%, var(--gloss-highlight), var(--gloss-fade) 56%)";
 
 function Disc({
   seat,
@@ -48,7 +54,7 @@ function Disc({
     if (previewSeat !== undefined) {
       return (
         <span
-          className="flex aspect-square w-full min-w-5 items-center justify-center rounded-full opacity-40 shadow-[var(--shadow-inset)]"
+          className="flex aspect-square w-full min-w-5 items-center justify-center rounded-full opacity-45 ring-2 ring-[var(--gloss-highlight)] ring-inset"
           style={{ backgroundColor: SEAT_COLOR[previewSeat] }}
           aria-hidden="true"
         />
@@ -56,19 +62,23 @@ function Disc({
     }
     return (
       <span
-        className="flex aspect-square w-full min-w-5 items-center justify-center rounded-full bg-[var(--surface-inset)] shadow-[var(--shadow-inset)]"
+        className="flex aspect-square w-full min-w-5 items-center justify-center rounded-full bg-[var(--board-hole)] shadow-[var(--shadow-inset)]"
         aria-hidden="true"
       />
     );
   }
   return (
     <span
-      className={`flex aspect-square w-full min-w-5 items-center justify-center rounded-full bg-[image:radial-gradient(circle_at_35%_30%,hsla(0,0%,100%,0.35),hsla(0,0%,100%,0)_55%)] text-xs font-bold shadow-[var(--game-piece-shadow)] ${
+      className={`flex aspect-square w-full min-w-5 items-center justify-center rounded-full text-xs font-bold shadow-[var(--game-piece-shadow)] sm:text-sm ${
         isLastMove
-          ? "animate-[party-disc-drop_var(--dur-base)_var(--ease-spring)_both] shadow-[var(--game-piece-shadow),0_0_0_3px_var(--accent),var(--glow-accent)]"
+          ? "animate-[party-disc-drop_var(--dur-slow)_var(--ease-bounce)_both] ring-3 ring-[var(--accent)]"
           : ""
       }`}
-      style={{ backgroundColor: SEAT_COLOR[seat], color: SEAT_CONTRAST[seat] }}
+      style={{
+        backgroundColor: SEAT_COLOR[seat],
+        backgroundImage: GLOSS,
+        color: SEAT_CONTRAST[seat],
+      }}
       role="img"
       aria-label={`${SEAT_LABEL[seat]} disc${isLastMove ? " (last move)" : ""}`}
     >
@@ -79,10 +89,49 @@ function Disc({
 
 // `players` (from the match snapshot) is in join order, which is the same
 // order `init()` assigned seats 0/1 in — so `players[seat]` is a
-// straightforward lookup, not a leak of any hidden info (Connect 4 has
-// none to begin with).
+// straightforward lookup, not a leak of any hidden info (Connect 4 has none
+// to begin with).
 function nameFor(players: GameUiProps["players"], seat: 0 | 1): string {
   return players[seat]?.nickname ?? `Player ${seat + 1}`;
+}
+
+function SeatBadge({
+  seat,
+  name,
+  isYou,
+  isTurn,
+}: {
+  seat: 0 | 1;
+  name: string;
+  isYou: boolean;
+  isTurn: boolean;
+}) {
+  return (
+    <div
+      className={`flex items-center gap-2 rounded-[var(--radius-pill)] border-2 px-3 py-1.5 transition-[transform,border-color] duration-[var(--dur-base)] ease-[var(--ease-spring)] ${
+        isTurn ? "scale-105 border-[var(--border-accent)]" : "border-transparent"
+      }`}
+      style={{ background: isTurn ? "var(--accent-soft)" : "var(--surface-1)" }}
+    >
+      <span
+        aria-hidden="true"
+        className="flex size-6 flex-none items-center justify-center rounded-full text-[0.6rem] font-bold shadow-[var(--shadow-1)]"
+        style={{
+          backgroundColor: SEAT_COLOR[seat],
+          backgroundImage: GLOSS,
+          color: SEAT_CONTRAST[seat],
+        }}
+      >
+        {SEAT_GLYPH[seat]}
+      </span>
+      <span
+        className={`truncate text-sm ${isYou ? "font-bold text-[var(--text-primary)]" : "text-[var(--text-secondary)]"}`}
+      >
+        {name}
+        {isYou && " (you)"}
+      </span>
+    </div>
+  );
 }
 
 export default function Connect4Ui({ view, players, result, send }: GameUiProps) {
@@ -90,12 +139,20 @@ export default function Connect4Ui({ view, players, result, send }: GameUiProps)
   const [activeCol, setActiveCol] = useState<number | null>(null);
 
   if (!v) {
-    return <p className="m-0 text-muted">Loading board…</p>;
+    return <p className="m-0 text-[var(--text-muted)]">Loading board…</p>;
   }
 
   const disabled = v.winner !== null || v.draw || !v.yourTurn;
   const columnFull = (col: number) => v.board[ROWS - 1][col] !== null;
   const yourSeat = v.you === 0 || v.you === 1 ? v.you : null;
+  // Which seat is on the clock, used only to highlight a badge. It cannot be
+  // inferred from `turnNo`: the opening seat is drawn from the seeded PRNG
+  // rather than always being seat 0, and `view()` deliberately exposes only
+  // `you`/`yourTurn`, never the raw `turn`. For a seated player those two
+  // flags pin it down exactly; a spectator gets no highlight rather than a
+  // guessed one.
+  const turnSeat: 0 | 1 | null =
+    yourSeat === null ? null : v.yourTurn ? yourSeat : ((1 - yourSeat) as 0 | 1);
 
   const landingRowFor = (col: number): number | null => {
     for (let row = 0; row < ROWS; row++) {
@@ -114,26 +171,27 @@ export default function Connect4Ui({ view, players, result, send }: GameUiProps)
   }
 
   return (
-    <div className="flex flex-col gap-3">
-      <div className="flex flex-wrap justify-between gap-2">
+    <div className="flex flex-col gap-4">
+      <div className="mx-auto flex w-full max-w-lg flex-wrap items-center justify-center gap-2 sm:justify-between">
         {([0, 1] as const).map((seat) => (
-          <div
+          <SeatBadge
             key={seat}
-            className={`flex items-center gap-1 text-base ${v.you === seat ? "font-bold" : ""}`}
-          >
-            <Disc seat={seat} isLastMove={false} />
-            <span>
-              {nameFor(players, seat)}
-              {v.you === seat && " (you)"}
-            </span>
-          </div>
+            seat={seat}
+            name={nameFor(players, seat)}
+            isYou={v.you === seat}
+            isTurn={!result && v.winner === null && !v.draw && turnSeat === seat}
+          />
         ))}
       </div>
 
       <div
-        className="grid gap-1 rounded-md bg-[var(--surface-void)] p-1 shadow-[var(--shadow-inset)] sm:gap-2 sm:p-2"
+        className="mx-auto grid w-full max-w-lg gap-1 rounded-[var(--radius-lg)] border-4 p-1.5 shadow-[var(--shadow-inset),var(--shadow-2)] sm:gap-2 sm:p-3"
         aria-label="Connect 4 board, 7 columns by 6 rows"
-        style={{ gridTemplateColumns: `repeat(${COLS}, 1fr)` }}
+        style={{
+          gridTemplateColumns: `repeat(${COLS}, 1fr)`,
+          background: "var(--board-well)",
+          borderColor: "var(--board-rim)",
+        }}
       >
         {Array.from({ length: COLS }, (_, col) => {
           const full = columnFull(col);
@@ -144,8 +202,10 @@ export default function Connect4Ui({ view, players, result, send }: GameUiProps)
             <button
               key={col}
               type="button"
-              className={`flex cursor-pointer flex-col gap-1 rounded-md border-none p-[0.2rem] focus-visible:outline focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] disabled:cursor-not-allowed sm:gap-2 ${
-                canPreview && activeCol === col ? "bg-[var(--accent-soft)]" : "bg-transparent"
+              className={`flex cursor-pointer flex-col gap-1 rounded-[var(--radius-sm)] border-none p-1 transition-[background-color,transform] duration-[var(--dur-fast)] ease-[var(--ease-out)] focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] disabled:cursor-not-allowed sm:gap-2 ${
+                canPreview && activeCol === col
+                  ? "-translate-y-0.5 bg-[var(--accent-soft)]"
+                  : "bg-transparent"
               }`}
               disabled={colDisabled}
               aria-label={
@@ -177,7 +237,7 @@ export default function Connect4Ui({ view, players, result, send }: GameUiProps)
       </div>
 
       {!result && (
-        <p className="m-0 text-[var(--text-secondary)]">
+        <p className="m-0 text-center text-sm font-semibold text-[var(--text-secondary)]">
           {v.winner !== null
             ? "Match finished."
             : v.yourTurn

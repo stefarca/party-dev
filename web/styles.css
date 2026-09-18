@@ -8,28 +8,40 @@
 /* `@heroui/styles` already ships a `dark` custom variant keyed off the same
    `.dark` class / `[data-theme="dark"]` attribute that `web/theme.ts` writes,
    so `dark:` utilities and HeroUI's own dark styles already share one
-   switch — nothing to redeclare here. */
+   switch — nothing to redeclare here. It also pulls in `tw-animate-css`,
+   which is where `animate-in` / `fade-in` / `slide-in-from-*` / `zoom-in-*`
+   come from; the keyframes further down are only the ones that vocabulary
+   does not already cover. */
 
 @theme {
-  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  --font-mono: ui-monospace, monospace;
+  /* Rounded, friendly faces with a full fallback chain: the webfonts are
+     loaded from index.html with `display=swap`, so if they never arrive the
+     UI simply renders in the platform's own rounded face (SF Pro Rounded on
+     Apple) or plain system-ui. Nothing depends on them being present. */
+  --font-sans:
+    "Nunito", ui-rounded, "SF Pro Rounded", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-display:
+    "Fredoka", "Nunito", ui-rounded, "SF Pro Rounded", system-ui, -apple-system, sans-serif;
+  --font-mono: ui-monospace, "SFMono-Regular", Menlo, monospace;
 
-  --radius-sm: 4px;
-  --radius-md: 6px;
-  --radius-lg: 8px;
+  /* Generous, pill-leaning radii — the single strongest signal that this is
+     a toy box rather than a dashboard. */
+  --radius-xs: 8px;
+  --radius-sm: 12px;
+  --radius-md: 16px;
+  --radius-lg: 22px;
+  --radius-xl: 30px;
+  --radius-2xl: 40px;
   --radius-pill: 999px;
 
-  --spacing-1: 0.25rem;
-  --spacing-2: 0.5rem;
-  --spacing-3: 0.75rem;
-  --spacing-4: 1rem;
-  --spacing-5: 1.5rem;
-  --spacing-6: 2rem;
-  --spacing-7: 3rem;
-  --spacing-8: 4rem;
-
+  /* `--ease-spring` overshoots a little, `--ease-bounce` overshoots a lot.
+     Anything that should feel physical (a press, a drop, a card landing)
+     uses one of those two; anything that should feel calm (a colour fade, a
+     progress bar) uses `--ease-out`. */
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-bounce: cubic-bezier(0.22, 1.64, 0.4, 1);
+  --ease-squish: cubic-bezier(0.45, 0, 0.2, 1);
 }
 
 /*
@@ -42,148 +54,194 @@
  * flattened onto its parent surface before the ratio is computed). Re-check
  * this table whenever a value below changes.
  *
- *                                                          dark    light
- *   text-secondary on surface-1 (body copy)                8.32    8.01   >= 4.5
- *   text-muted on surface-1 (meta text that carries info)  4.61    4.74   >= 4.5
- *   ok-fg on ok-soft (chip/status text)                    7.74    4.81   >= 4.5
- *   warn-fg on warn-soft (chip/status text)                7.47    4.74   >= 4.5
- *   danger-fg on danger-soft (chip/status text)            4.94    4.72   >= 4.5
- *   accent-on-soft on accent-soft (chip-accent text)       5.49    6.56   >= 4.5
- *   text-on-accent on accent (primary button label)        4.31    7.83   >= 4.5
- *   border-strong on surface-1 (input/button borders)      3.23    3.42   >= 3.0
- *   seat-1 on surface-void (board background)              4.43    4.87   >= 3.0
- *   seat-2 on surface-void (board background)              5.06    5.09   >= 3.0
- *   accent focus ring on surface-3 (header, tightest case) 3.12    6.59   >= 3.0
+ *                                                           dark    light
+ *   text-primary on surface-1 (headings)                    16.30   17.44   >= 4.5
+ *   text-secondary on surface-1 (body copy)                 10.91    8.80   >= 4.5
+ *   text-muted on surface-1 (meta text that carries info)    6.77    5.66   >= 4.5
+ *   text-muted on surface-void (meta on the page backdrop)   7.45    5.17   >= 4.5
+ *   ok-fg on ok-soft (chip/status text)                      8.03    4.68   >= 4.5
+ *   warn-fg on warn-soft (chip/status text)                  7.90    4.78   >= 4.5
+ *   danger-fg on danger-soft (chip/status text)              5.21    4.74   >= 4.5
+ *   accent-on-soft on accent-soft (chip-accent text)         7.32    7.25   >= 4.5
+ *   pink-on-soft on pink-soft (secondary chip text)          7.30    4.83   >= 4.5
+ *   text-on-accent on accent (primary button label)          6.10    5.47   >= 4.5
+ *   text-on-accent on danger (tightest status fill)          7.15    5.79   >= 4.5
+ *   border-strong on surface-1 (input/button borders)        3.71    3.58   >= 3.0
+ *   accent focus ring on surface-3 (tightest case)           4.32    4.63   >= 3.0
+ *   seat-1 on board-well (piece on the board)                4.37    4.37   >= 3.0
+ *   seat-2 on board-well (piece on the board)                6.28    6.28   >= 3.0
+ *   seat-3 on board-well (piece on the board)                8.67    8.67   >= 3.0
+ *   seat-4 on board-well (piece on the board)                9.34    9.34   >= 3.0
+ *   seat-1-contrast on seat-1 (piece glyph, tightest seat)   4.98    4.98   >= 4.5
+ *
+ * The seat ramp and the board well do not change between themes (see the
+ * note on `--board-well` below), so both columns are identical for those.
  */
 :root {
   color-scheme: dark;
 
-  /* Surfaces, darkest to lightest. */
-  --surface-void: hsl(230, 22%, 6%);
-  --surface-1: hsl(230, 18%, 11%);
-  --surface-2: hsl(230, 16%, 15%);
-  --surface-3: hsl(230, 14%, 20%);
-  --surface-inset: hsl(230, 26%, 4%);
+  /* Surfaces, darkest to lightest. A deep plum rather than a neutral black —
+     the whole dark theme reads as "night party", not "IDE". */
+  --surface-void: hsl(266, 48%, 7%);
+  --surface-1: hsl(264, 32%, 12%);
+  --surface-2: hsl(263, 28%, 16%);
+  --surface-3: hsl(262, 24%, 22%);
+  --surface-inset: hsl(268, 52%, 5%);
 
   /* Borders. */
-  --border-subtle: hsla(230, 20%, 90%, 0.08);
-  --border-strong: hsla(230, 20%, 90%, 0.4);
-  --border-accent: hsl(258, 90%, 66%);
+  --border-subtle: hsla(276, 40%, 92%, 0.1);
+  --border-strong: hsla(276, 40%, 92%, 0.44);
+  --border-accent: hsl(268, 95%, 72%);
 
   /* Text. */
-  --text-primary: hsl(230, 25%, 95%);
-  --text-secondary: hsl(230, 12%, 72%);
-  --text-muted: hsl(230, 10%, 54%);
-  --text-on-accent: hsl(0, 0%, 100%);
+  --text-primary: hsl(280, 40%, 97%);
+  --text-secondary: hsl(276, 22%, 82%);
+  --text-muted: hsl(274, 16%, 66%);
+  /* Both themes' accent/status fills are chosen so one ink colour reads on
+     all of them: near-black on the light fills of the dark theme, white on
+     the saturated fills of the light theme. */
+  --text-on-accent: hsl(268, 60%, 10%);
 
-  /* Accent ("arcade" hue). */
-  --accent: hsl(258, 90%, 66%);
-  --accent-strong: hsl(258, 90%, 58%);
-  --accent-soft: hsla(258, 90%, 66%, 0.16);
-  --accent-contrast: hsl(0, 0%, 100%);
+  /* The party hues. `--accent` is the one that means "act here"; the other
+     three are decoration (blobs, confetti, game motifs) and never the only
+     carrier of meaning. */
+  --accent: hsl(268, 95%, 72%);
+  --accent-strong: hsl(268, 95%, 64%);
+  --accent-soft: hsla(268, 95%, 72%, 0.18);
+  --accent-contrast: hsl(268, 60%, 10%);
   /* A lighter tint of the accent hue for text painted directly on
-     `--accent-soft` (e.g. chip-accent labels) — `--accent` itself is tuned
-     for buttons and focus rings, not for that low-alpha background. */
-  --accent-on-soft: hsl(258, 90%, 76%);
+     `--accent-soft` — `--accent` itself is tuned for buttons and focus
+     rings, not for that low-alpha background. */
+  --accent-on-soft: hsl(268, 95%, 84%);
+
+  --party-pink: hsl(330, 92%, 70%);
+  --party-pink-soft: hsla(330, 92%, 70%, 0.18);
+  --party-pink-on-soft: hsl(330, 92%, 82%);
+  --party-warm: hsl(38, 96%, 64%);
+  --party-mint: hsl(162, 78%, 60%);
 
   /* Status triplets: -fg / -soft / -border. */
-  --ok-fg: hsl(142, 70%, 60%);
-  --ok-soft: hsla(142, 70%, 60%, 0.14);
-  --ok-border: hsla(142, 70%, 60%, 0.35);
+  --ok-fg: hsl(152, 75%, 64%);
+  --ok-soft: hsla(152, 75%, 64%, 0.16);
+  --ok-border: hsla(152, 75%, 64%, 0.38);
 
-  --warn-fg: hsl(38, 95%, 62%);
-  --warn-soft: hsla(38, 95%, 62%, 0.14);
-  --warn-border: hsla(38, 95%, 62%, 0.35);
+  --warn-fg: hsl(40, 96%, 68%);
+  --warn-soft: hsla(40, 96%, 68%, 0.16);
+  --warn-border: hsla(40, 96%, 68%, 0.38);
 
-  --danger-fg: hsl(6, 85%, 66%);
-  --danger-soft: hsla(6, 85%, 66%, 0.14);
-  --danger-border: hsla(6, 85%, 66%, 0.35);
+  --danger-fg: hsl(352, 92%, 72%);
+  --danger-soft: hsla(352, 92%, 72%, 0.16);
+  --danger-border: hsla(352, 92%, 72%, 0.38);
 
-  /* Elevation. */
-  --shadow-1: 0 1px 2px hsla(230, 40%, 2%, 0.4);
-  --shadow-2: 0 4px 12px hsla(230, 40%, 2%, 0.45);
-  --shadow-3: 0 12px 32px hsla(230, 40%, 2%, 0.55);
-  --glow-accent: 0 0 0 3px hsla(258, 90%, 66%, 0.28);
-  --glow-accent-strong: 0 0 0 6px hsla(258, 90%, 66%, 0.4);
-  --edge-highlight: inset 0 1px 0 hsla(230, 20%, 100%, 0.06);
-  --shadow-inset: inset 0 1px 3px hsla(230, 40%, 2%, 0.3);
+  /* Elevation. Playful shadows are soft and tinted with the accent hue
+     rather than neutral grey, so nothing looks like a drop-shadowed box. */
+  --shadow-1: 0 2px 6px hsla(268, 60%, 3%, 0.45);
+  --shadow-2: 0 8px 20px hsla(268, 60%, 3%, 0.5);
+  --shadow-3: 0 18px 44px hsla(268, 60%, 3%, 0.6);
+  --glow-accent: 0 0 0 3px hsla(268, 95%, 72%, 0.32);
+  --glow-accent-strong: 0 0 28px 4px hsla(268, 95%, 72%, 0.45);
+  --edge-highlight: inset 0 1px 0 hsla(276, 60%, 100%, 0.08);
+  --shadow-inset: inset 0 2px 6px hsla(268, 60%, 3%, 0.45);
+  /* A crisp offset "sticker" edge used by the game tiles. */
+  --sticker-edge: 0 4px 0 hsla(268, 60%, 3%, 0.35);
 
-  /* Seat colours: a neutral ramp any game can assign to up to 4 players.
-     Colour is never the only signal — games pair these with a glyph or
-     label — but each still needs to pass contrast against its own
-     `-contrast` text colour in both themes. */
-  --seat-1: hsl(6, 72%, 52%);
-  --seat-1-contrast: hsl(0, 0%, 100%);
-  --seat-2: hsl(217, 80%, 58%);
-  --seat-2-contrast: hsl(0, 0%, 100%);
-  --seat-3: hsl(142, 55%, 40%);
-  --seat-3-contrast: hsl(0, 0%, 100%);
-  --seat-4: hsl(38, 85%, 50%);
-  --seat-4-contrast: hsl(230, 25%, 12%);
+  /* A white-ish sheen for glossy pieces (discs, tokens, tiles). */
+  --gloss-highlight: hsla(0, 0%, 100%, 0.38);
+  --gloss-fade: hsla(0, 0%, 100%, 0);
+
+  /* A game board is a physical object, so it keeps the same colours in both
+     themes: a dark plastic frame with vivid pieces sitting in it. Painting
+     the well with the theme's own light surface instead would force every
+     piece colour down to a muddy, low-saturation ramp just to stay legible
+     on white — the opposite of what a toy should look like. `--board-well`
+     and the seat ramp below are therefore deliberately *not* overridden in
+     the light theme. */
+  --board-well: hsl(266, 44%, 19%);
+  --board-rim: hsl(266, 40%, 26%);
+  --board-hole: hsl(268, 54%, 7%);
+
+  /* Seat colours: a game-agnostic ramp any game can assign to up to 4
+     players. Colour is never the only signal — games pair these with a glyph
+     or label — but each still needs to pass contrast against the board it
+     sits on and against its own `-contrast` ink. */
+  --seat-1: hsl(352, 88%, 62%);
+  --seat-1-contrast: hsl(352, 60%, 12%);
+  --seat-2: hsl(202, 92%, 58%);
+  --seat-2-contrast: hsl(202, 70%, 12%);
+  --seat-3: hsl(152, 72%, 52%);
+  --seat-3-contrast: hsl(152, 60%, 10%);
+  --seat-4: hsl(42, 96%, 60%);
+  --seat-4-contrast: hsl(42, 70%, 12%);
 
   /* Shared shadow for game pieces (discs, tiles, tokens). */
   --game-piece-shadow:
-    0 2px 4px hsla(230, 40%, 2%, 0.45), inset 0 1px 1px hsla(230, 20%, 100%, 0.35);
+    0 3px 0 hsla(268, 60%, 3%, 0.4), 0 6px 10px hsla(268, 60%, 3%, 0.35),
+    inset 0 2px 2px hsla(0, 0%, 100%, 0.3);
 
-  --dur-fast: 100ms;
-  --dur-base: 180ms;
-  --dur-pulse: 2200ms;
+  --dur-fast: 120ms;
+  --dur-base: 220ms;
+  --dur-slow: 420ms;
+  --dur-pulse: 2400ms;
+  --dur-drift: 26s;
 }
 
 :root[data-theme="light"] {
   color-scheme: light;
 
-  --surface-void: hsl(230, 20%, 95%);
+  --surface-void: hsl(276, 62%, 97%);
   --surface-1: hsl(0, 0%, 100%);
-  --surface-2: hsl(230, 20%, 97%);
-  --surface-3: hsl(230, 16%, 93%);
-  --surface-inset: hsl(230, 20%, 92%);
+  --surface-2: hsl(276, 50%, 98%);
+  --surface-3: hsl(274, 40%, 94%);
+  --surface-inset: hsl(274, 36%, 91%);
 
-  --border-subtle: hsla(230, 20%, 10%, 0.1);
-  --border-strong: hsla(230, 20%, 10%, 0.5);
-  --border-accent: hsl(258, 80%, 50%);
+  --border-subtle: hsla(272, 42%, 13%, 0.1);
+  --border-strong: hsla(272, 42%, 13%, 0.52);
+  --border-accent: hsl(266, 88%, 58%);
 
-  --text-primary: hsl(230, 25%, 12%);
-  --text-secondary: hsl(230, 12%, 34%);
-  --text-muted: hsl(230, 10%, 48%);
+  --text-primary: hsl(272, 42%, 13%);
+  --text-secondary: hsl(272, 20%, 33%);
+  --text-muted: hsl(272, 14%, 44%);
   --text-on-accent: hsl(0, 0%, 100%);
 
-  --accent: hsl(258, 80%, 50%);
-  --accent-strong: hsl(258, 80%, 42%);
-  --accent-soft: hsla(258, 80%, 50%, 0.1);
+  --accent: hsl(266, 88%, 58%);
+  --accent-strong: hsl(266, 88%, 48%);
+  --accent-soft: hsla(266, 88%, 58%, 0.13);
   --accent-contrast: hsl(0, 0%, 100%);
-  --accent-on-soft: hsl(258, 80%, 50%);
+  --accent-on-soft: hsl(266, 88%, 42%);
 
-  --ok-fg: hsl(142, 65%, 28%);
-  --ok-soft: hsla(142, 65%, 28%, 0.12);
-  --ok-border: hsla(142, 65%, 28%, 0.3);
+  --party-pink: hsl(332, 82%, 54%);
+  --party-pink-soft: hsla(332, 82%, 54%, 0.13);
+  --party-pink-on-soft: hsl(332, 82%, 42%);
+  --party-warm: hsl(28, 92%, 48%);
+  --party-mint: hsl(162, 72%, 34%);
 
-  --warn-fg: hsl(32, 90%, 32%);
-  --warn-soft: hsla(32, 90%, 32%, 0.12);
-  --warn-border: hsla(32, 90%, 32%, 0.3);
+  --ok-fg: hsl(152, 72%, 27%);
+  --ok-soft: hsla(152, 72%, 27%, 0.13);
+  --ok-border: hsla(152, 72%, 27%, 0.32);
 
-  --danger-fg: hsl(4, 75%, 45%);
-  --danger-soft: hsla(4, 75%, 45%, 0.1);
-  --danger-border: hsla(4, 75%, 45%, 0.3);
+  --warn-fg: hsl(28, 92%, 33%);
+  --warn-soft: hsla(28, 92%, 33%, 0.13);
+  --warn-border: hsla(28, 92%, 33%, 0.32);
 
-  --shadow-1: 0 1px 2px hsla(230, 20%, 10%, 0.08);
-  --shadow-2: 0 4px 12px hsla(230, 20%, 10%, 0.1);
-  --shadow-3: 0 12px 32px hsla(230, 20%, 10%, 0.14);
-  --glow-accent: 0 0 0 3px hsla(258, 80%, 50%, 0.2);
-  --glow-accent-strong: 0 0 0 6px hsla(258, 80%, 50%, 0.3);
-  --edge-highlight: inset 0 1px 0 hsla(0, 0%, 100%, 0.6);
-  --shadow-inset: inset 0 1px 3px hsla(230, 20%, 10%, 0.12);
+  --danger-fg: hsl(352, 78%, 44%);
+  --danger-soft: hsla(352, 78%, 44%, 0.12);
+  --danger-border: hsla(352, 78%, 44%, 0.32);
 
-  --seat-1: hsl(6, 70%, 45%);
-  --seat-1-contrast: hsl(0, 0%, 100%);
-  --seat-2: hsl(217, 75%, 46%);
-  --seat-2-contrast: hsl(0, 0%, 100%);
-  --seat-3: hsl(142, 55%, 32%);
-  --seat-3-contrast: hsl(0, 0%, 100%);
-  --seat-4: hsl(32, 90%, 40%);
-  --seat-4-contrast: hsl(0, 0%, 100%);
+  --shadow-1: 0 2px 6px hsla(272, 42%, 20%, 0.1);
+  --shadow-2: 0 8px 20px hsla(272, 42%, 20%, 0.13);
+  --shadow-3: 0 18px 44px hsla(272, 42%, 20%, 0.18);
+  --glow-accent: 0 0 0 3px hsla(266, 88%, 58%, 0.24);
+  --glow-accent-strong: 0 0 28px 4px hsla(266, 88%, 58%, 0.32);
+  --edge-highlight: inset 0 1px 0 hsla(0, 0%, 100%, 0.75);
+  --shadow-inset: inset 0 2px 6px hsla(272, 42%, 20%, 0.14);
+  --sticker-edge: 0 4px 0 hsla(272, 42%, 20%, 0.14);
 
-  --game-piece-shadow: 0 2px 4px hsla(230, 20%, 10%, 0.2), inset 0 1px 1px hsla(0, 0%, 100%, 0.5);
+  --gloss-highlight: hsla(0, 0%, 100%, 0.55);
+  --gloss-fade: hsla(0, 0%, 100%, 0);
+
+  --game-piece-shadow:
+    0 3px 0 hsla(272, 42%, 20%, 0.18), 0 6px 10px hsla(272, 42%, 20%, 0.16),
+    inset 0 2px 2px hsla(0, 0%, 100%, 0.5);
 }
 
 /*
@@ -242,6 +300,10 @@
   --separator: var(--border-subtle);
   --focus: var(--accent);
   --link: var(--accent);
+
+  /* HeroUI's own corner radius, so its components round as generously as
+     everything this stylesheet draws by hand. */
+  --radius: 0.875rem;
 }
 
 /* Base document look: the app paints its own background/text colour (behind
@@ -251,11 +313,15 @@ html,
 body {
   background: var(--surface-void);
   color: var(--text-primary);
+  font-family: var(--font-sans);
+  /* iOS Safari: stop a double-tap on a game tile from zooming the page. */
+  touch-action: manipulation;
 }
 
 :focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
+  outline: 3px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: var(--radius-xs);
 }
 
 ::selection {
@@ -268,13 +334,13 @@ body {
  * accessibility tree and reachable by keyboard. */
 .skip-link {
   position: fixed;
-  top: var(--spacing-2);
-  left: var(--spacing-2);
+  top: 0.5rem;
+  left: 0.5rem;
   z-index: 100;
-  padding: var(--spacing-2) var(--spacing-4);
+  padding: 0.5rem 1rem;
   background: var(--surface-1);
   color: var(--text-primary);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-pill);
   box-shadow: var(--shadow-3), var(--edge-highlight);
   transform: translateY(-150%);
   transition: transform var(--dur-fast) var(--ease-out);
@@ -285,41 +351,129 @@ body {
 }
 
 /* Ambient background. A fixed, non-interactive paint behind the app — never
- * a scroll container, never something that can trap clicks. */
+ * a scroll container, never something that can trap clicks. Three big
+ * blurred blobs drift slowly behind everything; the dot grid on top keeps
+ * large flat areas from looking empty. */
 .app-bg {
   position: fixed;
   inset: 0;
   z-index: -1;
+  overflow: hidden;
   pointer-events: none;
-  background:
-    radial-gradient(ellipse 80% 50% at 15% -10%, var(--accent-soft), transparent 60%),
-    radial-gradient(ellipse 60% 40% at 100% 0%, var(--accent-soft), transparent 55%),
-    radial-gradient(ellipse 70% 60% at 50% 120%, var(--surface-2), transparent 60%),
-    var(--surface-void);
+  background: var(--surface-void);
 }
 
 .app-bg::after {
   content: "";
   position: absolute;
   inset: 0;
-  background-image: radial-gradient(var(--border-subtle) 1px, transparent 1px);
-  background-size: 28px 28px;
-  opacity: 0.4;
+  background-image: radial-gradient(var(--border-subtle) 1.5px, transparent 1.5px);
+  background-size: 32px 32px;
+  opacity: 0.5;
+}
+
+.party-blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.5;
+  animation: party-blob-drift var(--dur-drift) var(--ease-out) infinite alternate;
+  will-change: transform;
 }
 
 /* Shared page-width wrapper reused by every route's main content — the one
  * layout primitive not worth repeating as a class string at every call
  * site. */
 .app-container {
-  max-width: 40rem;
+  width: 100%;
+  max-width: 64rem;
   margin-inline: auto;
-  padding: var(--spacing-4);
+  padding: 1.5rem 1rem 5rem;
 }
 
 /* A slow, low-amplitude pulse on the box-shadow only — never the layout —
    so it reads as "this needs you" without becoming a strobe. */
 .turn-pulse {
   animation: party-turn-glow var(--dur-pulse) var(--ease-out) infinite;
+}
+
+/* Entrance for anything that arrives in a list: a springy pop rather than a
+ * fade. `--pop-delay` is set inline per item to stagger a grid. */
+.party-pop {
+  animation: party-pop-in var(--dur-slow) var(--ease-bounce) both;
+  animation-delay: var(--pop-delay, 0ms);
+}
+
+/* A single confetti piece. Every piece reads its own colour, horizontal
+ * drift, spin and delay from inline custom properties, so one keyframe
+ * covers a whole burst. */
+.confetti-piece {
+  position: absolute;
+  top: -5%;
+  left: var(--confetti-x, 50%);
+  width: 0.6rem;
+  height: 0.9rem;
+  border-radius: var(--radius-xs);
+  background: var(--confetti-color, var(--accent));
+  opacity: 0;
+  animation: party-confetti-fall var(--confetti-duration, 2400ms) var(--ease-out) forwards;
+  animation-delay: var(--confetti-delay, 0ms);
+  will-change: transform, opacity;
+}
+
+/*
+ * Named keyframes referenced from `games/**\/*.tsx` via Tailwind's
+ * `animate-[name_duration_easing]` arbitrary-value syntax — an animation
+ * name has to resolve against a `@keyframes` rule that exists somewhere in
+ * the stylesheet, and game UI modules cannot import a stylesheet of their
+ * own to define it locally.
+ */
+@keyframes party-disc-drop {
+  0% {
+    transform: translateY(-260%) scaleY(1.15);
+    opacity: 0.5;
+  }
+  65% {
+    transform: translateY(0) scaleY(0.88);
+    opacity: 1;
+  }
+  82% {
+    transform: translateY(-14%) scaleY(1.06);
+  }
+  100% {
+    transform: translateY(0) scaleY(1);
+    opacity: 1;
+  }
+}
+
+@keyframes party-choice-press {
+  0% {
+    transform: scale(1);
+  }
+  35% {
+    transform: scale(0.94);
+  }
+  70% {
+    transform: scale(1.03);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* A win celebration a game can put on its own board (the trophy row, the
+   winning line) without reaching for the page-level confetti. */
+@keyframes party-celebrate {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  25% {
+    transform: translateY(-14%) rotate(-5deg);
+  }
+  75% {
+    transform: translateY(-7%) rotate(5deg);
+  }
 }
 
 @keyframes party-turn-glow {
@@ -332,33 +486,44 @@ body {
   }
 }
 
-/*
- * Named keyframes referenced from `games/**\/*.tsx` via Tailwind's
- * `animate-[name_duration_easing]` arbitrary-value syntax — an animation
- * name has to resolve against a `@keyframes` rule that exists somewhere in
- * the stylesheet, and game UI modules cannot import a stylesheet of their
- * own to define it locally.
- */
-@keyframes party-disc-drop {
-  from {
-    transform: translateY(-12px);
-    opacity: 0.6;
+@keyframes party-pop-in {
+  0% {
+    transform: translateY(1.25rem) scale(0.92);
+    opacity: 0;
   }
-  to {
-    transform: translateY(0);
+  100% {
+    transform: translateY(0) scale(1);
     opacity: 1;
   }
 }
 
-@keyframes party-choice-press {
+@keyframes party-blob-drift {
   0% {
-    transform: scale(1);
-  }
-  40% {
-    transform: scale(0.97);
+    transform: translate3d(0, 0, 0) scale(1);
   }
   100% {
-    transform: scale(1);
+    transform: translate3d(6%, -8%, 0) scale(1.18);
+  }
+}
+
+@keyframes party-float {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-8%) rotate(3deg);
+  }
+}
+
+@keyframes party-confetti-fall {
+  0% {
+    transform: translate3d(0, 0, 0) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translate3d(var(--confetti-drift, 0), 115vh, 0) rotate(var(--confetti-spin, 540deg));
+    opacity: 0;
   }
 }
 
