@@ -4,10 +4,10 @@ A collection of small async, turn-based party games for playing with coworkers, 
 Cloudflare's free tier (Worker + Static Assets + Durable Objects + D1).
 
 **What works today:** nickname-only identity (no passwords), a dashboard that buckets your
-matches into "your turn" / "waiting on others" / "finished", two full games (Connect 4 and
-Trivia) playable over a live WebSocket (with an HTTP fallback for every action), and Slack nudges
-for players who are newly up and not currently connected. See [`games/README.md`](./games/README.md)
-for how to add a third game.
+matches into "your turn" / "waiting on others" / "finished", three games (Connect 4, Tic-tac-toe
+and Trivia) playable over a live WebSocket (with an HTTP fallback for every action), and Slack
+nudges for players who are newly up and not currently connected. See
+[`games/README.md`](./games/README.md) for how to add another game.
 
 ## Prerequisites
 

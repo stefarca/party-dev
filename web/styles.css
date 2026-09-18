@@ -476,6 +476,23 @@ body {
   }
 }
 
+/* A pen stroke drawing itself: for an SVG shape with `pathLength="1"` and
+   `stroke-dasharray: 1`, e.g. a freshly placed mark. The opacity step hides
+   the round cap that would otherwise sit as a dot at the path's start. */
+@keyframes party-stroke-draw {
+  0% {
+    stroke-dashoffset: 1;
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  100% {
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
+}
+
 @keyframes party-turn-glow {
   0%,
   100% {
