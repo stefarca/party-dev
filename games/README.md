@@ -45,7 +45,15 @@ optionally, one in `games/icons.ts`) — nothing else. Checklist, in order:
      `@keyframes` a Tailwind arbitrary-value animation refers to, for instance) belongs in
      `web/styles.css` instead. Never render the deadline or a countdown; the shell shows it once.
      Colour must never be the only signal for game state — pair it with text, a glyph, or an aria
-     attribute. Tailwind only emits classes it can see statically, so never build a class name from
+     attribute.
+   - **Strings:** every word the UI shows or announces — accessible names included — comes from
+     `games/<id>/locales/<lng>.json`, one file per language in `web/locales/`, with `en.json` as
+     the source. Include `name`, the game's display name, whose English value must equal
+     `meta.name`. Declare the namespace at the top of `ui.tsx` (copy the
+     `declare module "i18next"` block from another game) and read it with
+     `useTranslation("<id>")`, never `common`: the Worker's type-check of your UI cannot see
+     `web/`. Use `_one`/`_other` keys with a `count` for anything plural.
+     `web/translations.test.ts` fails if a language is missing a key. Tailwind only emits classes it can see statically, so never build a class name from
      a runtime value (e.g. `` `bg-seat-${n}` ``) — use a static lookup table of complete class
      strings, or set a CSS custom property inline instead.
 5. **Register it** — one line in each map in `games/registry.ts`:

@@ -1,7 +1,11 @@
+import type { TFunction } from "i18next";
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import type { Result } from "../../shared/game";
 import type { PlayerId, PlayerInfo } from "../../shared/protocol";
+import { longDuration, shortDuration } from "../format";
+import { useLanguage } from "../i18n";
 import { PlayerAvatar } from "./PlayerAvatar";
 
 // The engine's "who is the game waiting on" answer, rendered generically —
@@ -17,75 +21,51 @@ function nameFor(players: PlayerInfo[], id: PlayerId): string {
 // headline says what happened to *you*, the detail says who else was
 // involved.
 function resultCopy(
+  t: TFunction,
   result: Result,
   players: PlayerInfo[],
   me: PlayerId,
 ): { headline: string; detail: string } {
   if (result.kind === "draw") {
-    return { headline: "It's a draw", detail: "Nobody takes this one." };
+    return { headline: t("result.draw"), detail: t("result.drawDetail") };
   }
   if (result.kind === "win") {
     if (result.winners.includes(me)) {
       const beaten = players.filter((p) => !result.winners.includes(p.id));
       return {
-        headline: "You won!",
+        headline: t("result.won"),
         detail:
-          beaten.length > 0 ? `You beat ${beaten.map((p) => p.nickname).join(", ")}.` : "Nice one.",
+          beaten.length > 0
+            ? t("result.youBeat", { names: beaten.map((p) => p.nickname).join(", ") })
+            : t("result.wonAlone"),
       };
     }
-    if (result.winners.length === 0) return { headline: "Match finished", detail: "No winner." };
+    if (result.winners.length === 0) {
+      return { headline: t("result.finished"), detail: t("result.noWinner") };
+    }
     return {
-      headline: "Match finished",
-      detail: `${result.winners.map((w) => nameFor(players, w)).join(", ")} won.`,
+      headline: t("result.finished"),
+      detail: t("result.winners", {
+        count: result.winners.length,
+        names: result.winners.map((w) => nameFor(players, w)).join(", "),
+      }),
     };
   }
   // result.kind === "scores"
   const entries = Object.entries(result.scores).sort((a, b) => b[1] - a[1]);
   return {
-    headline: "Match finished",
-    detail: `Final scores: ${entries.map(([id, score]) => `${nameFor(players, id)} ${score}`).join(", ")}`,
+    headline: t("result.finished"),
+    detail: t("result.scores", {
+      scores: entries.map(([id, score]) => `${nameFor(players, id)} ${score}`).join(", "),
+    }),
   };
-}
-
-const MINUTE = 60_000;
-const HOUR = 60 * MINUTE;
-const DAY = 24 * HOUR;
-
-// What goes inside the ring: at most four characters, because a turn
-// deadline is routinely a day away ("1439:58" would not fit, and a player
-// with 24 hours left does not need the seconds). Resolution tightens as the
-// deadline approaches — days, then hours, then m:ss, then seconds.
-function shortCountdown(remainingMs: number): string {
-  if (remainingMs >= DAY) return `${Math.floor(remainingMs / DAY)}d`;
-  if (remainingMs >= HOUR) return `${Math.floor(remainingMs / HOUR)}h`;
-  if (remainingMs >= MINUTE) {
-    const totalSeconds = Math.ceil(remainingMs / 1000);
-    return `${Math.floor(totalSeconds / 60)}:${(totalSeconds % 60).toString().padStart(2, "0")}`;
-  }
-  return `${Math.ceil(remainingMs / 1000)}s`;
-}
-
-// The spoken version, which has no width limit and so stays unambiguous
-// ("2h" could be anything from 2:00 to 2:59).
-function spokenCountdown(remainingMs: number): string {
-  if (remainingMs <= 0) return "time is up";
-  const days = Math.floor(remainingMs / DAY);
-  const hours = Math.floor((remainingMs % DAY) / HOUR);
-  const minutes = Math.floor((remainingMs % HOUR) / MINUTE);
-  const seconds = Math.ceil((remainingMs % MINUTE) / 1000);
-  const parts: string[] = [];
-  if (days > 0) parts.push(`${days} day${days === 1 ? "" : "s"}`);
-  if (hours > 0) parts.push(`${hours} hour${hours === 1 ? "" : "s"}`);
-  if (minutes > 0 && days === 0) parts.push(`${minutes} minute${minutes === 1 ? "" : "s"}`);
-  if (seconds > 0 && days === 0 && hours === 0) {
-    parts.push(`${seconds} second${seconds === 1 ? "" : "s"}`);
-  }
-  return `${parts.join(" ")} remaining`;
 }
 
 // A depleting ring around the remaining time. Decorative: the same number is
 // always printed inside it, and the whole control carries an aria-label, so
-// the ring itself never has to be read.
+// the ring itself never has to be read. The number is at most four
+// characters, because a turn deadline is routinely a day away and a player
+// with 24 hours left does not need the seconds.
 function CountdownRing({
   fraction,
   remainingMs,
@@ -95,13 +75,19 @@ function CountdownRing({
   remainingMs: number;
   tone: string;
 }) {
+  const { t } = useTranslation();
+  const language = useLanguage();
   const radius = 20;
   const circumference = 2 * Math.PI * radius;
   return (
     <div
       className="relative flex size-14 flex-none items-center justify-center"
       role="timer"
-      aria-label={spokenCountdown(remainingMs)}
+      aria-label={
+        remainingMs <= 0
+          ? t("turn.timeUp")
+          : t("turn.remaining", { time: longDuration(language, remainingMs) })
+      }
     >
       <svg viewBox="0 0 48 48" className="absolute inset-0 size-full -rotate-90" aria-hidden="true">
         <circle cx="24" cy="24" r={radius} fill="none" stroke="var(--surface-3)" strokeWidth="4" />
@@ -123,7 +109,7 @@ function CountdownRing({
         className="font-display text-sm font-bold tabular-nums"
         style={{ color: tone }}
       >
-        {shortCountdown(remainingMs)}
+        {shortDuration(language, remainingMs)}
       </span>
     </div>
   );
@@ -138,6 +124,7 @@ export interface TurnIndicatorProps {
 }
 
 export function TurnIndicator({ me, players, waitingOn, deadline, result }: TurnIndicatorProps) {
+  const { t } = useTranslation();
   const [now, setNow] = useState(() => Date.now());
 
   useEffect(() => {
@@ -162,7 +149,7 @@ export function TurnIndicator({ me, players, waitingOn, deadline, result }: Turn
 
   if (result) {
     const won = result.kind === "win" && result.winners.includes(me);
-    const copy = resultCopy(result, players, me);
+    const copy = resultCopy(t, result, players, me);
     return (
       <div
         className="party-pop flex items-center gap-4 rounded-[var(--radius-xl)] border-2 p-5"
@@ -196,10 +183,10 @@ export function TurnIndicator({ me, players, waitingOn, deadline, result }: Turn
     .map((id) => players.find((p) => p.id === id))
     .filter((p): p is PlayerInfo => p !== undefined);
   const label = myTurn
-    ? "Your turn"
+    ? t("turn.yours")
     : waitingOn.length === 0
-      ? "Waiting…"
-      : `Waiting on ${waitingOn.map((id) => nameFor(players, id)).join(", ")}`;
+      ? t("turn.waiting")
+      : t("turn.waitingOn", { names: waitingOn.map((id) => nameFor(players, id)).join(", ") });
 
   const remainingMs = deadline !== null ? Math.max(0, deadline - now) : null;
   const span = spanRef.current;
@@ -250,7 +237,7 @@ export function TurnIndicator({ me, players, waitingOn, deadline, result }: Turn
           >
             {label}
           </span>
-          {myTurn && <span className="text-xs text-[var(--text-muted)]">Make your move below</span>}
+          {myTurn && <span className="text-xs text-[var(--text-muted)]">{t("turn.makeMove")}</span>}
         </div>
       </div>
       {remainingMs !== null && (

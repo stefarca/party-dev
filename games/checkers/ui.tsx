@@ -1,9 +1,17 @@
 import { useState } from "react";
 import type { CSSProperties } from "react";
+import { useTranslation } from "react-i18next";
 
 import type { GameUiProps } from "../../shared/protocol";
 import { QUIET_PLY_LIMIT, SIZE, SQUARES, isDarkSquare } from "./game";
 import type { Piece, Side, Square } from "./game";
+import type strings from "./locales/en.json";
+
+declare module "i18next" {
+  interface ResourceNamespaceMap {
+    checkers: typeof strings;
+  }
+}
 
 // Checkers board. The turn deadline is shown once, generically, by
 // `TurnIndicator` in `MatchPage` — no countdown here. The shell
@@ -100,6 +108,7 @@ function SeatBadge({
   isYou: boolean;
   isTurn: boolean;
 }) {
+  const { t } = useTranslation("checkers");
   return (
     <div
       className={`flex items-center gap-2 rounded-[var(--radius-pill)] border-2 px-3 py-1.5 transition-[transform,border-color] duration-[var(--dur-base)] ease-[var(--ease-spring)] ${
@@ -111,15 +120,17 @@ function SeatBadge({
       <span
         className={`truncate text-sm ${isYou ? "font-bold text-[var(--text-primary)]" : "text-[var(--text-secondary)]"}`}
       >
-        {name}
-        {isYou && " (you)"}
+        {isYou ? t("you", { name }) : name}
       </span>
-      <span className="text-xs text-[var(--text-muted)] tabular-nums">{left} left</span>
+      <span className="text-xs text-[var(--text-muted)] tabular-nums">
+        {t("left", { count: left })}
+      </span>
     </div>
   );
 }
 
 export default function CheckersUi({ view, players, result, send }: GameUiProps) {
+  const { t } = useTranslation("checkers");
   const v = view as CheckersView | null;
   // The squares picked so far this turn: the piece, then each landing square
   // of a jump in progress. Tagged with the turn it was picked on, so the next
@@ -130,12 +141,12 @@ export default function CheckersUi({ view, players, result, send }: GameUiProps)
   });
 
   if (!v) {
-    return <p className="m-0 text-[var(--text-muted)]">Loading board…</p>;
+    return <p className="m-0 text-[var(--text-muted)]">{t("loading")}</p>;
   }
 
   const yourSide = v.you === "spectator" ? null : v.you;
   const nameFor = (side: Side): string =>
-    players.find((p) => p.id === v.players[side])?.nickname ?? (side === "red" ? "Red" : "Blue");
+    players.find((p) => p.id === v.players[side])?.nickname ?? t(`side.${side}`);
   const piecesLeft = (side: Side): number =>
     v.board.filter((square) => square?.side === side).length;
 
@@ -184,17 +195,20 @@ export default function CheckersUi({ view, players, result, send }: GameUiProps)
   // matches what a sighted teammate sees on the same screen.
   const squareLabel = (square: number, shown: number): string => {
     const piece = v.board[square];
+    const pieceName = piece ? t(`piece.${piece.side}.${piece.king ? "king" : "man"}`) : null;
     const notes = [
-      `Row ${Math.floor(shown / SIZE) + 1}, column ${(shown % SIZE) + 1}`,
-      piece
-        ? `${piece.side} ${piece.king ? "king" : "man"}${piece.side === yourSide ? " (yours)" : ""}`
-        : "empty",
-      square === selection[0] ? "picked up" : null,
-      targets.has(square) ? (v.mustJump ? "jump here" : "move here") : null,
-      movable.has(square) && square !== selection[0] ? "can move" : null,
-      jumping.has(square) ? "being jumped" : null,
-      lastPath.has(square) ? "part of the last move" : null,
-      lastCaptured.has(square) && piece === null ? "captured on the last move" : null,
+      t("square.position", { row: Math.floor(shown / SIZE) + 1, column: (shown % SIZE) + 1 }),
+      pieceName === null
+        ? t("square.empty")
+        : piece?.side === yourSide
+          ? t("piece.yours", { piece: pieceName })
+          : pieceName,
+      square === selection[0] ? t("square.pickedUp") : null,
+      targets.has(square) ? t(v.mustJump ? "square.jumpHere" : "square.moveHere") : null,
+      movable.has(square) && square !== selection[0] ? t("square.canMove") : null,
+      jumping.has(square) ? t("square.beingJumped") : null,
+      lastPath.has(square) ? t("square.lastMove") : null,
+      lastCaptured.has(square) && piece === null ? t("square.capturedLastMove") : null,
     ];
     return notes.filter(Boolean).join(", ");
   };
@@ -202,17 +216,17 @@ export default function CheckersUi({ view, players, result, send }: GameUiProps)
   const flip = v.you === "blue";
   const status = v.yourTurn
     ? selection.length > 1
-      ? "Keep jumping — pick the next landing square."
+      ? t("status.keepJumping")
       : selection.length === 1
         ? v.mustJump
-          ? "Pick where to jump."
-          : "Pick where to move."
+          ? t("status.pickJump")
+          : t("status.pickMove")
         : v.mustJump
-          ? "Your turn — you must jump."
-          : "Your turn — pick a piece to move."
+          ? t("status.mustJump")
+          : t("status.pickPiece")
     : v.turn
-      ? `Waiting for ${nameFor(v.turn)}…`
-      : "Match finished.";
+      ? t("status.waitingFor", { name: nameFor(v.turn) })
+      : t("status.finished");
   const quietLeft = QUIET_PLY_LIMIT - v.quietPlies;
 
   return (
@@ -232,7 +246,7 @@ export default function CheckersUi({ view, players, result, send }: GameUiProps)
 
       <div
         role="group"
-        aria-label={`Checkers board, 8 by 8, ${flip ? "blue" : "red"} at the bottom`}
+        aria-label={t(flip ? "board.blue" : "board.red", { size: SIZE })}
         className="mx-auto w-full max-w-lg rounded-[var(--radius-lg)] border-4 p-1.5 shadow-[var(--shadow-inset),var(--shadow-2)] sm:p-2"
         style={{ background: "var(--board-well)", borderColor: "var(--board-rim)" }}
       >
@@ -330,8 +344,7 @@ export default function CheckersUi({ view, players, result, send }: GameUiProps)
           <p className="m-0 text-sm font-semibold text-[var(--text-secondary)]">{status}</p>
           {v.turn && quietLeft <= 20 && (
             <p className="m-0 text-xs text-[var(--text-muted)]">
-              No capture or man moved in a while: the game is drawn in {quietLeft} more{" "}
-              {quietLeft === 1 ? "turn" : "turns"} without one.
+              {t("quietDraw", { count: quietLeft })}
             </p>
           )}
         </div>

@@ -1,0 +1,48 @@
+{
+  "name": "Dama",
+  "you": "{{name}} (tu)",
+  "loading": "Caricamento della scacchiera…",
+  "side": {
+    "red": "Rosso",
+    "blue": "Blu"
+  },
+  "left_one": "{{count}} pedina",
+  "left_other": "{{count}} pedine",
+  "board": {
+    "red": "Scacchiera della dama, {{size}} per {{size}}, rosso in basso",
+    "blue": "Scacchiera della dama, {{size}} per {{size}}, blu in basso"
+  },
+  "piece": {
+    "red": {
+      "man": "pedina rossa",
+      "king": "dama rossa"
+    },
+    "blue": {
+      "man": "pedina blu",
+      "king": "dama blu"
+    },
+    "yours": "{{piece}} (tua)"
+  },
+  "square": {
+    "position": "Riga {{row}}, colonna {{column}}",
+    "empty": "vuota",
+    "pickedUp": "sollevata",
+    "jumpHere": "salta qui",
+    "moveHere": "muovi qui",
+    "canMove": "può muovere",
+    "beingJumped": "sta per essere mangiata",
+    "lastMove": "parte dell'ultima mossa",
+    "capturedLastMove": "mangiata nell'ultima mossa"
+  },
+  "status": {
+    "keepJumping": "Continua a saltare: scegli la prossima casella di arrivo.",
+    "pickJump": "Scegli dove saltare.",
+    "pickMove": "Scegli dove muovere.",
+    "mustJump": "Tocca a te: devi mangiare.",
+    "pickPiece": "Tocca a te: scegli una pedina da muovere.",
+    "waitingFor": "In attesa di {{name}}…",
+    "finished": "Partita finita."
+  },
+  "quietDraw_one": "Da un po' nessuna presa e nessuna pedina mossa: se va avanti così, la partita è patta tra {{count}} turno.",
+  "quietDraw_other": "Da un po' nessuna presa e nessuna pedina mossa: se va avanti così, la partita è patta tra {{count}} turni."
+}

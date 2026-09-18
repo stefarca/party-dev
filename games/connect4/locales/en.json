@@ -1,0 +1,22 @@
+{
+  "name": "Connect 4",
+  "you": "{{name}} (you)",
+  "player": "Player {{number}}",
+  "loading": "Loading board…",
+  "board": "Connect 4 board, {{columns}} columns by {{rows}} rows",
+  "disc": {
+    "0": "red cross disc",
+    "1": "blue circle disc"
+  },
+  "lastMove": "{{disc}} (last move)",
+  "column": {
+    "full": "Column {{column}}, full",
+    "drop": "Drop a disc in column {{column}}",
+    "notYourTurn": "Drop a disc in column {{column}}, not your turn"
+  },
+  "status": {
+    "finished": "Match finished.",
+    "yourTurn": "Your turn — pick a column.",
+    "waiting": "Waiting for the other player…"
+  }
+}

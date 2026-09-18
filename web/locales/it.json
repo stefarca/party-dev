@@ -1,0 +1,182 @@
+{
+  "languageName": "Italiano",
+  "loading": "Caricamento",
+  "retry": "Riprova",
+  "app": {
+    "loading": "Caricamento di party",
+    "skipToContent": "Vai al contenuto"
+  },
+  "notFound": {
+    "title": "Qui non c'è niente",
+    "body": "Questo link non porta a nessuna partita.",
+    "back": "Torna alla home"
+  },
+  "language": {
+    "label": "Lingua",
+    "current": "Lingua: {{language}}"
+  },
+  "theme": {
+    "label": "Tema",
+    "system": "Sistema",
+    "light": "Chiaro",
+    "dark": "Scuro"
+  },
+  "nickname": {
+    "required": "Inserisci un nickname per continuare.",
+    "tooLong": "Il nickname può avere al massimo {{max}} caratteri.",
+    "controlCharacters": "Il nickname non può contenere caratteri di controllo."
+  },
+  "gate": {
+    "tagline": "Giochi asincroni con i tuoi colleghi. Una mossa alla volta, senza dover organizzare niente.",
+    "label": "Scegli un nickname",
+    "placeholder": "es. alice",
+    "submit": "Giochiamo",
+    "submitting": "Un attimo…",
+    "footnote": "Nessuna password: gli altri vedono solo il tuo nickname.",
+    "failed": "Accesso non riuscito, riprova."
+  },
+  "rename": {
+    "trigger": "Sei entrato come {{nickname}}. Cambia nickname",
+    "dialog": "Cambia nickname",
+    "label": "Nickname",
+    "save": "Salva",
+    "cancel": "Annulla",
+    "failed": "Impossibile cambiare nickname."
+  },
+  "hub": {
+    "greeting": "Ciao {{nickname}} 👋",
+    "greetingNoName": "Ciao 👋",
+    "movesNeeded_one": "{{count}} partita aspetta la tua mossa.",
+    "movesNeeded_other": "{{count}} partite aspettano la tua mossa.",
+    "noMovesNeeded": "Nessuna partita aspetta la tua mossa. Scegli un gioco e iniziane una.",
+    "pickGame": "Scegli un gioco",
+    "loadFailed": "Impossibile caricare le partite.",
+    "createFailed": "Impossibile creare la partita.",
+    "tabsLabel": "Le tue partite",
+    "tabs": {
+      "yourTurn": "Tocca a te",
+      "waiting": "Tocca agli altri",
+      "finished": "Finite"
+    },
+    "empty": {
+      "yourTurn": "Per ora nessuna partita aspetta la tua mossa. Iniziane una qui sopra.",
+      "waiting": "Nessuna partita in attesa di qualcun altro.",
+      "finished": "Ancora nessuna partita finita."
+    }
+  },
+  "tile": {
+    "players_one": "{{count}} giocatore",
+    "players_other": "{{count}} giocatori",
+    "playerRange": "{{min}}–{{max}} giocatori",
+    "start": "Inizia una nuova partita a {{game}}, {{players}}",
+    "comingSoonLabel": "{{game}}, in arrivo",
+    "comingSoon": "In arrivo",
+    "starting": "Si parte…",
+    "play": "▸ Gioca"
+  },
+  "join": {
+    "title": "Hai un codice?",
+    "subtitle": "Unisciti alla partita di un collega",
+    "label": "Codice partita",
+    "submit": "Entra",
+    "missingCode": "Inserisci un codice partita.",
+    "failed": "Impossibile entrare in quella partita."
+  },
+  "status": {
+    "lobby": "Lobby",
+    "active": "In corso",
+    "done": "Finita"
+  },
+  "card": {
+    "waitingForOthers": "in attesa di altri giocatori",
+    "yourMove": "Tocca a te",
+    "due": "scade {{when}}",
+    "deadlinePassed": "tempo scaduto"
+  },
+  "connection": {
+    "connecting": "Connessione…",
+    "live": "Connesso",
+    "offline": "Riconnessione…",
+    "short": {
+      "connecting": "…",
+      "live": "On",
+      "offline": "Off"
+    }
+  },
+  "match": {
+    "hub": "← Home",
+    "backToHub": "← Torna alla home",
+    "loadFailed": "Impossibile caricare questa partita.",
+    "loadingGame": "Caricamento del gioco…",
+    "notAPlayer": "Questa partita è già iniziata e non sei tra i giocatori. Chiedi il link della prossima.",
+    "failed": "Qualcosa è andato storto, riprova."
+  },
+  "share": {
+    "title": "Invita la tua squadra",
+    "body": "Condividi questo codice: chi ce l'ha può unirsi.",
+    "linkLabel": "Link della partita",
+    "copy": "Copia link",
+    "copied": "Copiato!",
+    "copiedCheck": "Copiato! ✓"
+  },
+  "lobby": {
+    "players": "Giocatori",
+    "host": "host",
+    "you": "tu",
+    "openSeat": "Posto libero",
+    "roomFor_one": "C'è posto per {{count}} altro giocatore.",
+    "roomFor_other": "C'è posto per altri {{count}} giocatori.",
+    "needs": "{{game}}: servono {{players}}.",
+    "waitingForHost": "In attesa che l'host avvii la partita.",
+    "start": "Inizia la partita ▸"
+  },
+  "turn": {
+    "yours": "Tocca a te",
+    "makeMove": "Fai la tua mossa qui sotto",
+    "waiting": "In attesa…",
+    "waitingOn": "In attesa di {{names}}",
+    "remaining": "Tempo rimasto: {{time}}",
+    "timeUp": "tempo scaduto"
+  },
+  "result": {
+    "draw": "Pareggio",
+    "drawDetail": "Nessuno se la aggiudica.",
+    "won": "Hai vinto!",
+    "youBeat": "Hai battuto {{names}}.",
+    "wonAlone": "Ben fatto.",
+    "finished": "Partita finita",
+    "noWinner": "Nessun vincitore.",
+    "winners_one": "Ha vinto {{names}}.",
+    "winners_other": "Hanno vinto {{names}}.",
+    "scores": "Punteggi finali: {{scores}}"
+  },
+  "history": {
+    "title": "Cronologia",
+    "empty": "Ancora nessuna mossa."
+  },
+  "debug": {
+    "note": "Nessuna interfaccia registrata per questo gioco: ecco la vista grezza del motore.",
+    "actionLabel": "Azione (JSON)",
+    "invalidJson": "Inserisci un'azione JSON valida (o lascia vuoto).",
+    "send": "Invia"
+  },
+  "errors": {
+    "action_failed": "La tua mossa non è arrivata, riprova.",
+    "already_started": "Questa partita è già iniziata.",
+    "game_unavailable": "Al momento non si può iniziare questo gioco.",
+    "invalid_action": "Questa mossa non è consentita.",
+    "invalid_move": "Questa mossa non è consentita.",
+    "lobby_full": "Questa lobby è piena.",
+    "no_identity": "La sessione è scaduta, accedi di nuovo.",
+    "not_a_player": "Non sei tra i giocatori di questa partita.",
+    "not_active": "Questa partita non è in corso.",
+    "not_found": "Nessuna partita con questo codice.",
+    "not_host": "Solo l'host può avviare la partita.",
+    "not_joinable": "Questa partita è già iniziata.",
+    "not_your_turn": "Non è il tuo turno.",
+    "snapshot_failed": "Impossibile caricare questa partita.",
+    "start_failed": "Impossibile avviare la partita.",
+    "unknown_game": "Questo gioco non esiste.",
+    "wrong_player_count": "Il numero di giocatori non è quello giusto per iniziare."
+  }
+}

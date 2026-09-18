@@ -1,0 +1,19 @@
+{
+  "name": "Tris",
+  "you": "{{name}} (tu)",
+  "loading": "Caricamento della griglia…",
+  "board": "Griglia del tris, {{size}} per {{size}}",
+  "square": {
+    "position": "Riga {{row}}, colonna {{column}}",
+    "empty": "{{square}}, vuota",
+    "emptyPlayable": "{{square}}, vuota: metti la tua {{mark}}",
+    "taken": "{{square}}, {{mark}}",
+    "lastMove": "ultima mossa",
+    "winningLine": "tris vincente"
+  },
+  "status": {
+    "yourTurn": "Tocca a te: metti la tua {{mark}}.",
+    "waitingFor": "In attesa di {{name}}…",
+    "finished": "Partita finita."
+  }
+}

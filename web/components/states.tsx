@@ -1,12 +1,14 @@
 import { Button, Skeleton as HeroSkeleton, Spinner as HeroSpinner } from "@heroui/react";
 import type { CSSProperties, ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 
 // The shared loading/empty/error vocabulary every route routes its
 // interstitial states through, so a slow network or an empty bucket looks
 // designed rather than like a stray "Loading…" string.
 
-export function Spinner({ label = "Loading" }: { label?: string }) {
-  return <HeroSpinner role="status" aria-label={label} />;
+export function Spinner({ label }: { label?: string }) {
+  const { t } = useTranslation();
+  return <HeroSpinner role="status" aria-label={label ?? t("loading")} />;
 }
 
 // A single reserved-size placeholder. Callers pass `width`/`height` so the

@@ -1,15 +1,17 @@
 import type { CSSProperties } from "react";
+import { useTranslation } from "react-i18next";
 
 import type { MatchStatus, MatchSummary } from "../../shared/protocol";
-import { formatDeadline, relativeTime } from "../format";
+import { relativeTime } from "../format";
+import { useLanguage } from "../i18n";
 import { navigate } from "../router";
 import { GameGlyph } from "./GameGlyph";
 import { PlayerAvatar } from "./PlayerAvatar";
 
-const STATUS_STYLE: Record<MatchStatus, { label: string; fill: string; ink: string }> = {
-  lobby: { label: "Lobby", fill: "var(--party-pink-soft)", ink: "var(--party-pink-on-soft)" },
-  active: { label: "Playing", fill: "var(--ok-soft)", ink: "var(--ok-fg)" },
-  done: { label: "Finished", fill: "var(--surface-3)", ink: "var(--text-muted)" },
+const STATUS_STYLE: Record<MatchStatus, { fill: string; ink: string }> = {
+  lobby: { fill: "var(--party-pink-soft)", ink: "var(--party-pink-on-soft)" },
+  active: { fill: "var(--ok-soft)", ink: "var(--ok-fg)" },
+  done: { fill: "var(--surface-3)", ink: "var(--text-muted)" },
 };
 
 // One match in any of the hub's buckets. `accent` lifts the card for the
@@ -28,6 +30,9 @@ export function MatchCard({
   accent?: boolean;
   style?: CSSProperties;
 }) {
+  const { t } = useTranslation();
+  const language = useLanguage();
+  const now = Date.now();
   const others = match.players.filter((p) => p.id !== myPlayerId);
   const status = STATUS_STYLE[match.status];
 
@@ -57,14 +62,14 @@ export function MatchCard({
           <span className="truncate text-sm text-[var(--text-muted)]">
             {others.length > 0
               ? others.map((p) => p.nickname).join(", ")
-              : "waiting for others to join"}
+              : t("card.waitingForOthers")}
           </span>
         </div>
         <span
           className="flex-none rounded-[var(--radius-pill)] px-2.5 py-1 text-xs font-bold"
           style={{ background: status.fill, color: status.ink }}
         >
-          {status.label}
+          {t(`status.${match.status}`)}
         </span>
       </div>
 
@@ -75,10 +80,16 @@ export function MatchCard({
           ))}
         </span>
         <span className="flex items-center gap-3 text-xs text-[var(--text-muted)]">
-          {accent && <span className="font-bold text-[var(--accent-on-soft)]">Your move</span>}
-          <span>{relativeTime(match.updatedAt)}</span>
+          {accent && (
+            <span className="font-bold text-[var(--accent-on-soft)]">{t("card.yourMove")}</span>
+          )}
+          <span>{relativeTime(language, match.updatedAt, now)}</span>
           {match.deadline !== null && (
-            <span className="font-mono tabular-nums">{formatDeadline(match.deadline)}</span>
+            <span className="font-mono tabular-nums">
+              {match.deadline <= now
+                ? t("card.deadlinePassed")
+                : t("card.due", { when: relativeTime(language, match.deadline, now) })}
+            </span>
           )}
         </span>
       </div>

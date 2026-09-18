@@ -159,6 +159,19 @@ including deep-linked SPA routes like `/m/ABCDEF`, is served by Static Assets wi
   source, so never build a class name from a runtime value like `` `bg-seat-${n}` ``. Use a static
   lookup of complete class strings, or set a CSS variable inline. `.mcp.json` configures the
   `heroui-react` MCP server for HeroUI v3 component docs.
+- UI strings go through i18next + react-i18next, set up in `web/i18n.ts`. English is the source
+  and fallback; Italian ships too. `web/locales/<lng>.json` is the `common` namespace, and
+  `games/<id>/locales/<lng>.json` is namespace `<id>`, which includes the game's display `name`.
+  `web/translations.ts` globs both eagerly, so adding a language or a game's strings means adding
+  files and nothing else; the pickable languages are those with a `web/locales/<lng>.json`. Keys
+  are type-checked against the English files: `web/i18n.ts` declares `common`, and each game's
+  `ui.tsx` declares its own namespace on i18next's `ResourceNamespaceMap`. A game UI must use only
+  its own namespace: the worker project type-checks it without `web/`, so `common` does not exist
+  there. `web/translations.test.ts` fails when a language lacks a key or changes a
+  `{{variable}}`, and when a game's English `name` differs from its `meta.name`. Dates, times and
+  durations go through `Intl` with `useLanguage()`, never through a translated string. Server
+  error messages are English, for logs. The client shows `errors.<code>` through `errorText()` in
+  `web/errors.ts` instead. Playwright pins `locale: "en-US"` because specs match English labels.
 - Client routing is hand-rolled in `web/router.tsx` with `useSyncExternalStore` and has no router
   dependency. Add new routes to its `parseRoute` table.
 - Prettier: `printWidth` 100; `.claude/` and generated files are ignored. ESLint flat

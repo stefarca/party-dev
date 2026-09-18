@@ -1,5 +1,6 @@
 import { Button, FieldError, Form, Label, TextArea, TextField } from "@heroui/react";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import type { GameUiProps } from "../../shared/protocol";
 
@@ -9,6 +10,7 @@ import type { GameUiProps } from "../../shared/protocol";
 // (games/registry.ts's `gameUi` map), and stays in the tree afterwards as a
 // debugging aid for whatever isn't registered yet.
 export function DebugGameView({ view, waitingOn, deadline, result, send }: GameUiProps) {
+  const { t } = useTranslation();
   const [text, setText] = useState("");
   const [parseError, setParseError] = useState<string | null>(null);
 
@@ -17,7 +19,7 @@ export function DebugGameView({ view, waitingOn, deadline, result, send }: GameU
     try {
       action = text.trim() === "" ? undefined : JSON.parse(text);
     } catch {
-      setParseError("Enter a valid JSON action (or leave blank).");
+      setParseError(t("debug.invalidJson"));
       return;
     }
     setParseError(null);
@@ -26,9 +28,7 @@ export function DebugGameView({ view, waitingOn, deadline, result, send }: GameU
 
   return (
     <div className="flex flex-col gap-4">
-      <p className="m-0 text-sm text-[var(--text-muted)] italic">
-        No UI is registered for this game — showing the raw engine view.
-      </p>
+      <p className="m-0 text-sm text-[var(--text-muted)] italic">{t("debug.note")}</p>
       <pre className="m-0 overflow-auto rounded-[var(--radius-md)] bg-[var(--surface-inset)] p-4 font-mono text-xs text-[var(--text-secondary)] shadow-[var(--shadow-inset)]">
         {JSON.stringify({ view, waitingOn, deadline, result }, null, 2)}
       </pre>
@@ -40,12 +40,14 @@ export function DebugGameView({ view, waitingOn, deadline, result, send }: GameU
         className="flex flex-col gap-2"
       >
         <TextField value={text} onChange={setText} isInvalid={!!parseError}>
-          <Label className="text-xs font-bold text-[var(--text-muted)]">Action (JSON)</Label>
+          <Label className="text-xs font-bold text-[var(--text-muted)]">
+            {t("debug.actionLabel")}
+          </Label>
           <TextArea rows={3} placeholder={'{"t":"increment"}'} className="font-mono text-sm" />
           {parseError && <FieldError>{parseError}</FieldError>}
         </TextField>
         <Button type="submit" className="self-start rounded-[var(--radius-pill)] font-bold">
-          Send
+          {t("debug.send")}
         </Button>
       </Form>
     </div>

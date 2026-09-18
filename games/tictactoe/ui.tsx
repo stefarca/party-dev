@@ -1,8 +1,16 @@
 import type { CSSProperties } from "react";
+import { useTranslation } from "react-i18next";
 
 import type { GameUiProps } from "../../shared/protocol";
 import { CELLS, SIZE } from "./game";
 import type { Cell, Mark } from "./game";
+import type strings from "./locales/en.json";
+
+declare module "i18next" {
+  interface ResourceNamespaceMap {
+    tictactoe: typeof strings;
+  }
+}
 
 // Tic-tac-toe board. The turn deadline is shown once, generically, by
 // `TurnIndicator` in `MatchPage` — no countdown here. The shell
@@ -96,6 +104,7 @@ function SeatBadge({
   isYou: boolean;
   isTurn: boolean;
 }) {
+  const { t } = useTranslation("tictactoe");
   return (
     <div
       className={`flex items-center gap-2 rounded-[var(--radius-pill)] border-2 px-3 py-1.5 transition-[transform,border-color] duration-[var(--dur-base)] ease-[var(--ease-spring)] ${
@@ -112,18 +121,18 @@ function SeatBadge({
       <span
         className={`truncate text-sm ${isYou ? "font-bold text-[var(--text-primary)]" : "text-[var(--text-secondary)]"}`}
       >
-        {name}
-        {isYou && " (you)"}
+        {isYou ? t("you", { name }) : name}
       </span>
     </div>
   );
 }
 
 export default function TicTacToeUi({ view, players, result, send }: GameUiProps) {
+  const { t } = useTranslation("tictactoe");
   const v = view as TicTacToeView | null;
 
   if (!v) {
-    return <p className="m-0 text-[var(--text-muted)]">Loading board…</p>;
+    return <p className="m-0 text-[var(--text-muted)]">{t("loading")}</p>;
   }
 
   const yourMark = v.you === "spectator" ? null : v.you;
@@ -131,15 +140,20 @@ export default function TicTacToeUi({ view, players, result, send }: GameUiProps
     players.find((p) => p.id === v.players[mark])?.nickname ?? mark;
 
   const cellLabel = (index: number, cell: Cell, playable: boolean): string => {
-    const where = `Row ${Math.floor(index / SIZE) + 1}, column ${(index % SIZE) + 1}`;
+    const square = t("square.position", {
+      row: Math.floor(index / SIZE) + 1,
+      column: (index % SIZE) + 1,
+    });
     if (cell === null) {
-      return playable ? `${where}, empty — place your ${yourMark}` : `${where}, empty`;
+      return playable && yourMark
+        ? t("square.emptyPlayable", { square, mark: yourMark })
+        : t("square.empty", { square });
     }
     const notes = [
-      index === v.lastMove ? "last move" : null,
-      v.winLine?.includes(index) ? "winning line" : null,
+      index === v.lastMove ? t("square.lastMove") : null,
+      v.winLine?.includes(index) ? t("square.winningLine") : null,
     ].filter(Boolean);
-    return [`${where}, ${cell}`, ...notes].join(", ");
+    return [t("square.taken", { square, mark: cell }), ...notes].join(", ");
   };
 
   return (
@@ -158,7 +172,7 @@ export default function TicTacToeUi({ view, players, result, send }: GameUiProps
 
       <div
         role="group"
-        aria-label="Tic-tac-toe board, 3 by 3"
+        aria-label={t("board", { size: SIZE })}
         className="mx-auto grid w-full max-w-xs gap-2 rounded-[var(--radius-lg)] border-4 p-2 shadow-[var(--shadow-inset),var(--shadow-2)] sm:max-w-sm sm:gap-3 sm:p-3"
         style={{
           gridTemplateColumns: `repeat(${SIZE}, 1fr)`,
@@ -217,10 +231,10 @@ export default function TicTacToeUi({ view, players, result, send }: GameUiProps
       {!result && (
         <p className="m-0 text-center text-sm font-semibold text-[var(--text-secondary)]">
           {v.yourTurn
-            ? `Your turn — place your ${yourMark}.`
+            ? t("status.yourTurn", { mark: yourMark })
             : v.turn
-              ? `Waiting for ${nameFor(v.turn)}…`
-              : "Match finished."}
+              ? t("status.waitingFor", { name: nameFor(v.turn) })
+              : t("status.finished")}
         </p>
       )}
     </div>

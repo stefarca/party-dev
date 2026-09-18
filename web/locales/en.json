@@ -1,0 +1,182 @@
+{
+  "languageName": "English",
+  "loading": "Loading",
+  "retry": "Retry",
+  "app": {
+    "loading": "Loading party",
+    "skipToContent": "Skip to content"
+  },
+  "notFound": {
+    "title": "Nothing here",
+    "body": "That link does not point at a match.",
+    "back": "Back to the hub"
+  },
+  "language": {
+    "label": "Language",
+    "current": "Language: {{language}}"
+  },
+  "theme": {
+    "label": "Theme",
+    "system": "System",
+    "light": "Light",
+    "dark": "Dark"
+  },
+  "nickname": {
+    "required": "Enter a nickname to continue.",
+    "tooLong": "Nickname must be {{max}} characters or fewer.",
+    "controlCharacters": "Nickname must not contain control characters."
+  },
+  "gate": {
+    "tagline": "Async games with your coworkers. One move at a time, no scheduling.",
+    "label": "Pick a nickname",
+    "placeholder": "e.g. alice",
+    "submit": "Let's play",
+    "submitting": "Joining…",
+    "footnote": "No password — your nickname is all anyone sees.",
+    "failed": "Could not sign in — try again."
+  },
+  "rename": {
+    "trigger": "Signed in as {{nickname}}. Change nickname",
+    "dialog": "Rename nickname",
+    "label": "Nickname",
+    "save": "Save",
+    "cancel": "Cancel",
+    "failed": "Could not rename."
+  },
+  "hub": {
+    "greeting": "Hey {{nickname}} 👋",
+    "greetingNoName": "Hey there 👋",
+    "movesNeeded_one": "{{count}} match needs your move.",
+    "movesNeeded_other": "{{count}} matches need your move.",
+    "noMovesNeeded": "Nothing needs your move. Pick a game and start one.",
+    "pickGame": "Pick a game",
+    "loadFailed": "Failed to load matches.",
+    "createFailed": "Could not create the match.",
+    "tabsLabel": "Your matches",
+    "tabs": {
+      "yourTurn": "Your turn",
+      "waiting": "Their turn",
+      "finished": "Finished"
+    },
+    "empty": {
+      "yourTurn": "Nothing needs your move right now. Start something above.",
+      "waiting": "No matches waiting on someone else.",
+      "finished": "No finished matches yet."
+    }
+  },
+  "tile": {
+    "players_one": "{{count}} player",
+    "players_other": "{{count}} players",
+    "playerRange": "{{min}}–{{max}} players",
+    "start": "Start a new {{game}} match, {{players}}",
+    "comingSoonLabel": "{{game}}, coming soon",
+    "comingSoon": "Coming soon",
+    "starting": "Starting…",
+    "play": "▸ Play"
+  },
+  "join": {
+    "title": "Got a code?",
+    "subtitle": "Join a coworker's match",
+    "label": "Match code",
+    "submit": "Join",
+    "missingCode": "Enter a match code.",
+    "failed": "Could not join that match."
+  },
+  "status": {
+    "lobby": "Lobby",
+    "active": "Playing",
+    "done": "Finished"
+  },
+  "card": {
+    "waitingForOthers": "waiting for others to join",
+    "yourMove": "Your move",
+    "due": "due {{when}}",
+    "deadlinePassed": "deadline passed"
+  },
+  "connection": {
+    "connecting": "Connecting…",
+    "live": "Live",
+    "offline": "Reconnecting…",
+    "short": {
+      "connecting": "…",
+      "live": "Live",
+      "offline": "Off"
+    }
+  },
+  "match": {
+    "hub": "← Hub",
+    "backToHub": "← Back to the hub",
+    "loadFailed": "Failed to load this match.",
+    "loadingGame": "Loading game…",
+    "notAPlayer": "This match is already under way and you are not one of its players. Ask for a link to the next one.",
+    "failed": "Something went wrong — try again."
+  },
+  "share": {
+    "title": "Invite your crew",
+    "body": "Share this code — anyone with it can drop in.",
+    "linkLabel": "Match link",
+    "copy": "Copy link",
+    "copied": "Copied!",
+    "copiedCheck": "Copied! ✓"
+  },
+  "lobby": {
+    "players": "Players",
+    "host": "host",
+    "you": "you",
+    "openSeat": "Open seat",
+    "roomFor_one": "Room for {{count}} more player.",
+    "roomFor_other": "Room for {{count}} more players.",
+    "needs": "{{game}} needs {{players}}.",
+    "waitingForHost": "Waiting for the host to start.",
+    "start": "Start match ▸"
+  },
+  "turn": {
+    "yours": "Your turn",
+    "makeMove": "Make your move below",
+    "waiting": "Waiting…",
+    "waitingOn": "Waiting on {{names}}",
+    "remaining": "{{time}} remaining",
+    "timeUp": "time is up"
+  },
+  "result": {
+    "draw": "It's a draw",
+    "drawDetail": "Nobody takes this one.",
+    "won": "You won!",
+    "youBeat": "You beat {{names}}.",
+    "wonAlone": "Nice one.",
+    "finished": "Match finished",
+    "noWinner": "No winner.",
+    "winners_one": "{{names}} won.",
+    "winners_other": "{{names}} won.",
+    "scores": "Final scores: {{scores}}"
+  },
+  "history": {
+    "title": "History",
+    "empty": "No moves yet."
+  },
+  "debug": {
+    "note": "No UI is registered for this game — showing the raw engine view.",
+    "actionLabel": "Action (JSON)",
+    "invalidJson": "Enter a valid JSON action (or leave blank).",
+    "send": "Send"
+  },
+  "errors": {
+    "action_failed": "Your move didn't go through — try again.",
+    "already_started": "This match has already started.",
+    "game_unavailable": "That game can't be started right now.",
+    "invalid_action": "That move isn't allowed.",
+    "invalid_move": "That move isn't allowed.",
+    "lobby_full": "This lobby is full.",
+    "no_identity": "Your session expired — sign in again.",
+    "not_a_player": "You are not a player in this match.",
+    "not_active": "This match isn't being played right now.",
+    "not_found": "No match with that code.",
+    "not_host": "Only the host can start the match.",
+    "not_joinable": "This match has already started.",
+    "not_your_turn": "It's not your turn.",
+    "snapshot_failed": "Failed to load this match.",
+    "start_failed": "Could not start the match.",
+    "unknown_game": "That game doesn't exist.",
+    "wrong_player_count": "This match doesn't have the right number of players to start."
+  }
+}
