@@ -1,0 +1,22 @@
+{
+  "name": "Forza 4",
+  "you": "{{name}} (tu)",
+  "player": "Giocatore {{number}}",
+  "loading": "Caricamento del tabellone…",
+  "board": "Tabellone di Forza 4, {{columns}} colonne per {{rows}} righe",
+  "disc": {
+    "0": "gettone rosso con la croce",
+    "1": "gettone blu con il cerchio"
+  },
+  "lastMove": "{{disc}} (ultima mossa)",
+  "column": {
+    "full": "Colonna {{column}}, piena",
+    "drop": "Lascia cadere un gettone nella colonna {{column}}",
+    "notYourTurn": "Lascia cadere un gettone nella colonna {{column}}, non è il tuo turno"
+  },
+  "status": {
+    "finished": "Partita finita.",
+    "yourTurn": "Tocca a te: scegli una colonna.",
+    "waiting": "In attesa dell'altro giocatore…"
+  }
+}

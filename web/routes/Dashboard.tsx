@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { CSSProperties, FormEvent } from "react";
 
 import { Button, FieldError, Form, Input, Tabs, TextField } from "@heroui/react";
+import { useTranslation } from "react-i18next";
 
 import type { GameMeta } from "../../games/catalog";
 import { normalizeMatchCode } from "../../shared/ids";
@@ -12,6 +13,9 @@ import { setDashboardYourTurn } from "../badge";
 import { GameGlyph } from "../components/GameGlyph";
 import { MatchCard } from "../components/MatchCard";
 import { EmptyState, Notice, Skeleton } from "../components/states";
+import { errorText } from "../errors";
+import { playerRange } from "../format";
+import { useGameName } from "../i18n";
 import { navigate } from "../router";
 import { useSession } from "../session";
 
@@ -21,16 +25,6 @@ const POLL_MS = 30_000;
 // waits a second before appearing.
 const MAX_STAGGER_MS = 280;
 const STAGGER_STEP_MS = 45;
-
-function gameName(games: GameMeta[], gameId: string): string {
-  return games.find((g) => g.id === gameId)?.name ?? gameId;
-}
-
-function playerRange(meta: GameMeta): string {
-  return meta.minPlayers === meta.maxPlayers
-    ? `${meta.minPlayers} players`
-    : `${meta.minPlayers}–${meta.maxPlayers} players`;
-}
 
 // `.party-pop` reads its own delay from this custom property, so a grid can
 // be staggered without a class per position.
@@ -57,6 +51,8 @@ function GameTile({
   disabled: boolean;
   onPlay: () => void;
 }) {
+  const { t } = useTranslation();
+  const name = useGameName()(meta.id, meta.name);
   const comingSoon = meta.comingSoon === true;
   return (
     <button
@@ -65,8 +61,8 @@ function GameTile({
       disabled={disabled || comingSoon}
       aria-label={
         comingSoon
-          ? `${meta.name}, coming soon`
-          : `Start a new ${meta.name} match, ${playerRange(meta)}`
+          ? t("tile.comingSoonLabel", { game: name })
+          : t("tile.start", { game: name, players: playerRange(t, meta) })
       }
       style={staggerStyle(index)}
       className={`party-pop group relative flex cursor-pointer flex-col items-start gap-3 overflow-hidden rounded-[var(--radius-xl)] border-2 border-[var(--border-subtle)] bg-[var(--surface-1)] p-5 text-left shadow-[var(--shadow-2),var(--edge-highlight)] transition-[transform,box-shadow,border-color] duration-[var(--dur-base)] ease-[var(--ease-spring)] disabled:cursor-not-allowed disabled:opacity-60 not-disabled:hover:-translate-y-1.5 not-disabled:hover:border-[var(--border-accent)] not-disabled:hover:shadow-[var(--shadow-3),var(--glow-accent)] not-disabled:active:translate-y-0 not-disabled:active:scale-[0.98] ${
@@ -82,17 +78,15 @@ function GameTile({
         }
       />
       <div className="flex flex-col gap-0.5">
-        <span className="font-display text-lg font-bold text-[var(--text-primary)]">
-          {meta.name}
-        </span>
-        <span className="text-sm text-[var(--text-muted)]">{playerRange(meta)}</span>
+        <span className="font-display text-lg font-bold text-[var(--text-primary)]">{name}</span>
+        <span className="text-sm text-[var(--text-muted)]">{playerRange(t, meta)}</span>
       </div>
       {comingSoon ? (
         <span
           aria-hidden="true"
           className="mt-1 inline-flex items-center gap-1.5 rounded-[var(--radius-pill)] bg-[var(--surface-3)] px-3 py-1.5 text-sm font-bold text-[var(--text-secondary)]"
         >
-          Coming soon
+          {t("tile.comingSoon")}
         </span>
       ) : (
         <span
@@ -100,7 +94,7 @@ function GameTile({
           className="mt-1 inline-flex items-center gap-1.5 rounded-[var(--radius-pill)] px-3 py-1.5 text-sm font-bold transition-transform duration-[var(--dur-base)] ease-[var(--ease-spring)] group-hover:scale-105"
           style={{ background: "var(--accent-soft)", color: "var(--accent-on-soft)" }}
         >
-          {busy ? "Starting…" : "▸ Play"}
+          {busy ? t("tile.starting") : t("tile.play")}
         </span>
       )}
     </button>
@@ -124,6 +118,7 @@ function JoinTile({
   joining: boolean;
   error: string | null;
 }) {
+  const { t } = useTranslation();
   return (
     <div
       style={staggerStyle(index)}
@@ -137,9 +132,9 @@ function JoinTile({
       </span>
       <div className="flex flex-col gap-0.5">
         <span className="font-display text-lg font-bold text-[var(--text-primary)]">
-          Got a code?
+          {t("join.title")}
         </span>
-        <span className="text-sm text-[var(--text-muted)]">Join a coworker&apos;s match</span>
+        <span className="text-sm text-[var(--text-muted)]">{t("join.subtitle")}</span>
       </div>
       <Form onSubmit={onSubmit} className="mt-1 flex w-full flex-col gap-2">
         <TextField
@@ -147,7 +142,7 @@ function JoinTile({
           onChange={onCodeChange}
           isInvalid={!!error}
           className="w-full"
-          aria-label="Match code"
+          aria-label={t("join.label")}
         >
           <div className="flex items-center gap-2">
             <Input
@@ -164,7 +159,7 @@ function JoinTile({
               isDisabled={joining}
               className="flex-none rounded-[var(--radius-pill)] font-bold"
             >
-              {joining ? "…" : "Join"}
+              {joining ? "…" : t("join.submit")}
             </Button>
           </div>
           {error && <FieldError>{error}</FieldError>}
@@ -189,6 +184,7 @@ function Bucket({
   emptyText: string;
   emptyGlyph?: string;
 }) {
+  const gameName = useGameName();
   if (matches.length === 0) {
     return <EmptyState glyph={emptyGlyph}>{emptyText}</EmptyState>;
   }
@@ -198,7 +194,7 @@ function Bucket({
         <MatchCard
           key={m.id}
           match={m}
-          gameName={gameName(games, m.gameId)}
+          gameName={gameName(m.gameId, games.find((g) => g.id === m.gameId)?.name)}
           myPlayerId={myPlayerId}
           accent={accent}
           style={staggerStyle(i)}
@@ -229,23 +225,14 @@ function DashboardSkeleton() {
 
 type BucketKey = "yourTurn" | "waiting" | "finished";
 
-const BUCKET_TABS: { key: BucketKey; label: string; empty: string; glyph: string }[] = [
-  {
-    key: "yourTurn",
-    label: "Your turn",
-    empty: "Nothing needs your move right now. Start something above.",
-    glyph: "✦",
-  },
-  {
-    key: "waiting",
-    label: "Their turn",
-    empty: "No matches waiting on someone else.",
-    glyph: "⏳",
-  },
-  { key: "finished", label: "Finished", empty: "No finished matches yet.", glyph: "🏁" },
+const BUCKET_TABS: { key: BucketKey; glyph: string }[] = [
+  { key: "yourTurn", glyph: "✦" },
+  { key: "waiting", glyph: "⏳" },
+  { key: "finished", glyph: "🏁" },
 ];
 
 export function Dashboard() {
+  const { t } = useTranslation();
   const { player, notifyUnauthorized } = useSession();
   const [buckets, setBuckets] = useState<MatchBuckets | null>(null);
   const [games, setGames] = useState<GameMeta[]>([]);
@@ -276,7 +263,7 @@ export function Dashboard() {
       setDashboardYourTurn(nextBuckets.yourTurn.map((m) => m.id));
       if (!pickedOpeningTab.current) {
         pickedOpeningTab.current = true;
-        const firstFilled = BUCKET_TABS.find((t) => nextBuckets[t.key].length > 0);
+        const firstFilled = BUCKET_TABS.find((tab) => nextBuckets[tab.key].length > 0);
         if (firstFilled) setTab(firstFilled.key);
       }
     } catch (err) {
@@ -284,11 +271,11 @@ export function Dashboard() {
         notifyUnauthorized();
         return;
       }
-      setError(err instanceof Error ? err.message : "Failed to load matches.");
+      setError(errorText(t, err, t("hub.loadFailed")));
     } finally {
       setLoading(false);
     }
-  }, [notifyUnauthorized]);
+  }, [notifyUnauthorized, t]);
 
   // A return to / must show fresh buckets. There is no cache to invalidate
   // for that — this component holds no state across mounts, and App.tsx's
@@ -336,7 +323,7 @@ export function Dashboard() {
         notifyUnauthorized();
         return;
       }
-      setCreateError(err instanceof Error ? err.message : "Could not create the match.");
+      setCreateError(errorText(t, err, t("hub.createFailed")));
     } finally {
       setCreatingId(null);
     }
@@ -346,7 +333,7 @@ export function Dashboard() {
     e.preventDefault();
     const code = normalizeMatchCode(joinCode);
     if (!code) {
-      setJoinError("Enter a match code.");
+      setJoinError(t("join.missingCode"));
       return;
     }
     setJoining(true);
@@ -359,11 +346,7 @@ export function Dashboard() {
         notifyUnauthorized();
         return;
       }
-      if (err instanceof ApiError && err.status === 404) {
-        setJoinError("No match with that code.");
-      } else {
-        setJoinError(err instanceof Error ? err.message : "Could not join that match.");
-      }
+      setJoinError(errorText(t, err, t("join.failed")));
     } finally {
       setJoining(false);
     }
@@ -380,7 +363,7 @@ export function Dashboard() {
   if (error) {
     return (
       <main id="main-content" className="app-container">
-        <Notice tone="danger" action={{ label: "Retry", onClick: () => refresh() }}>
+        <Notice tone="danger" action={{ label: t("retry"), onClick: () => refresh() }}>
           {error}
         </Notice>
       </main>
@@ -399,18 +382,16 @@ export function Dashboard() {
     <main id="main-content" className="app-container">
       <section className="party-pop mb-9">
         <h1 className="m-0 font-display text-3xl font-bold tracking-tight text-balance text-[var(--text-primary)] sm:text-4xl">
-          Hey {player?.nickname ?? "there"} 👋
+          {player ? t("hub.greeting", { nickname: player.nickname }) : t("hub.greetingNoName")}
         </h1>
         <p className="mt-2 mb-0 text-[var(--text-secondary)]">
-          {turnCount > 0
-            ? `${turnCount} ${turnCount === 1 ? "match needs" : "matches need"} your move.`
-            : "Nothing needs your move. Pick a game and start one."}
+          {turnCount > 0 ? t("hub.movesNeeded", { count: turnCount }) : t("hub.noMovesNeeded")}
         </p>
       </section>
 
       <section className="mb-10">
         <h2 className="mb-3 font-display text-sm font-bold tracking-[0.15em] text-[var(--text-muted)] uppercase">
-          Pick a game
+          {t("hub.pickGame")}
         </h2>
         {createError && (
           <div className="mb-3">
@@ -465,31 +446,31 @@ export function Dashboard() {
               this pill across the whole page. */}
           <Tabs.ListContainer className="w-fit max-w-full self-start bg-transparent">
             <Tabs.List
-              aria-label="Your matches"
+              aria-label={t("hub.tabsLabel")}
               className="w-fit min-w-0 rounded-[var(--radius-pill)] border border-[var(--border-subtle)] bg-[var(--surface-2)] p-1"
             >
-              {BUCKET_TABS.map((t) => (
+              {BUCKET_TABS.map((tab) => (
                 <Tabs.Tab
-                  key={t.key}
-                  id={t.key}
+                  key={tab.key}
+                  id={tab.key}
                   className="w-auto gap-2 rounded-[var(--radius-pill)]"
                 >
-                  {t.label}
-                  <span className="text-xs font-bold opacity-70">{data[t.key].length}</span>
+                  {t(`hub.tabs.${tab.key}`)}
+                  <span className="text-xs font-bold opacity-70">{data[tab.key].length}</span>
                   <Tabs.Indicator />
                 </Tabs.Tab>
               ))}
             </Tabs.List>
           </Tabs.ListContainer>
-          {BUCKET_TABS.map((t) => (
-            <Tabs.Panel key={t.key} id={t.key} className="pt-5">
+          {BUCKET_TABS.map((tab) => (
+            <Tabs.Panel key={tab.key} id={tab.key} className="pt-5">
               <Bucket
-                matches={data[t.key]}
+                matches={data[tab.key]}
                 games={games}
                 myPlayerId={myPlayerId}
-                accent={t.key === "yourTurn"}
-                emptyText={t.empty}
-                emptyGlyph={t.glyph}
+                accent={tab.key === "yourTurn"}
+                emptyText={t(`hub.empty.${tab.key}`)}
+                emptyGlyph={tab.glyph}
               />
             </Tabs.Panel>
           ))}

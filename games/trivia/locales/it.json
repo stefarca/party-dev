@@ -1,0 +1,26 @@
+{
+  "name": "Quiz",
+  "you": "{{name}} (tu)",
+  "loading": "Caricamento della domanda…",
+  "round": "Domanda {{round}} di {{total}}",
+  "choices": "Risposte possibili",
+  "answered_one": "{{count}} su {{total}} ha risposto",
+  "answered_other": "{{count}} su {{total}} hanno risposto",
+  "answeredLocked_one": "{{count}} su {{total}} ha risposto: la tua risposta è bloccata.",
+  "answeredLocked_other": "{{count}} su {{total}} hanno risposto: la tua risposta è bloccata.",
+  "leading": "in testa",
+  "reveal": {
+    "correct": "Giusto!",
+    "timedOut": "Tempo scaduto.",
+    "wrong": "Stavolta no."
+  },
+  "tag": {
+    "correct": "giusta",
+    "yourPick": "la tua scelta"
+  },
+  "answer": "{{name}}: {{answer}}",
+  "answerScored": "{{name}}: {{answer}} (+1)",
+  "noAnswer": "nessuna risposta",
+  "finalScoreboard": "Classifica finale",
+  "winner": "vincitore"
+}

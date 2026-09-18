@@ -1,7 +1,15 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import type { GameUiProps } from "../../shared/protocol";
 import { COLS, ROWS } from "./game";
+import type strings from "./locales/en.json";
+
+declare module "i18next" {
+  interface ResourceNamespaceMap {
+    connect4: typeof strings;
+  }
+}
 
 // Connect 4 board. No game-specific countdown here — the turn deadline is
 // already shown once, generically, by `TurnIndicator` in `MatchPage`;
@@ -35,7 +43,6 @@ const SEAT_CONTRAST: Record<0 | 1, string> = {
   1: "var(--seat-2-contrast)",
 };
 const SEAT_GLYPH: Record<0 | 1, string> = { 0: "✕", 1: "●" };
-const SEAT_LABEL: Record<0 | 1, string> = { 0: "red cross", 1: "blue circle" };
 
 // The glossy sheen every filled disc carries, built from the palette's
 // `--gloss-*` tokens rather than a hardcoded white.
@@ -50,6 +57,7 @@ function Disc({
   isLastMove: boolean;
   previewSeat?: 0 | 1;
 }) {
+  const { t } = useTranslation("connect4");
   if (seat === null) {
     if (previewSeat !== undefined) {
       return (
@@ -80,7 +88,7 @@ function Disc({
         color: SEAT_CONTRAST[seat],
       }}
       role="img"
-      aria-label={`${SEAT_LABEL[seat]} disc${isLastMove ? " (last move)" : ""}`}
+      aria-label={isLastMove ? t("lastMove", { disc: t(`disc.${seat}`) }) : t(`disc.${seat}`)}
     >
       {SEAT_GLYPH[seat]}
     </span>
@@ -90,9 +98,9 @@ function Disc({
 // `players` (from the match snapshot) is in join order, which is the same
 // order `init()` assigned seats 0/1 in — so `players[seat]` is a
 // straightforward lookup, not a leak of any hidden info (Connect 4 has none
-// to begin with).
-function nameFor(players: GameUiProps["players"], seat: 0 | 1): string {
-  return players[seat]?.nickname ?? `Player ${seat + 1}`;
+// to begin with). `undefined` for a seat nobody has taken.
+function nameFor(players: GameUiProps["players"], seat: 0 | 1): string | undefined {
+  return players[seat]?.nickname;
 }
 
 function SeatBadge({
@@ -106,6 +114,7 @@ function SeatBadge({
   isYou: boolean;
   isTurn: boolean;
 }) {
+  const { t } = useTranslation("connect4");
   return (
     <div
       className={`flex items-center gap-2 rounded-[var(--radius-pill)] border-2 px-3 py-1.5 transition-[transform,border-color] duration-[var(--dur-base)] ease-[var(--ease-spring)] ${
@@ -127,19 +136,19 @@ function SeatBadge({
       <span
         className={`truncate text-sm ${isYou ? "font-bold text-[var(--text-primary)]" : "text-[var(--text-secondary)]"}`}
       >
-        {name}
-        {isYou && " (you)"}
+        {isYou ? t("you", { name }) : name}
       </span>
     </div>
   );
 }
 
 export default function Connect4Ui({ view, players, result, send }: GameUiProps) {
+  const { t } = useTranslation("connect4");
   const v = view as Connect4View | null;
   const [activeCol, setActiveCol] = useState<number | null>(null);
 
   if (!v) {
-    return <p className="m-0 text-[var(--text-muted)]">Loading board…</p>;
+    return <p className="m-0 text-[var(--text-muted)]">{t("loading")}</p>;
   }
 
   const disabled = v.winner !== null || v.draw || !v.yourTurn;
@@ -177,7 +186,7 @@ export default function Connect4Ui({ view, players, result, send }: GameUiProps)
           <SeatBadge
             key={seat}
             seat={seat}
-            name={nameFor(players, seat)}
+            name={nameFor(players, seat) ?? t("player", { number: seat + 1 })}
             isYou={v.you === seat}
             isTurn={!result && v.winner === null && !v.draw && turnSeat === seat}
           />
@@ -186,7 +195,7 @@ export default function Connect4Ui({ view, players, result, send }: GameUiProps)
 
       <div
         className="mx-auto grid w-full max-w-lg gap-1 rounded-[var(--radius-lg)] border-4 p-1.5 shadow-[var(--shadow-inset),var(--shadow-2)] sm:gap-2 sm:p-3"
-        aria-label="Connect 4 board, 7 columns by 6 rows"
+        aria-label={t("board", { columns: COLS, rows: ROWS })}
         style={{
           gridTemplateColumns: `repeat(${COLS}, 1fr)`,
           background: "var(--board-well)",
@@ -208,11 +217,10 @@ export default function Connect4Ui({ view, players, result, send }: GameUiProps)
                   : "bg-transparent"
               }`}
               disabled={colDisabled}
-              aria-label={
-                full
-                  ? `Column ${col + 1}, full`
-                  : `Drop a disc in column ${col + 1}${v.yourTurn ? "" : ", not your turn"}`
-              }
+              aria-label={t(
+                full ? "column.full" : v.yourTurn ? "column.drop" : "column.notYourTurn",
+                { column: col + 1 },
+              )}
               onClick={() => dropInColumn(col)}
               onMouseEnter={() => canPreview && setActiveCol(col)}
               onMouseLeave={() => clearActive(col)}
@@ -239,10 +247,10 @@ export default function Connect4Ui({ view, players, result, send }: GameUiProps)
       {!result && (
         <p className="m-0 text-center text-sm font-semibold text-[var(--text-secondary)]">
           {v.winner !== null
-            ? "Match finished."
+            ? t("status.finished")
             : v.yourTurn
-              ? "Your turn — pick a column."
-              : "Waiting for the other player…"}
+              ? t("status.yourTurn")
+              : t("status.waiting")}
         </p>
       )}
     </div>

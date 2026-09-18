@@ -6,7 +6,8 @@ Cloudflare's free tier (Worker + Static Assets + Durable Objects + D1).
 **What works today:** nickname-only identity (no passwords), a dashboard that buckets your
 matches into "your turn" / "waiting on others" / "finished", four games (Checkers, Connect 4,
 Tic-tac-toe and Trivia) playable over a live WebSocket (with an HTTP fallback for every action),
-and Slack nudges for players who are newly up and not currently connected. See
+Slack nudges for players who are newly up and not currently connected, and the whole UI in
+English or Italian (picked from the browser's languages, switchable from the header). See
 [`games/README.md`](./games/README.md) for how to add another game.
 
 ## Prerequisites
@@ -88,8 +89,9 @@ Four rules every `GameModule` must follow:
 - **`onDeadline` must be idempotent.** Alarms are at-least-once with retries; key resolution on the
   round/phase number so re-running it on an already-resolved round is a no-op.
 
-A new game is a folder under `games/` plus one line each in `games/registry.ts`'s `serverGames`
-(server rules) and `gameUi` (lazily-imported client UI) — nothing else.
+A new game is a folder under `games/` (its rules, its UI, and its UI's strings in `locales/`) plus
+one line each in `games/registry.ts`'s `serverGames` (server rules) and `gameUi` (lazily-imported
+client UI) — nothing else.
 
 Two reference implementations of the phase types live under `games/`: Connect 4
 (`games/connect4`, sequential turns) and Trivia (`games/trivia`, simultaneous answers + deadline,

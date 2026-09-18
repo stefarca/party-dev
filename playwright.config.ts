@@ -28,6 +28,9 @@ export default defineConfig({
     : [["list"], ["html", { open: "never" }]],
   use: {
     baseURL: BASE_URL,
+    // The app opens in the browser's language, and the specs read its English labels. Without
+    // this, a machine set to Italian would run the whole suite in Italian.
+    locale: "en-US",
     trace: "on-first-retry",
     screenshot: "only-on-failure",
   },

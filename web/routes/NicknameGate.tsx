@@ -2,10 +2,13 @@ import { useState } from "react";
 import type { FormEvent } from "react";
 
 import { Button, FieldError, Form, Input, Label, TextField } from "@heroui/react";
+import type { TFunction } from "i18next";
+import { useTranslation } from "react-i18next";
 
-import { ApiError } from "../api";
+import { LanguagePicker } from "../components/LanguagePicker";
 import { ThemeToggle } from "../components/ThemeToggle";
 import { WordMark } from "../components/WordMark";
+import { errorText } from "../errors";
 import { useSession } from "../session";
 
 // Mirrors the server's IdentityRequestSchema (shared/protocol.ts) so the
@@ -15,11 +18,11 @@ const MAX_LEN = 24;
 // eslint-disable-next-line no-control-regex -- control chars are the point of this validation
 const NO_CONTROL_CHARS = /^[^\x00-\x1F\x7F]*$/;
 
-function validate(nickname: string): string | null {
+function validate(nickname: string, t: TFunction): string | null {
   const trimmed = nickname.trim();
-  if (trimmed.length < 1) return "Enter a nickname to continue.";
-  if (trimmed.length > MAX_LEN) return `Nickname must be ${MAX_LEN} characters or fewer.`;
-  if (!NO_CONTROL_CHARS.test(trimmed)) return "Nickname must not contain control characters.";
+  if (trimmed.length < 1) return t("nickname.required");
+  if (trimmed.length > MAX_LEN) return t("nickname.tooLong", { max: MAX_LEN });
+  if (!NO_CONTROL_CHARS.test(trimmed)) return t("nickname.controlCharacters");
   return null;
 }
 
@@ -28,6 +31,7 @@ function validate(nickname: string): string | null {
 // succeeds App.tsx swaps this out for the real route's content, so the
 // intended destination is preserved for free.
 export function NicknameGate() {
+  const { t } = useTranslation();
   const { signIn } = useSession();
   const [nickname, setNickname] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -35,7 +39,7 @@ export function NicknameGate() {
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    const validationError = validate(nickname);
+    const validationError = validate(nickname, t);
     if (validationError) {
       setError(validationError);
       return;
@@ -45,7 +49,7 @@ export function NicknameGate() {
     try {
       await signIn(nickname.trim());
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Could not sign in — try again.");
+      setError(errorText(t, err, t("gate.failed")));
     } finally {
       setSubmitting(false);
     }
@@ -62,9 +66,7 @@ export function NicknameGate() {
           <h1 className="m-0 font-display text-4xl font-bold tracking-tight text-[var(--text-primary)]">
             party
           </h1>
-          <p className="m-0 text-balance text-[var(--text-secondary)]">
-            Async games with your coworkers. One move at a time, no scheduling.
-          </p>
+          <p className="m-0 text-balance text-[var(--text-secondary)]">{t("gate.tagline")}</p>
         </div>
 
         <Form onSubmit={handleSubmit} className="flex w-full flex-col gap-4 text-left">
@@ -79,8 +81,8 @@ export function NicknameGate() {
             maxLength={MAX_LEN}
             isInvalid={!!error}
           >
-            <Label className="text-xs font-bold text-[var(--text-muted)]">Pick a nickname</Label>
-            <Input autoFocus placeholder="e.g. alice" className="text-base" />
+            <Label className="text-xs font-bold text-[var(--text-muted)]">{t("gate.label")}</Label>
+            <Input autoFocus placeholder={t("gate.placeholder")} className="text-base" />
             {error && <FieldError>{error}</FieldError>}
           </TextField>
           <Button
@@ -88,15 +90,16 @@ export function NicknameGate() {
             isDisabled={submitting}
             className="w-full rounded-[var(--radius-pill)] py-3 font-display text-base font-bold transition-transform duration-[var(--dur-fast)] ease-[var(--ease-spring)] not-disabled:hover:scale-[1.03] not-disabled:active:scale-95"
           >
-            {submitting ? "Joining…" : "Let's play"}
+            {submitting ? t("gate.submitting") : t("gate.submit")}
           </Button>
         </Form>
 
-        <p className="m-0 text-xs text-[var(--text-muted)]">
-          No password — your nickname is all anyone sees.
-        </p>
+        <p className="m-0 text-xs text-[var(--text-muted)]">{t("gate.footnote")}</p>
       </div>
-      <ThemeToggle />
+      <div className="flex items-center gap-2">
+        <LanguagePicker />
+        <ThemeToggle />
+      </div>
     </main>
   );
 }

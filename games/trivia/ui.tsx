@@ -1,4 +1,13 @@
+import { useTranslation } from "react-i18next";
+
 import type { GameUiProps } from "../../shared/protocol";
+import type strings from "./locales/en.json";
+
+declare module "i18next" {
+  interface ResourceNamespaceMap {
+    trivia: typeof strings;
+  }
+}
 
 // Trivia UI. No game-specific countdown here — the round/reveal deadline is
 // already shown once, generically, by `TurnIndicator` in `MatchPage`;
@@ -54,11 +63,12 @@ function nameFor(players: GameUiProps["players"], id: string): string {
 }
 
 function RoundProgress({ round, totalRounds }: { round: number; totalRounds: number }) {
+  const { t } = useTranslation("trivia");
   const fraction = totalRounds > 0 ? (round + 1) / totalRounds : 0;
   return (
     <div className="flex flex-col gap-1.5">
       <p className="m-0 text-xs font-bold tracking-[0.15em] text-[var(--text-muted)] uppercase">
-        Round {round + 1} of {totalRounds}
+        {t("round", { round: round + 1, total: totalRounds })}
       </p>
       <div
         className="h-2 overflow-hidden rounded-[var(--radius-pill)] bg-[var(--surface-inset)] shadow-[var(--shadow-inset)]"
@@ -88,6 +98,7 @@ function Scoreboard({
   players: GameUiProps["players"];
   me: string;
 }) {
+  const { t } = useTranslation("trivia");
   const entries = Object.entries(scores).sort((a, b) => b[1] - a[1]);
   const top = entries[0]?.[1];
   return (
@@ -110,11 +121,10 @@ function Scoreboard({
             {i + 1}
           </span>
           <span className="min-w-0 flex-1 truncate">
-            {nameFor(players, id)}
-            {id === me && " (you)"}
+            {id === me ? t("you", { name: nameFor(players, id) }) : nameFor(players, id)}
           </span>
           {score === top && score > 0 && (
-            <span aria-label="leading" title="leading">
+            <span aria-label={t("leading")} title={t("leading")}>
               👑
             </span>
           )}
@@ -164,6 +174,7 @@ function Answering({
   me: string;
   send: (a: unknown) => void;
 }) {
+  const { t } = useTranslation("trivia");
   const locked = v.yourAnswer !== null;
 
   function pick(choice: number) {
@@ -175,7 +186,7 @@ function Answering({
     <div className="flex flex-col gap-5">
       <RoundProgress round={v.round} totalRounds={v.totalRounds} />
       <Question text={v.question} />
-      <div role="radiogroup" aria-label="Answer choices" className="flex flex-col gap-2.5">
+      <div role="radiogroup" aria-label={t("choices")} className="flex flex-col gap-2.5">
         {v.choices.map((choice, i) => {
           const picked = v.yourAnswer === i;
           return (
@@ -210,8 +221,10 @@ function Answering({
         })}
       </div>
       <p className="m-0 text-sm text-[var(--text-secondary)]">
-        {v.answeredCount} of {v.totalPlayers} answered
-        {locked ? " — your answer is locked in." : ""}
+        {t(locked ? "answeredLocked" : "answered", {
+          count: v.answeredCount,
+          total: v.totalPlayers,
+        })}
       </p>
       <Scoreboard scores={v.scores} players={players} me={me} />
     </div>
@@ -227,6 +240,7 @@ function Reveal({
   players: GameUiProps["players"];
   me: string;
 }) {
+  const { t } = useTranslation("trivia");
   const myAnswer = v.given[me] ?? null;
   const gotIt = myAnswer === v.correctAnswer;
 
@@ -244,7 +258,11 @@ function Reveal({
           {gotIt ? "🎉" : myAnswer === null ? "⏱" : "😬"}
         </span>
         <span className="font-display font-bold">
-          {gotIt ? "Correct!" : myAnswer === null ? "You ran out of time." : "Not this one."}
+          {gotIt
+            ? t("reveal.correct")
+            : myAnswer === null
+              ? t("reveal.timedOut")
+              : t("reveal.wrong")}
         </span>
       </div>
       <Question text={v.question} />
@@ -284,11 +302,13 @@ function Reveal({
                 {choice}
               </span>
               {isCorrect && (
-                <span className="flex-none text-sm font-bold text-[var(--ok-fg)]">correct</span>
+                <span className="flex-none text-sm font-bold text-[var(--ok-fg)]">
+                  {t("tag.correct")}
+                </span>
               )}
               {wasMine && !isCorrect && (
                 <span className="flex-none text-sm font-bold text-[var(--danger-fg)]">
-                  your pick
+                  {t("tag.yourPick")}
                 </span>
               )}
             </div>
@@ -299,13 +319,15 @@ function Reveal({
         {players.map((p) => {
           const given = v.given[p.id] ?? null;
           const right = given === v.correctAnswer;
+          const name = nameFor(players, p.id);
           return (
             <li key={p.id} className="flex items-center gap-2">
               <span aria-hidden="true">{right ? "✓" : "·"}</span>
               <span>
-                {nameFor(players, p.id)}
-                {p.id === me && " (you)"}: {given === null ? "no answer" : v.choices[given]}
-                {right ? " (+1)" : ""}
+                {t(right ? "answerScored" : "answer", {
+                  name: p.id === me ? t("you", { name }) : name,
+                  answer: given === null ? t("noAnswer") : v.choices[given],
+                })}
               </span>
             </li>
           );
@@ -317,6 +339,7 @@ function Reveal({
 }
 
 function Done({ v, players, me }: { v: DoneView; players: GameUiProps["players"]; me: string }) {
+  const { t } = useTranslation("trivia");
   const entries = Object.entries(v.scores).sort((a, b) => b[1] - a[1]);
   const topScore = entries[0]?.[1];
   const winners = entries.filter(([, score]) => score === topScore).map(([id]) => id);
@@ -332,7 +355,7 @@ function Done({ v, players, me }: { v: DoneView; players: GameUiProps["players"]
           🏆
         </span>
         <h3 className="m-0 font-display text-2xl font-bold text-[var(--text-primary)]">
-          Final scoreboard
+          {t("finalScoreboard")}
         </h3>
       </div>
       <ul className="m-0 flex list-none flex-col gap-2 p-0">
@@ -354,10 +377,9 @@ function Done({ v, players, me }: { v: DoneView; players: GameUiProps["players"]
                 className="min-w-0 flex-1 truncate"
                 style={{ fontWeight: isWinner || id === me ? 700 : 400 }}
               >
-                {nameFor(players, id)}
-                {id === me && " (you)"}
+                {id === me ? t("you", { name: nameFor(players, id) }) : nameFor(players, id)}
               </span>
-              {isWinner && <span aria-label="winner">🏆</span>}
+              {isWinner && <span aria-label={t("winner")}>🏆</span>}
               <span className="flex-none font-mono text-lg tabular-nums">{score}</span>
             </li>
           );
@@ -368,10 +390,11 @@ function Done({ v, players, me }: { v: DoneView; players: GameUiProps["players"]
 }
 
 export default function TriviaUi({ view, players, me, send }: GameUiProps) {
+  const { t } = useTranslation("trivia");
   const v = view as TriviaView | null;
 
   if (!v) {
-    return <p className="m-0 text-[var(--text-muted)]">Loading question…</p>;
+    return <p className="m-0 text-[var(--text-muted)]">{t("loading")}</p>;
   }
 
   if (v.phase === "done") return <Done v={v} players={players} me={me} />;

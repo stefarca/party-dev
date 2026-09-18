@@ -1,0 +1,19 @@
+{
+  "name": "Tic-tac-toe",
+  "you": "{{name}} (you)",
+  "loading": "Loading board…",
+  "board": "Tic-tac-toe board, {{size}} by {{size}}",
+  "square": {
+    "position": "Row {{row}}, column {{column}}",
+    "empty": "{{square}}, empty",
+    "emptyPlayable": "{{square}}, empty — place your {{mark}}",
+    "taken": "{{square}}, {{mark}}",
+    "lastMove": "last move",
+    "winningLine": "winning line"
+  },
+  "status": {
+    "yourTurn": "Your turn — place your {{mark}}.",
+    "waitingFor": "Waiting for {{name}}…",
+    "finished": "Match finished."
+  }
+}

@@ -1,14 +1,17 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
 
-import { Button, Form, Input, Label, Popover, TextField } from "@heroui/react";
+import { Button, Form, I18nProvider, Input, Label, Popover, TextField } from "@heroui/react";
+import { useTranslation } from "react-i18next";
 
-import { ApiError } from "./api";
 import { AppBackground } from "./components/AppBackground";
+import { LanguagePicker } from "./components/LanguagePicker";
 import { PlayerAvatar } from "./components/PlayerAvatar";
 import { Spinner } from "./components/states";
 import { ThemeToggle } from "./components/ThemeToggle";
 import { WordMark } from "./components/WordMark";
+import { errorText } from "./errors";
+import { useLanguage } from "./i18n";
 import { Dashboard } from "./routes/Dashboard";
 import { MatchPage } from "./routes/MatchPage";
 import { NicknameGate } from "./routes/NicknameGate";
@@ -16,6 +19,7 @@ import { navigate, useRoute } from "./router";
 import { SessionProvider, useSession } from "./session";
 
 function RenameControl() {
+  const { t } = useTranslation();
   const { player, rename } = useSession();
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(player?.nickname ?? "");
@@ -39,7 +43,7 @@ function RenameControl() {
       setEditing(false);
       setError(null);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Could not rename.");
+      setError(errorText(t, err, t("rename.failed")));
     }
   }
 
@@ -48,17 +52,19 @@ function RenameControl() {
       <Button
         variant="ghost"
         size="sm"
-        aria-label={`Signed in as ${nickname}. Change nickname`}
-        className="max-w-32 gap-2 rounded-[var(--radius-pill)] border border-[var(--border-subtle)] bg-[var(--surface-2)] pr-3 pl-1 transition-transform duration-[var(--dur-fast)] ease-[var(--ease-spring)] hover:scale-105 sm:max-w-none"
+        aria-label={t("rename.trigger", { nickname })}
+        className="max-w-32 min-w-0 shrink gap-2 rounded-[var(--radius-pill)] border border-[var(--border-subtle)] bg-[var(--surface-2)] pr-3 pl-1 transition-transform duration-[var(--dur-fast)] ease-[var(--ease-spring)] hover:scale-105 sm:max-w-none"
       >
         <PlayerAvatar id={player.playerId} nickname={nickname} size="sm" />
         <span className="truncate text-sm font-bold">{nickname}</span>
       </Button>
       <Popover.Content placement="bottom end">
-        <Popover.Dialog aria-label="Rename nickname">
+        <Popover.Dialog aria-label={t("rename.dialog")}>
           <Form onSubmit={handleRename} className="flex w-60 flex-col gap-3 p-4">
             <TextField value={value} onChange={setValue} maxLength={24}>
-              <Label className="text-xs font-bold text-[var(--text-muted)]">Nickname</Label>
+              <Label className="text-xs font-bold text-[var(--text-muted)]">
+                {t("rename.label")}
+              </Label>
               <Input autoFocus />
             </TextField>
             {error && (
@@ -68,10 +74,10 @@ function RenameControl() {
             )}
             <div className="flex gap-2">
               <Button type="submit" size="sm">
-                Save
+                {t("rename.save")}
               </Button>
               <Button type="button" variant="ghost" size="sm" onPress={() => setOpen(false)}>
-                Cancel
+                {t("rename.cancel")}
               </Button>
             </div>
           </Form>
@@ -99,8 +105,11 @@ function Header() {
           />
           <span>party</span>
         </a>
-        <div className="flex items-center gap-2">
+        {/* `min-w-0` lets the nickname button truncate instead of pushing the row past a
+            phone's width. */}
+        <div className="flex min-w-0 items-center gap-2">
           <RenameControl />
+          <LanguagePicker />
           <ThemeToggle />
         </div>
       </div>
@@ -109,6 +118,7 @@ function Header() {
 }
 
 function RouteContent() {
+  const { t } = useTranslation();
   const route = useRoute();
   if (route.name === "dashboard") return <Dashboard />;
   if (route.name === "match") return <MatchPage code={route.code} />;
@@ -116,15 +126,16 @@ function RouteContent() {
     <main id="main-content" className="app-container">
       <div className="flex flex-col items-center gap-4 py-16 text-center">
         <WordMark animated className="size-14 text-accent opacity-60" />
-        <h1 className="m-0 font-display text-2xl font-bold">Nothing here</h1>
-        <p className="m-0 text-[var(--text-muted)]">That link does not point at a match.</p>
-        <Button onPress={() => navigate("/")}>Back to the hub</Button>
+        <h1 className="m-0 font-display text-2xl font-bold">{t("notFound.title")}</h1>
+        <p className="m-0 text-[var(--text-muted)]">{t("notFound.body")}</p>
+        <Button onPress={() => navigate("/")}>{t("notFound.back")}</Button>
       </div>
     </main>
   );
 }
 
 function AppShell() {
+  const { t } = useTranslation();
   const { state } = useSession();
 
   if (state === "loading") {
@@ -134,7 +145,7 @@ function AppShell() {
         className="flex min-h-dvh animate-in flex-col items-center justify-center gap-5 duration-500 fade-in"
       >
         <WordMark animated className="size-14 text-accent" />
-        <Spinner label="Loading party" />
+        <Spinner label={t("app.loading")} />
       </main>
     );
   }
@@ -152,13 +163,19 @@ function AppShell() {
 }
 
 export function App() {
+  const { t } = useTranslation();
+  // Keeps react-aria's own built-in strings (a popover's hidden "Dismiss" button, say) in the
+  // app's language rather than the browser's.
+  const language = useLanguage();
   return (
-    <SessionProvider>
-      <AppBackground />
-      <a href="#main-content" className="skip-link">
-        Skip to content
-      </a>
-      <AppShell />
-    </SessionProvider>
+    <I18nProvider locale={language}>
+      <SessionProvider>
+        <AppBackground />
+        <a href="#main-content" className="skip-link">
+          {t("app.skipToContent")}
+        </a>
+        <AppShell />
+      </SessionProvider>
+    </I18nProvider>
   );
 }

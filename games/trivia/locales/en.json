@@ -1,0 +1,26 @@
+{
+  "name": "Trivia",
+  "you": "{{name}} (you)",
+  "loading": "Loading question…",
+  "round": "Round {{round}} of {{total}}",
+  "choices": "Answer choices",
+  "answered_one": "{{count}} of {{total}} answered",
+  "answered_other": "{{count}} of {{total}} answered",
+  "answeredLocked_one": "{{count}} of {{total}} answered — your answer is locked in.",
+  "answeredLocked_other": "{{count}} of {{total}} answered — your answer is locked in.",
+  "leading": "leading",
+  "reveal": {
+    "correct": "Correct!",
+    "timedOut": "You ran out of time.",
+    "wrong": "Not this one."
+  },
+  "tag": {
+    "correct": "correct",
+    "yourPick": "your pick"
+  },
+  "answer": "{{name}}: {{answer}}",
+  "answerScored": "{{name}}: {{answer}} (+1)",
+  "noAnswer": "no answer",
+  "finalScoreboard": "Final scoreboard",
+  "winner": "winner"
+}

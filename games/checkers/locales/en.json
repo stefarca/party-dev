@@ -1,0 +1,48 @@
+{
+  "name": "Checkers",
+  "you": "{{name}} (you)",
+  "loading": "Loading board…",
+  "side": {
+    "red": "Red",
+    "blue": "Blue"
+  },
+  "left_one": "{{count}} left",
+  "left_other": "{{count}} left",
+  "board": {
+    "red": "Checkers board, {{size}} by {{size}}, red at the bottom",
+    "blue": "Checkers board, {{size}} by {{size}}, blue at the bottom"
+  },
+  "piece": {
+    "red": {
+      "man": "red man",
+      "king": "red king"
+    },
+    "blue": {
+      "man": "blue man",
+      "king": "blue king"
+    },
+    "yours": "{{piece}} (yours)"
+  },
+  "square": {
+    "position": "Row {{row}}, column {{column}}",
+    "empty": "empty",
+    "pickedUp": "picked up",
+    "jumpHere": "jump here",
+    "moveHere": "move here",
+    "canMove": "can move",
+    "beingJumped": "being jumped",
+    "lastMove": "part of the last move",
+    "capturedLastMove": "captured on the last move"
+  },
+  "status": {
+    "keepJumping": "Keep jumping — pick the next landing square.",
+    "pickJump": "Pick where to jump.",
+    "pickMove": "Pick where to move.",
+    "mustJump": "Your turn — you must jump.",
+    "pickPiece": "Your turn — pick a piece to move.",
+    "waitingFor": "Waiting for {{name}}…",
+    "finished": "Match finished."
+  },
+  "quietDraw_one": "No capture or man moved in a while: the game is drawn in {{count}} more turn without one.",
+  "quietDraw_other": "No capture or man moved in a while: the game is drawn in {{count}} more turns without one."
+}

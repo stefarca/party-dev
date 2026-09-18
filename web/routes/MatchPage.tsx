@@ -1,6 +1,7 @@
 import { Button } from "@heroui/react";
 import { Component, Suspense, lazy, useCallback, useEffect, useRef, useState } from "react";
 import type { ComponentType, LazyExoticComponent, ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 
 import type { GameMeta } from "../../games/catalog";
 import { getGameMeta } from "../../games/catalog";
@@ -23,15 +24,18 @@ import { HistoryPanel } from "../components/HistoryPanel";
 import { EmptyAvatar, PlayerAvatar } from "../components/PlayerAvatar";
 import { Notice, Skeleton } from "../components/states";
 import { TurnIndicator } from "../components/TurnIndicator";
+import { errorText } from "../errors";
+import { playerRange } from "../format";
+import { useGameName } from "../i18n";
 import { navigate } from "../router";
 import { useSession } from "../session";
 import type { ConnectionState, MatchError } from "../useMatch";
 import { useMatch } from "../useMatch";
 
-const STATUS_STYLE: Record<MatchStatus, { label: string; fill: string; ink: string }> = {
-  lobby: { label: "Lobby", fill: "var(--party-pink-soft)", ink: "var(--party-pink-on-soft)" },
-  active: { label: "Playing", fill: "var(--ok-soft)", ink: "var(--ok-fg)" },
-  done: { label: "Finished", fill: "var(--surface-3)", ink: "var(--text-muted)" },
+const STATUS_STYLE: Record<MatchStatus, { fill: string; ink: string }> = {
+  lobby: { fill: "var(--party-pink-soft)", ink: "var(--party-pink-on-soft)" },
+  active: { fill: "var(--ok-soft)", ink: "var(--ok-fg)" },
+  done: { fill: "var(--surface-3)", ink: "var(--text-muted)" },
 };
 
 function MatchHeader({
@@ -47,6 +51,7 @@ function MatchHeader({
   connection: ConnectionState;
   showConnection: boolean;
 }) {
+  const { t } = useTranslation();
   const style = STATUS_STYLE[status];
   return (
     <div className="party-pop mb-6 flex flex-wrap items-center gap-3">
@@ -59,7 +64,7 @@ function MatchHeader({
           className="w-fit rounded-[var(--radius-pill)] px-2 py-0.5 text-xs font-bold"
           style={{ background: style.fill, color: style.ink }}
         >
-          {style.label}
+          {t(`status.${status}`)}
         </span>
       </div>
       {showConnection && <ConnectionBadge connection={connection} />}
@@ -99,6 +104,7 @@ function GameSurfaceSkeleton() {
 }
 
 function ShareCode({ code, collapsed }: { code: string; collapsed: boolean }) {
+  const { t } = useTranslation();
   const [copied, setCopied] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const url = `${window.location.origin}/m/${code}`;
@@ -125,7 +131,7 @@ function ShareCode({ code, collapsed }: { code: string; collapsed: boolean }) {
       id="match-share-url"
       readOnly
       value={url}
-      aria-label="Match link"
+      aria-label={t("share.linkLabel")}
       className={
         collapsed
           ? "sr-only"
@@ -144,7 +150,9 @@ function ShareCode({ code, collapsed }: { code: string; collapsed: boolean }) {
           className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-[var(--radius-pill)] border border-[var(--border-subtle)] bg-[var(--surface-2)] px-4 py-1 text-xs font-bold text-[var(--text-secondary)] shadow-[var(--edge-highlight)] transition-transform duration-[var(--dur-fast)] ease-[var(--ease-spring)] hover:scale-105 active:scale-95"
         >
           <span className="font-mono tracking-[0.15em]">{code}</span>
-          <span className="text-[var(--accent-on-soft)]">{copied ? "Copied!" : "Copy link"}</span>
+          <span className="text-[var(--accent-on-soft)]">
+            {copied ? t("share.copied") : t("share.copy")}
+          </span>
         </button>
         {shareInput}
       </div>
@@ -155,11 +163,9 @@ function ShareCode({ code, collapsed }: { code: string; collapsed: boolean }) {
     <section className="party-pop flex flex-col items-center gap-4 rounded-[var(--radius-xl)] border-2 border-[var(--border-accent)] bg-[var(--surface-1)] p-6 text-center shadow-[var(--shadow-2),var(--glow-accent)]">
       <div className="flex flex-col gap-1">
         <h2 className="m-0 font-display text-xl font-bold text-[var(--text-primary)]">
-          Invite your crew
+          {t("share.title")}
         </h2>
-        <p className="m-0 text-sm text-[var(--text-muted)]">
-          Share this code — anyone with it can drop in.
-        </p>
+        <p className="m-0 text-sm text-[var(--text-muted)]">{t("share.body")}</p>
       </div>
       <div aria-hidden="true" className="flex justify-center gap-1.5 sm:gap-2">
         {code.split("").map((ch, i) => (
@@ -177,7 +183,7 @@ function ShareCode({ code, collapsed }: { code: string; collapsed: boolean }) {
         onPress={copy}
         className="rounded-[var(--radius-pill)] px-6 font-display font-bold transition-transform duration-[var(--dur-fast)] ease-[var(--ease-spring)] hover:scale-105 active:scale-95"
       >
-        {copied ? "Copied! ✓" : "Copy link"}
+        {copied ? t("share.copiedCheck") : t("share.copy")}
       </Button>
     </section>
   );
@@ -194,6 +200,7 @@ function Roster({
   hostId: string;
   myPlayerId: string;
 }) {
+  const { t } = useTranslation();
   // Draw only the seats the game still *needs* to start, and summarise the
   // optional ones in a line. A 2-8 player game with one player in it would
   // otherwise open with seven identical dashed rows to scroll past.
@@ -215,7 +222,7 @@ function Roster({
           <span className="flex flex-none gap-1.5">
             {p.id === hostId && (
               <span className="rounded-[var(--radius-pill)] bg-[var(--surface-3)] px-2 py-0.5 text-xs font-bold text-[var(--text-muted)]">
-                host
+                {t("lobby.host")}
               </span>
             )}
             {p.id === myPlayerId && (
@@ -223,7 +230,7 @@ function Roster({
                 className="rounded-[var(--radius-pill)] px-2 py-0.5 text-xs font-bold"
                 style={{ background: "var(--accent-soft)", color: "var(--accent-on-soft)" }}
               >
-                you
+                {t("lobby.you")}
               </span>
             )}
           </span>
@@ -235,12 +242,12 @@ function Roster({
           className="flex items-center gap-3 rounded-[var(--radius-md)] border-2 border-dashed border-[var(--border-subtle)] p-2.5 text-[var(--text-muted)]"
         >
           <EmptyAvatar size="md" />
-          <span className="flex-1 text-sm italic">Open seat</span>
+          <span className="flex-1 text-sm italic">{t("lobby.openSeat")}</span>
         </li>
       ))}
       {optionalSeats > 0 && (
         <li className="px-2 pt-1 text-xs text-[var(--text-muted)]">
-          Room for {optionalSeats} more {optionalSeats === 1 ? "player" : "players"}.
+          {t("lobby.roomFor", { count: optionalSeats })}
         </li>
       )}
     </ul>
@@ -300,6 +307,8 @@ function GameUiHost({
   me: string;
   send: (action: unknown) => void;
 }) {
+  const { t } = useTranslation();
+  const gameName = useGameName();
   const props: GameUiProps = {
     view: snapshot.view,
     me,
@@ -310,7 +319,7 @@ function GameUiHost({
     send,
   };
 
-  const title = getGameMeta(gameId)?.name ?? gameId;
+  const title = gameName(gameId, getGameMeta(gameId)?.name);
   const Lazy = getLazyUi(gameId);
   if (!Lazy) {
     return (
@@ -326,7 +335,7 @@ function GameUiHost({
         <Suspense
           fallback={
             <div role="status">
-              <span className="sr-only">Loading game…</span>
+              <span className="sr-only">{t("match.loadingGame")}</span>
               <Skeleton height="14rem" rounded="lg" />
             </div>
           }
@@ -368,6 +377,8 @@ function MatchBody({
   myPlayerId: string;
   isMember: boolean;
 }) {
+  const { t } = useTranslation();
+  const gameName = useGameName();
   const meta = getGameMeta(match.gameId);
   const status = snapshot?.status ?? match.status;
   const players = snapshot?.players ?? match.players;
@@ -381,7 +392,9 @@ function MatchBody({
     return (
       <section className="party-pop flex flex-col gap-4 rounded-[var(--radius-xl)] border border-[var(--border-subtle)] bg-[var(--surface-1)] p-5 shadow-[var(--shadow-2),var(--edge-highlight)]">
         <div className="flex items-baseline justify-between gap-2">
-          <h2 className="m-0 font-display text-lg font-bold text-[var(--text-primary)]">Players</h2>
+          <h2 className="m-0 font-display text-lg font-bold text-[var(--text-primary)]">
+            {t("lobby.players")}
+          </h2>
           {meta && (
             <span className="text-sm text-[var(--text-muted)]">
               {count}/{meta.maxPlayers}
@@ -391,9 +404,11 @@ function MatchBody({
         <Roster players={players} meta={meta} hostId={match.hostId} myPlayerId={myPlayerId} />
         {meta && (
           <p className="m-0 text-sm text-[var(--text-muted)]">
-            {meta.name} needs {meta.minPlayers}
-            {meta.maxPlayers !== meta.minPlayers ? `–${meta.maxPlayers}` : ""} players.
-            {isHost ? "" : " Waiting for the host to start."}
+            {t("lobby.needs", {
+              game: gameName(match.gameId, meta.name),
+              players: playerRange(t, meta),
+            })}
+            {isHost ? "" : ` ${t("lobby.waitingForHost")}`}
           </p>
         )}
         {isHost && (
@@ -402,12 +417,12 @@ function MatchBody({
             isDisabled={!canStart}
             className="self-start rounded-[var(--radius-pill)] px-6 font-display font-bold transition-transform duration-[var(--dur-fast)] ease-[var(--ease-spring)] not-disabled:hover:scale-105 not-disabled:active:scale-95"
           >
-            Start match ▸
+            {t("lobby.start")}
           </Button>
         )}
         {transportError && (
           <Notice tone="danger" role="status">
-            {transportError.message}
+            {errorText(t, transportError, t("match.failed"))}
           </Notice>
         )}
       </section>
@@ -419,12 +434,7 @@ function MatchBody({
   // arrive for them. Say so, rather than leaving a skeleton shimmering
   // forever.
   if (!isMember) {
-    return (
-      <Notice tone="info">
-        This match is already under way and you are not one of its players. Ask for a link to the
-        next one.
-      </Notice>
-    );
+    return <Notice tone="info">{t("match.notAPlayer")}</Notice>;
   }
 
   // active / done — the game itself needs the live snapshot, which may still
@@ -455,7 +465,7 @@ function MatchBody({
       />
       {transportError && (
         <Notice tone="danger" role="status">
-          {transportError.message}
+          {errorText(t, transportError, t("match.failed"))}
         </Notice>
       )}
       <HistoryPanel events={events} />
@@ -465,7 +475,7 @@ function MatchBody({
           onPress={() => navigate("/")}
           className="self-start rounded-[var(--radius-pill)] font-bold"
         >
-          ← Back to the hub
+          {t("match.backToHub")}
         </Button>
       )}
     </div>
@@ -473,6 +483,8 @@ function MatchBody({
 }
 
 export function MatchPage({ code }: { code: string }) {
+  const { t } = useTranslation();
+  const gameName = useGameName();
   const { player, notifyUnauthorized } = useSession();
   const [match, setMatch] = useState<MatchSummary | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -502,19 +514,11 @@ export function MatchPage({ code }: { code: string }) {
         notifyUnauthorized();
         return;
       }
-      if (err instanceof ApiError && err.status === 404) {
-        setError("No match with that code.");
-      } else if (err instanceof ApiError && err.status === 409) {
-        setError(
-          err.code === "lobby_full" ? "This lobby is full." : "This match has already started.",
-        );
-      } else {
-        setError(err instanceof Error ? err.message : "Failed to load this match.");
-      }
+      setError(errorText(t, err, t("match.loadFailed")));
     } finally {
       setLoading(false);
     }
-  }, [code, notifyUnauthorized, player]);
+  }, [code, notifyUnauthorized, player, t]);
 
   useEffect(() => {
     load();
@@ -566,12 +570,12 @@ export function MatchPage({ code }: { code: string }) {
         }}
         className="mb-4 inline-flex items-center gap-1 text-sm font-bold text-[var(--text-muted)] no-underline transition-colors hover:text-[var(--text-primary)]"
       >
-        ← Hub
+        {t("match.hub")}
       </a>
 
       {match && (
         <MatchHeader
-          name={meta?.name ?? match.gameId}
+          name={gameName(match.gameId, meta?.name)}
           gameId={match.gameId}
           status={status ?? match.status}
           connection={connection}
@@ -582,7 +586,7 @@ export function MatchPage({ code }: { code: string }) {
       {loading && <MatchSkeleton />}
 
       {!loading && error && (
-        <Notice tone="danger" action={{ label: "Retry", onClick: () => load() }}>
+        <Notice tone="danger" action={{ label: t("retry"), onClick: () => load() }}>
           {error}
         </Notice>
       )}
