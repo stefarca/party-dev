@@ -6,10 +6,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ```bash
 npm install
-cp .dev.vars.example .dev.vars   # dummy SESSION_SECRET; SLACK_WEBHOOK_URL is optional
+cp .dev.vars.example .dev.vars   # dummy SESSION_SECRET + dummy SLACK_WEBHOOK_URL (see below)
 npm run db:migrate:local         # creates the local D1 sqlite file under .wrangler/state
 npm run dev                      # vite + real workerd, prints the local URL
 ```
+
+Node 26 is pinned in `mise.toml` and CI. `SLACK_WEBHOOK_URL` is optional: with the copied dummy
+value, nudges make a real request that fails and gets logged. Delete the line to make them a clean
+no-op.
 
 - `npm test` — vitest (node environment). Single file: `npx vitest run worker/match.test.ts`; single
   case: `npx vitest run games/trivia/game.test.ts -t "idempotent"`.
@@ -27,14 +31,25 @@ pointed at different `.wrangler/state` persist directories — re-run `npm run d
 production before the new Worker is live. The workflow `sed`-substitutes the committed placeholders
 `"database_id": "REPLACE_ME_SEE_README"` and `"PUBLIC_BASE_URL": "http://localhost:5173"` in
 `wrangler.jsonc` by exact text. Keep those two lines byte-identical and never commit real values.
-One-time operator setup is in the README.
+Because a migration runs while the old Worker is still serving, it must be additive and work with
+that old Worker, like the existing `ADD COLUMN`s. One-time operator setup is in the README.
 
 ## Architecture
 
 **One `MatchDO` class runs every game.** `worker/match.ts` holds no game-specific knowledge; it
 looks games up through `games/registry.ts`. The Durable Object is authoritative; D1
 (`migrations/*.sql`) is a derived, dashboard-only index that may be rebuilt or lag without
-affecting correctness. Never read match truth from D1.
+affecting correctness. Never read match truth from D1. The one other job D1 has is match-code
+reservation. `POST /api/matches` inserts a placeholder `matches` row to claim a fresh code
+(retrying on a primary-key collision) and deletes it if the DO create fails. Join checks that row
+before it contacts the DO.
+
+**Worker → DO boundary.** A match code is the DO name: `MATCH.idFromName(normalizeMatchCode(code))`
+(`shared/ids.ts`). `worker/api.ts` and `worker/index.ts` verify the session and then forward to the
+DO's internal routes (`/lobby/create`, `/lobby/join`, `/snapshot`, `/view`, `/start`, `/action`,
+`/ws`). They pass the caller's `playerId` in the JSON body, or in `X-Player-Id`/`X-Player-Nickname`
+headers for `/ws`. The DO trusts that id and only checks membership, so it must always come from
+the verified session and never from a client payload.
 
 **Everything funnels through `MatchDO.commit()`** — lobby create, join, start, action, and `alarm()`.
 Its seven stages run in a binding order: persist → append events → recompute
@@ -56,6 +71,13 @@ idempotent `onDeadline` — are enforced by convention and by each game's own te
 engine. `games/README.md` is the authoring checklist; `games/connect4` (sequential) and
 `games/trivia` (simultaneous + deadline) are the two reference implementations.
 
+What the engine _does_ handle, so a game need not: before `reduce` runs, `MatchDO.handleAction`
+parses the action with `actionSchema` and rejects any player who is not in `waitingOn(state)`
+(`not_your_turn`). To reject an illegal move, a game **throws from `reduce`**. The DO turns that
+into an `invalid_move` error and skips `commit()`, so the persisted state is unchanged. `alarm()`
+reschedules early fires. It also refuses to commit if `onDeadline` left `deadline()` unchanged,
+which prevents an alarm loop.
+
 Registering a game is one line in each of `serverGames` and `gameUi` in `games/registry.ts`.
 `serverGames` is statically imported into the Worker bundle and **must never import a `.tsx` file**
 — that would pull React into the Worker. `gameUi` is lazily imported so the client bundle does not
@@ -66,8 +88,10 @@ grow with every game.
 both speak `MatchSnapshot` from `shared/protocol.ts`. WS is an optimization, never the only path —
 anything reachable over the socket needs an HTTP equivalent. `web/useMatch.ts` fetches the HTTP
 snapshot first, then attaches the socket as an add-on with backoff, and falls back to HTTP for
-sends. Bump `PROTOCOL_VERSION` in `shared/version.ts` when a `shared/protocol.ts` message shape
-changes incompatibly.
+sends. Snapshots carry the event-log `seq`, and the client drops any snapshot older than the one
+it is showing. Bump `PROTOCOL_VERSION` in `shared/version.ts` when a `shared/protocol.ts` message
+shape changes incompatibly. The constant is not sent or checked at runtime, and
+`shared/version.test.ts` pins its value, so bumping it means updating that test too.
 
 **Durable Object constraints** (free tier): Hibernation API only
 (`ctx.acceptWebSocket()` + `webSocketMessage()`, never `addEventListener`); per-connection identity
@@ -75,7 +99,9 @@ lives on `ws.serializeAttachment()`, never an in-memory map; no `setInterval` �
 `ctx.storage.setAlarm()`; keep reducers inside the 10 ms CPU budget. `alarm()` must never throw
 (throws are retried up to 6 times and can double-resolve a round), and `webSocketMessage()` must
 never throw (it kills the socket) — both convert failures into a logged error or a `{t:"error"}`
-message.
+message. For WebSocket heartbeats, send a raw `"ping"` text frame. The runtime answers it with
+`"pong"` through `setWebSocketAutoResponse` without waking the DO. The app-level `{t:"ping"}`
+message exists only to answer non-conforming clients and must not be used for keepalives.
 
 **Identity** is a nickname plus an HMAC-signed cookie (`worker/auth.ts`, Web Crypto, key in
 `SESSION_SECRET`). No password, no session store. A missing secret fails closed with a 500 —
@@ -104,7 +130,13 @@ including deep-linked SPA routes like `/m/ABCDEF`, is served by Static Assets wi
   genuinely cannot be Tailwind utilities. Game UI modules must not import a `.css` file of their
   own. Theme switching is `web/theme.ts` writing the `data-theme` attribute and a `dark` class on
   `<html>`, mirrored by the inline bootstrap script in `index.html` so the first paint never
-  flashes the wrong theme.
+  flashes the wrong theme. That script repeats the `"party-theme"` storage key as a literal, so
+  keep it in sync with `THEME_STORAGE_KEY`. Tailwind emits only class names it can see in the
+  source, so never build a class name from a runtime value like `` `bg-seat-${n}` ``. Use a static
+  lookup of complete class strings, or set a CSS variable inline. `.mcp.json` configures the
+  `heroui-react` MCP server for HeroUI v3 component docs.
+- Client routing is hand-rolled in `web/router.tsx` with `useSyncExternalStore` and has no router
+  dependency. Add new routes to its `parseRoute` table.
 - Prettier: `printWidth` 100; `.claude/` and generated files are ignored. ESLint flat
   config enables only `rules-of-hooks` and `exhaustive-deps` from react-hooks — the
   React-Compiler-era rules flag deliberate patterns in `web/useMatch.ts`. `prettier` stays last in
