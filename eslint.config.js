@@ -5,7 +5,16 @@ import globals from "globals";
 import tseslint from "typescript-eslint";
 
 export default tseslint.config(
-  { ignores: ["dist/**", ".wrangler/**", "worker-configuration.d.ts", "*.tsbuildinfo"] },
+  {
+    ignores: [
+      "dist/**",
+      ".wrangler/**",
+      "worker-configuration.d.ts",
+      "*.tsbuildinfo",
+      "test-results/**",
+      "playwright-report/**",
+    ],
+  },
   js.configs.recommended,
   tseslint.configs.recommended,
   {

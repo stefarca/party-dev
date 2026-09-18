@@ -9,7 +9,12 @@
     "strict": true,
     "noEmit": true,
     "skipLibCheck": true,
-    "resolveJsonModule": true
+    "resolveJsonModule": true,
+    // No ambient @types packages (@types/node is installed for the e2e project), so a Node-only
+    // global in browser code is a type error rather than a runtime crash.
+    "types": []
   },
-  "include": ["web/**/*.ts", "web/**/*.tsx", "shared/**/*.ts", "games/**/*.ts", "games/**/*.tsx"]
+  "include": ["web/**/*.ts", "web/**/*.tsx", "shared/**/*.ts", "games/**/*.ts", "games/**/*.tsx"],
+  // Playwright specs live beside each game but run in Node (tsconfig.e2e.json).
+  "exclude": ["games/**/*.spec.ts"]
 }

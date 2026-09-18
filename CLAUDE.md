@@ -17,11 +17,21 @@ no-op.
 
 - `npm test` — vitest (node environment). Single file: `npx vitest run worker/match.test.ts`; single
   case: `npx vitest run games/trivia/game.test.ts -t "idempotent"`.
-- `npm run typecheck` — `tsc -b --noEmit` across the three project references below.
+- `npm run test:e2e` — Playwright, Chromium only. It starts `npm run e2e:serve` on port 5199, or
+  reuses one already running there. Single file: `npx playwright test games/connect4`; single case:
+  `npx playwright test -g "four in a column"`; `npm run test:e2e:ui` for the interactive runner,
+  which picks up UI edits through the dev server's HMR. One-time setup is
+  `npx playwright install chromium`, plus `sudo npx playwright install-deps chromium` on Linux.
+- `npm run e2e:serve` — the Vite dev server in `--mode e2e`. Its D1 and DO state live in
+  `.wrangler/e2e`, so it can run beside `npm run dev`. It reads only `SESSION_SECRET` (from
+  `.dev.vars`, or from the environment when there is none), so a test run never sends a Slack
+  nudge. Open it in two browser profiles to play a match against yourself.
+- `npm run typecheck` — `tsc -b --noEmit` across the four project references below.
 - `npm run lint` / `npm run format` / `npm run format:check`.
 - `npm run cf-typegen` — regenerates the committed `worker-configuration.d.ts`; re-run after
   changing bindings in `wrangler.jsonc`.
-- CI (`.github/workflows/ci.yml`) runs lint, format:check, typecheck, test, build on every PR.
+- CI (`.github/workflows/ci.yml`) runs lint, format:check, typecheck, test, build on every PR,
+  plus a separate `e2e` job that runs the Playwright suite and uploads its HTML report.
 
 If `/api/health` reports "no such table: matches", the migration CLI and the vite plugin are
 pointed at different `.wrangler/state` persist directories — re-run `npm run db:migrate:local`.
@@ -115,16 +125,28 @@ including deep-linked SPA routes like `/m/ABCDEF`, is served by Static Assets wi
 
 ## Conventions
 
-- Three TS project references: `tsconfig.worker.json` (worker + shared + games, no DOM),
-  `tsconfig.client.json` (web + shared + games, DOM), `tsconfig.node.json` (build configs).
-- `vitest.config.ts` includes only `**/*.test.ts` — a `.test.tsx` file would be silently skipped,
-  so game UI is not unit-tested.
+- Four TS project references: `tsconfig.worker.json` (worker + shared + games, no DOM),
+  `tsconfig.client.json` (web + shared + games, DOM), `tsconfig.node.json` (build configs), and
+  `tsconfig.e2e.json` (`playwright.config.ts`, `e2e/`, `games/**/*.spec.ts`; Node + DOM). The
+  worker and client projects exclude `games/**/*.spec.ts` and load no `@types` packages, so
+  `@types/node` (installed for Playwright) never reaches Worker or browser code.
+- `*.test.ts` is Vitest and `*.spec.ts` is Playwright; neither runner picks up the other's.
+  `vitest.config.ts` includes only `**/*.test.ts` — a `.test.tsx` file would be silently skipped,
+  so game UI is not unit-tested. The Playwright specs cover it instead.
 - There is no `@cloudflare/vitest-pool-workers` setup. `worker/match.test.ts` exercises `MatchDO`
   by mocking `cloudflare:workers` and hand-building the slice of `DurableObjectState`/`Env` it
-  touches, backed by `node:sqlite` (typed by the local `worker/node-sqlite.d.ts`, since there is no
-  `@types/node`). Engine tests run against `games/__fixtures__/counter.ts`, a test-only game that
-  is deliberately left out of the registry; the test adds it to `serverGames` and removes it
-  afterwards.
+  touches, backed by `node:sqlite` (typed by the local `worker/node-sqlite.d.ts`, since the worker
+  project loads no `@types` packages). Engine tests run against `games/__fixtures__/counter.ts`, a
+  test-only game that is deliberately left out of the registry; the test adds it to `serverGames`
+  and removes it afterwards.
+- Playwright specs drive the real app (Vite + workerd) through the UI and never import app code.
+  `e2e/fixtures.ts` is the harness. `newPlayer(nickname)` gives each player a browser context of
+  their own, signed in over the API. `startMatch(gameId)` creates, joins and starts a match over
+  HTTP, then opens it for every player and waits until each socket is live; its `players[0]` is
+  whoever the game waits on first. Each game has `games/<id>/ui.spec.ts`; flows shared by every
+  game (identity, hub, lobby, transports) are in `e2e/*.spec.ts`. Locate elements by role and
+  accessible name, the same labels the games already give screen readers. Sequential games'
+  starting player is random, so specs take roles from `players` order rather than nicknames.
 - Styling is Tailwind CSS v4 + HeroUI v3. `web/styles.css` is the only stylesheet in the repo —
   it imports `tailwindcss` before `@heroui/styles` (that order is mandatory: HeroUI's own rules
   must be able to override Tailwind's base layer), declares the `@source` globs, the design-token
