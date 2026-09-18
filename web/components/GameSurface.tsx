@@ -1,4 +1,3 @@
-import { Card } from "@heroui/react";
 import type { ReactNode } from "react";
 
 // The "arcade cabinet" every game's UI is mounted into: a bezel strip
@@ -16,14 +15,21 @@ export function GameSurface({
   status?: ReactNode;
 }) {
   return (
-    <Card className="mb-4 animate-in gap-0 overflow-hidden fade-in p-0 shadow-[var(--shadow-3),var(--edge-highlight)] duration-500 fill-mode-both">
-      <Card.Header className="flex flex-row items-center justify-between gap-3 border-b border-border px-4 py-3">
-        <Card.Title className="text-lg font-bold text-foreground">{title}</Card.Title>
-        {status !== undefined && <span className="text-sm text-muted">{status}</span>}
-      </Card.Header>
-      <Card.Content className="gap-0 bg-[var(--surface-inset)] p-2 shadow-[var(--shadow-inset)] sm:p-4">
+    <section className="party-pop overflow-hidden rounded-[var(--radius-xl)] border border-[var(--border-subtle)] bg-[var(--surface-1)] shadow-[var(--shadow-3),var(--edge-highlight)]">
+      <header className="flex items-center justify-between gap-3 border-b border-[var(--border-subtle)] bg-[var(--surface-2)] px-5 py-3">
+        {/* Small and quiet on purpose: the page already carries the game's
+            name as its heading, so this is the cabinet's bezel label rather
+            than a second title competing with it. */}
+        <h2 className="m-0 font-display text-xs font-bold tracking-[0.15em] text-[var(--text-muted)] uppercase">
+          {title}
+        </h2>
+        {status !== undefined && (
+          <span className="text-xs font-semibold text-[var(--text-muted)]">{status}</span>
+        )}
+      </header>
+      <div className="bg-[var(--surface-inset)] p-3 shadow-[var(--shadow-inset)] sm:p-5">
         {children}
-      </Card.Content>
-    </Card>
+      </div>
+    </section>
   );
 }

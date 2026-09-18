@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
 
-import { Button, Card, FieldError, Form, Input, Label, TextField } from "@heroui/react";
+import { Button, FieldError, Form, Input, Label, TextField } from "@heroui/react";
 
 import { ApiError } from "../api";
 import { ThemeToggle } from "../components/ThemeToggle";
@@ -54,32 +54,43 @@ export function NicknameGate() {
   return (
     <main
       id="main-content"
-      className="relative flex min-h-dvh flex-col items-center justify-center gap-6 px-4 py-10"
+      className="relative flex min-h-dvh flex-col items-center justify-center gap-8 px-4 py-12"
     >
-      <Card className="w-full max-w-sm animate-in fade-in slide-in-from-bottom-2 duration-500 fill-mode-both">
-        <Card.Content className="flex flex-col items-center gap-5 py-2 text-center">
-          <div className="flex flex-col items-center gap-2">
-            <WordMark className="size-10 text-accent" />
-            <h1 className="m-0 text-xl font-bold text-foreground">party-dev</h1>
-          </div>
-          <p className="m-0 text-muted">Async party games you play a move at a time.</p>
-          <Form onSubmit={handleSubmit} className="flex w-full flex-col gap-3 text-left">
-            <TextField
-              value={nickname}
-              onChange={setNickname}
-              maxLength={MAX_LEN}
-              isInvalid={!!error}
-            >
-              <Label>Nickname</Label>
-              <Input autoFocus placeholder="e.g. alice" />
-              {error && <FieldError>{error}</FieldError>}
-            </TextField>
-            <Button type="submit" isDisabled={submitting} className="w-full">
-              {submitting ? "Joining…" : "Continue"}
-            </Button>
-          </Form>
-        </Card.Content>
-      </Card>
+      <div className="party-pop flex w-full max-w-md flex-col items-center gap-7 rounded-[var(--radius-2xl)] border border-[var(--border-subtle)] bg-[var(--surface-1)]/85 p-8 text-center shadow-[var(--shadow-3),var(--edge-highlight)] backdrop-blur-xl">
+        <div className="flex flex-col items-center gap-3">
+          <WordMark animated className="size-16 text-accent" />
+          <h1 className="m-0 font-display text-4xl font-bold tracking-tight text-[var(--text-primary)]">
+            party
+          </h1>
+          <p className="m-0 text-balance text-[var(--text-secondary)]">
+            Async games with your coworkers. One move at a time, no scheduling.
+          </p>
+        </div>
+
+        <Form onSubmit={handleSubmit} className="flex w-full flex-col gap-4 text-left">
+          <TextField
+            value={nickname}
+            onChange={setNickname}
+            maxLength={MAX_LEN}
+            isInvalid={!!error}
+          >
+            <Label className="text-xs font-bold text-[var(--text-muted)]">Pick a nickname</Label>
+            <Input autoFocus placeholder="e.g. alice" className="text-base" />
+            {error && <FieldError>{error}</FieldError>}
+          </TextField>
+          <Button
+            type="submit"
+            isDisabled={submitting}
+            className="w-full rounded-[var(--radius-pill)] py-3 font-display text-base font-bold transition-transform duration-[var(--dur-fast)] ease-[var(--ease-spring)] not-disabled:hover:scale-[1.03] not-disabled:active:scale-95"
+          >
+            {submitting ? "Joining…" : "Let's play"}
+          </Button>
+        </Form>
+
+        <p className="m-0 text-xs text-[var(--text-muted)]">
+          No password — your nickname is all anyone sees.
+        </p>
+      </div>
       <ThemeToggle />
     </main>
   );

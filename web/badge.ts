@@ -47,11 +47,17 @@ function applyFavicon(count: number): void {
     const ctx2d = canvas.getContext("2d");
     if (!ctx2d) return;
 
-    // Base glyph: a simple filled circle standing in for the static icon —
-    // good enough for a badge that is only ever shown briefly overlaid.
-    ctx2d.fillStyle = "#4f46e5";
+    // Base glyph: the same gradient tile as the static favicon, redrawn here
+    // because a canvas cannot load the SVG synchronously. The four-tile mark
+    // is left off: at 32px it would be hidden under the count dot anyway.
+    // Canvas has no access to the stylesheet's custom properties, so these
+    // two stops mirror `/favicon.svg` rather than a palette token.
+    const gradient = ctx2d.createLinearGradient(0, 0, FAVICON_SIZE, FAVICON_SIZE);
+    gradient.addColorStop(0, "#9d5cfa");
+    gradient.addColorStop(1, "#f25ca8");
+    ctx2d.fillStyle = gradient;
     ctx2d.beginPath();
-    ctx2d.arc(FAVICON_SIZE / 2, FAVICON_SIZE / 2, FAVICON_SIZE / 2 - 1, 0, Math.PI * 2);
+    ctx2d.roundRect(0, 0, FAVICON_SIZE, FAVICON_SIZE, 9);
     ctx2d.fill();
 
     const label = count > 9 ? "9+" : String(count);

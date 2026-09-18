@@ -30,13 +30,17 @@ else. Checklist, in order:
    it.
    - **UI:** the shell mounts your component inside its own cabinet, so a game UI must not render
      its own outer card — render the board/round content only. Style with Tailwind utility classes
-     and the shared theme tokens (`web/styles/tokens.css`, wired into Tailwind's `@theme` in
-     `web/styles.css`) — colours in particular should read a `var(--token)` (e.g. the
-     `--seat-1`…`--seat-4` seat ramp, `--accent`, `--ok-fg`/`--ok-soft`) rather than a hardcoded
-     literal. `games/**/*.tsx` may import components from `@heroui/react` (the worker's
-     `tsconfig.worker.json` parses these files without DOM types but with `skipLibCheck`, so HeroUI's
-     own `.d.ts` type-checks fine — verify with `npm run typecheck` if you add a new import from
-     there). A game UI must never import a `.css` file — `tsconfig.client.json` has no ambient
+     and the shared palette tokens declared in `web/styles.css` — colours in particular should read
+     a `var(--token)` (e.g. the `--seat-1`…`--seat-4` seat ramp, `--accent`, `--ok-fg`/`--ok-soft`)
+     rather than a hardcoded literal. A physical board should sit on `--board-well` (with
+     `--board-rim` for its frame and `--board-hole` for an empty slot): those three and the seat
+     ramp are deliberately the same in both themes, so pieces stay vivid and legible on a light page
+     too. For motion, `web/styles.css` already provides a staggerable `.party-pop` entrance (set
+     `--pop-delay` inline) and the `party-disc-drop`, `party-choice-press` and `party-celebrate`
+     keyframes. `games/**/*.tsx` may import components from `@heroui/react` (the worker's
+     `tsconfig.worker.json` parses these files without DOM types but with `skipLibCheck`, so
+     HeroUI's own `.d.ts` type-checks fine — verify with `npm run typecheck` if you add a new import
+     from there). A game UI must never import a `.css` file — `tsconfig.client.json` has no ambient
      module declaration for `*.css` — so any rule that cannot be expressed as a utility class (a
      `@keyframes` a Tailwind arbitrary-value animation refers to, for instance) belongs in
      `web/styles.css` instead. Never render the deadline or a countdown; the shell shows it once.
