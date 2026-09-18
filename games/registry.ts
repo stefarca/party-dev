@@ -9,7 +9,8 @@ import type { GameUiProps } from "../shared/protocol";
 // id -> module (server, statically imported) and id -> lazy import
 // (client). This is the entire integration surface for a new game —
 // registering one is meant to be a one-line change to each map below,
-// nothing else.
+// nothing else. (A game's tile icon is optional and registered separately, in
+// the client-only `gameIcons` map in games/icons.ts.)
 //
 // `serverGames` is statically imported so the Worker bundle contains every
 // game's rules (the DO must be able to run any match without a network

@@ -1,9 +1,11 @@
+import { gameIcons } from "../../games/icons";
 import type { GameMotif } from "../identity";
 import { motifForId, tileGradient } from "../identity";
 
-// The decorative badge on a game tile: an abstract motif on a two-hue party
-// gradient, both picked by hashing the game's id. No game is named here and
-// no per-game asset exists — registering a game gets it a look for free.
+// The decorative badge on a game tile: the game's own icon (from `gameIcons`)
+// on a two-hue party gradient picked by hashing the game's id. No game is
+// named here — a game that ships no icon falls back to an abstract motif,
+// also picked by hash, so registering a game still gets it a look for free.
 
 function Motif({ motif }: { motif: GameMotif }) {
   switch (motif) {
@@ -58,6 +60,7 @@ export function GameGlyph({
   gameId: string;
   className?: string;
 }) {
+  const Icon = gameIcons[gameId];
   return (
     <span
       aria-hidden="true"
@@ -69,7 +72,7 @@ export function GameGlyph({
       }}
     >
       <svg viewBox="0 0 24 24" className="size-2/3" fill="currentColor" aria-hidden="true">
-        <Motif motif={motifForId(gameId)} />
+        {Icon ? <Icon /> : <Motif motif={motifForId(gameId)} />}
       </svg>
     </span>
   );

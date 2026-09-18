@@ -1,7 +1,7 @@
 # Adding a game
 
-A new game is a folder under `games/<id>/` plus one line each in `games/registry.ts` — nothing
-else. Checklist, in order:
+A new game is a folder under `games/<id>/` plus one line each in `games/registry.ts` (and,
+optionally, one in `games/icons.ts`) — nothing else. Checklist, in order:
 
 1. **`games/<id>/game.ts`** implements `GameModule<S, A>` from `shared/game.ts`: `id`, `meta`,
    `actionSchema`, `init`, `reduce`, `view`, `waitingOn`, `deadline`, `onDeadline`, `result`.
@@ -53,7 +53,13 @@ else. Checklist, in order:
      game's rules with no network round-trip).
    - `gameUi`: `<id>: () => import("./<id>/ui")` (dynamically imported — keeps the client bundle
      from growing with every game that isn't the one currently open).
-6. **`games/<id>/game.test.ts`** covers, at minimum:
+6. **Optional: `games/<id>/icon.tsx`** default-exports the icon on the game's tile — the contents
+   of a 24×24 `<svg>` (no `<svg>` element of its own), drawn in `currentColor` over the tile's
+   gradient; keep it to a few bold shapes, since it renders at about 30px. Register it with one line
+   in `gameIcons` in `games/icons.ts`, not in `games/registry.ts`: the Worker imports the registry,
+   and an icon is a `.tsx` module. A game without an icon gets an abstract motif picked by hashing
+   its id.
+7. **`games/<id>/game.test.ts`** covers, at minimum:
    - purity (`reduce`/`onDeadline` do not mutate their input and return a new object),
    - determinism (`init`/`reduce` given the same seed/actions produce identical output),
    - `onDeadline` idempotence (running it twice on the same overdue state is a no-op the second
