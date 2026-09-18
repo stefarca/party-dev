@@ -35,8 +35,12 @@ export function LanguagePicker() {
         </svg>
         <span className="hidden uppercase sm:inline">{language}</span>
       </Button>
-      <Dropdown.Popover placement="bottom end">
+      {/* The focus ring is drawn 6px outside an item with --radius-xs corners. The menu's padding
+          leaves it room to breathe, and the popover's radius is the item's plus that padding, so
+          the ring, the items and the popover are concentric. */}
+      <Dropdown.Popover placement="bottom end" className="rounded-[calc(var(--radius-xs)+10px)]">
         <Dropdown.Menu
+          className="p-2.5"
           aria-label={t("language.label")}
           selectionMode="single"
           disallowEmptySelection
@@ -47,7 +51,12 @@ export function LanguagePicker() {
           }}
         >
           {LANGUAGES.map((code) => (
-            <Dropdown.Item key={code} id={code} textValue={nameOf(code)}>
+            <Dropdown.Item
+              key={code}
+              id={code}
+              textValue={nameOf(code)}
+              className="rounded-[var(--radius-xs)]"
+            >
               <Dropdown.ItemIndicator />
               <Label lang={code}>{nameOf(code)}</Label>
             </Dropdown.Item>
