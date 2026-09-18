@@ -34,9 +34,9 @@ export function seatForId(id: string): SeatIndex {
   return SEATS[hash(id) % SEATS.length];
 }
 
-// The decorative motif on a game tile. Six abstract shapes, picked by hash —
-// enough variety that two registered games rarely collide, and meaningless
-// if they do (the game's name is always shown next to it).
+// The fallback icon on the tile of a game that ships no icon of its own
+// (`games/icons.ts`). Six abstract shapes, picked by hash — two such games can
+// collide, which is harmless (the game's name is always shown next to it).
 export type GameMotif = "dots" | "grid" | "bolt" | "star" | "rings" | "wave";
 
 const MOTIFS: GameMotif[] = ["dots", "grid", "bolt", "star", "rings", "wave"];

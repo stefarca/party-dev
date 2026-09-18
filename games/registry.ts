@@ -1,6 +1,7 @@
 import type { ComponentType } from "react";
 
 import { connect4Game } from "./connect4/game";
+import { tictactoeGame } from "./tictactoe/game";
 import { triviaGame } from "./trivia/game";
 import type { GameModule } from "../shared/game";
 import type { GameUiProps } from "../shared/protocol";
@@ -8,7 +9,8 @@ import type { GameUiProps } from "../shared/protocol";
 // id -> module (server, statically imported) and id -> lazy import
 // (client). This is the entire integration surface for a new game —
 // registering one is meant to be a one-line change to each map below,
-// nothing else.
+// nothing else. (A game's tile icon is optional and registered separately, in
+// the client-only `gameIcons` map in games/icons.ts.)
 //
 // `serverGames` is statically imported so the Worker bundle contains every
 // game's rules (the DO must be able to run any match without a network
@@ -17,6 +19,7 @@ import type { GameUiProps } from "../shared/protocol";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- registry is intentionally generic over each game's state/action types
 export const serverGames: Record<string, GameModule<any, any>> = {
   connect4: connect4Game,
+  tictactoe: tictactoeGame,
   trivia: triviaGame,
 };
 
@@ -25,6 +28,7 @@ export const serverGames: Record<string, GameModule<any, any>> = {
 // actually looking at is ever fetched.
 export const gameUi: Record<string, () => Promise<{ default: ComponentType<GameUiProps> }>> = {
   connect4: () => import("./connect4/ui"),
+  tictactoe: () => import("./tictactoe/ui"),
   trivia: () => import("./trivia/ui"),
 };
 

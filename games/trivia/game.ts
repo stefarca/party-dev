@@ -279,7 +279,8 @@ export function result(state: TriviaState): Result | null {
 
 export const triviaGame: GameModule<TriviaState, AnswerAction> = {
   id: "trivia",
-  meta: { name: "Trivia", minPlayers: 2, maxPlayers: 8 },
+  // Shelved until the question bank is bigger — delete `comingSoon` to reopen it.
+  meta: { name: "Trivia", minPlayers: 2, maxPlayers: 8, comingSoon: true },
   actionSchema: AnswerActionSchema,
   init,
   reduce,

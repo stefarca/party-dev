@@ -98,6 +98,9 @@ api.post("/matches", requireSession(), async (c) => {
   if (!meta) {
     return c.json({ error: "unknown_game" }, 400);
   }
+  if (meta.comingSoon) {
+    return c.json({ error: "game_unavailable" }, 409);
+  }
 
   const session = c.get("session") as Session;
   const now = Date.now();
