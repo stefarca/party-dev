@@ -79,3 +79,39 @@ test("a capture is mandatory, and takes the jumped piece", async ({ startMatch }
   await expect(square(red, 3, 6)).toHaveAccessibleName(/empty.*captured on the last move/);
   await expect(red.yourTurn).toBeVisible();
 });
+
+test("a man that reaches the far row is crowned, and the king can jump backwards", async ({
+  startMatch,
+}) => {
+  const {
+    players: [red, blue],
+  } = await startMatch("checkers");
+
+  // A trade of men in the middle, then blue moves a man off its back row and leaves red a
+  // double jump onto the square it emptied.
+  await move(red, [6, 1], [5, 2]);
+  await move(blue, [6, 5], [5, 6]);
+  await move(red, null, [3, 4]);
+  await move(blue, [7, 6], [5, 4]);
+  await move(red, [6, 5], [5, 6]);
+  await move(blue, [8, 7], [7, 6]);
+
+  // A double jump onto blue's back row. Its second hop is forced, so one click sends both.
+  await expect(red.page.getByText("Pick where to jump.")).toBeVisible();
+  await move(red, null, [3, 4]);
+
+  await expect(square(red, 1, 2)).toHaveAccessibleName(/red king \(yours\), part of the last move/);
+  await expect(square(blue, 8, 7)).toHaveAccessibleName(/red king, part of the last move/);
+  await expect(blue.page.getByText("9 left")).toBeVisible();
+
+  // Blue steps in behind the new king, and taking it is red's only move: a jump back down
+  // the board, which a man could not make.
+  await move(blue, [8, 5], [7, 6]);
+  await expect(red.page.getByText("Pick where to jump.")).toBeVisible();
+  await expect(square(red, 1, 2)).toHaveAccessibleName(/red king \(yours\), picked up/);
+  await expect(square(red, 3, 4)).toHaveAccessibleName(/jump here/);
+  await move(red, null, [3, 4]);
+
+  await expect(square(blue, 6, 5)).toHaveAccessibleName(/red king, part of the last move/);
+  await expect(blue.page.getByText("8 left")).toBeVisible();
+});
