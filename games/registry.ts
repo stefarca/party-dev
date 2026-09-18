@@ -1,5 +1,6 @@
 import type { ComponentType } from "react";
 
+import { checkersGame } from "./checkers/game";
 import { connect4Game } from "./connect4/game";
 import { tictactoeGame } from "./tictactoe/game";
 import { triviaGame } from "./trivia/game";
@@ -18,6 +19,7 @@ import type { GameUiProps } from "../shared/protocol";
 // into the Worker bundle.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- registry is intentionally generic over each game's state/action types
 export const serverGames: Record<string, GameModule<any, any>> = {
+  checkers: checkersGame,
   connect4: connect4Game,
   tictactoe: tictactoeGame,
   trivia: triviaGame,
@@ -27,6 +29,7 @@ export const serverGames: Record<string, GameModule<any, any>> = {
 // linearly with the number of games — only the UI for the game you are
 // actually looking at is ever fetched.
 export const gameUi: Record<string, () => Promise<{ default: ComponentType<GameUiProps> }>> = {
+  checkers: () => import("./checkers/ui"),
   connect4: () => import("./connect4/ui"),
   tictactoe: () => import("./tictactoe/ui"),
   trivia: () => import("./trivia/ui"),
