@@ -121,7 +121,7 @@ export type ClientMessage = z.infer<typeof ClientMessageSchema>;
 // only thing broadcast, which is what keeps a hidden move (a trivia answer
 // before its reveal) out of every other player's event stream.
 export type MatchEventPayload =
-  | { type: "player_joined"; id: PlayerId; nickname: string }
+  | { type: "player_joined"; id: PlayerId }
   | { type: "match_started" }
   | { type: "action"; by: PlayerId; describe: ActionDescription }
   | { type: "action"; by: PlayerId; action: unknown }

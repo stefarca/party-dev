@@ -24,6 +24,7 @@ export interface PlayerStats {
   played: number; // every match this player is in, including unfinished ones
   finished: number;
   won: number;
+  since: number | null; // when the player last reset their record; null = never
 }
 
 // Thrown when a nickname belongs to a different player. Callers turn it
@@ -136,17 +137,36 @@ export async function renamePlayer(
 // A player's record, straight off the match index. Derived and cheap to
 // rebuild — `won` and `result_kind` are written by MatchDO.writeIndexNow()
 // on every commit, so this never has to wake a Durable Object.
+//
+// After a reset it counts only matches created at or after `stats_since`.
+// A match already under way at the reset stays out of the record even once
+// it finishes; otherwise a reset would not start at zero.
 export async function playerStats(db: D1Database, playerId: string): Promise<PlayerStats> {
   const row = await db
     .prepare(
       `SELECT COUNT(*) AS played,
               COALESCE(SUM(CASE WHEN m.status = 'done' THEN 1 ELSE 0 END), 0) AS finished,
-              COALESCE(SUM(CASE WHEN m.status = 'done' AND mp.won = 1 THEN 1 ELSE 0 END), 0) AS won
+              COALESCE(SUM(CASE WHEN m.status = 'done' AND mp.won = 1 THEN 1 ELSE 0 END), 0) AS won,
+              (SELECT stats_since FROM players WHERE id = ?) AS since
        FROM match_players mp
        JOIN matches m ON m.id = mp.match_id
-       WHERE mp.player_id = ?`,
+       LEFT JOIN players p ON p.id = mp.player_id
+       WHERE mp.player_id = ?
+         AND (p.stats_since IS NULL OR m.created_at >= p.stats_since)`,
     )
-    .bind(playerId)
+    .bind(playerId, playerId)
     .first<PlayerStats>();
-  return row ?? { played: 0, finished: 0, won: 0 };
+  return row ?? { played: 0, finished: 0, won: 0, since: null };
+}
+
+// Starts the player's record over from now. Deletes nothing: every match
+// stays in the index and on the hub, and a later change could count them
+// all again just by clearing `stats_since`. False when the registry has no
+// row for this player.
+export async function resetStats(db: D1Database, playerId: string): Promise<boolean> {
+  const result = await db
+    .prepare("UPDATE players SET stats_since = ? WHERE id = ?")
+    .bind(Date.now(), playerId)
+    .run();
+  return result.meta.changes > 0;
 }

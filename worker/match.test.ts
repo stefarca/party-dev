@@ -3,6 +3,9 @@ import { DatabaseSync } from "node:sqlite";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { vi } from "vitest";
 
+import { UNKNOWN_NICKNAME } from "../shared/nickname";
+import type { MatchSnapshot, MatchSummary, PlayerInfo } from "../shared/protocol";
+
 // This repo has no @cloudflare/vitest-pool-workers setup (vitest.config.ts
 // runs plain "node"), so "cloudflare:workers" — a virtual module that only
 // exists inside the workerd runtime — does not resolve here. Stub it with
@@ -45,22 +48,20 @@ const { MatchDO } = await import("./match");
 
 interface FakeSocket {
   playerId: string;
-  nickname: string;
   sent: Record<string, unknown>[];
   send(data: string): void;
-  deserializeAttachment(): { playerId: string; nickname: string };
+  deserializeAttachment(): { playerId: string };
 }
 
-function createFakeSocket(playerId: string, nickname: string): FakeSocket {
+function createFakeSocket(playerId: string): FakeSocket {
   return {
     playerId,
-    nickname,
     sent: [],
     send(data: string) {
       this.sent.push(JSON.parse(data));
     },
     deserializeAttachment() {
-      return { playerId, nickname };
+      return { playerId };
     },
   };
 }
@@ -157,6 +158,11 @@ function createPauseController() {
         countWaiters.set(name, waiters);
       });
     },
+    // How many times the named mock has been invoked so far. A test reads it
+    // right before dispatching a second commit, then waits for one more.
+    callCount(name: string) {
+      return callCounts.get(name) ?? 0;
+    },
     resume(name: string) {
       const release = releasers.get(name);
       releasers.delete(name);
@@ -196,28 +202,46 @@ interface RecordedStatement {
   args: unknown[];
 }
 
-// Mocks the D1 binding used by `syncIndex()`: `env.DB.prepare(sql).bind(...)`
-// building a statement, `env.DB.batch(statements)` executing them. Records
-// every batch so the test can inspect exactly what was written to the index.
-// `batch()` is wired to the shared pause controller under "dbBatch" so a
-// test can suspend a commit() at that fourth await too.
+// Mocks the D1 binding `MatchDO` touches: `env.DB.batch(statements)` for
+// `syncIndex()`, and `.all()` for the one read, the player registry lookup
+// that names a roster before it is sent. Records every batch so a test can
+// inspect exactly what was written to the index. `batch()` and the lookup
+// are wired to the shared pause controller ("dbBatch" and "names"), so a
+// test can suspend a commit() at either await. `registry` is the players
+// table; a test renames someone by assigning to it, or sets `failLookups`.
 function createFakeDB(pauses: ReturnType<typeof createPauseController>) {
   const batches: RecordedStatement[][] = [];
-  return {
+  const registry: Record<string, string> = { alice: "Alice", bob: "Bob", carol: "Carol" };
+  const db = {
+    failLookups: false,
     prepare(sql: string) {
       return {
-        bind(...args: unknown[]): RecordedStatement {
-          return { sql, args };
+        bind(...args: unknown[]) {
+          return {
+            sql,
+            args,
+            async all() {
+              await pauses.waitIfArmed("names");
+              if (db.failLookups) throw new Error("D1 unavailable");
+              return {
+                results: (args as string[])
+                  .filter((id) => id in registry)
+                  .map((id) => ({ id, nickname: registry[id] })),
+              };
+            },
+          };
         },
       };
     },
     async batch(statements: RecordedStatement[]) {
       await pauses.waitIfArmed("dbBatch");
-      batches.push(statements);
+      batches.push(statements.map(({ sql, args }) => ({ sql, args })));
       return statements.map(() => ({ success: true }));
     },
     batches,
+    registry,
   };
+  return db;
 }
 
 function createFakeCtx(
@@ -248,6 +272,9 @@ function createFakeCtx(
     getWebSockets: () => sockets as unknown as WebSocket[],
     acceptWebSocket: () => {},
     setWebSocketAutoResponse: () => {},
+    // `nudgeHook` hands its name lookup and Slack call to the runtime;
+    // nothing here has a webhook configured, so running it inline is enough.
+    waitUntil: (promise: Promise<unknown>) => void promise,
   } as unknown as DurableObjectState;
 }
 
@@ -257,6 +284,53 @@ function jsonRequest(path: string, body: unknown): Request {
     body: JSON.stringify(body),
     headers: { "content-type": "application/json" },
   });
+}
+
+type MatchDOInstance = InstanceType<typeof MatchDO>;
+
+// A counter match between `players` (the first one hosts), every one of them
+// connected, started unless told otherwise.
+async function createMatch(players: string[], { start = true } = {}) {
+  const pauses = createPauseController();
+  const alarmController = createAlarmController(pauses);
+  const sockets = Object.fromEntries(players.map((id) => [id, createFakeSocket(id)]));
+  const db = createFakeDB(pauses);
+  const ctx = createFakeCtx(alarmController, Object.values(sockets));
+  const matchDo = new MatchDO(ctx, { DB: db } as unknown as Env);
+
+  await matchDo.fetch(
+    jsonRequest("/lobby/create", { matchId: "m1", gameId: "counter", hostId: players[0] }),
+  );
+  for (const id of players.slice(1)) {
+    await matchDo.fetch(jsonRequest("/lobby/join", { playerId: id }));
+  }
+  if (start) await matchDo.fetch(jsonRequest("/start", { playerId: players[0] }));
+  return { matchDo, pauses, alarmController, db, ctx, sockets };
+}
+
+interface Move {
+  playerId: string;
+  action: unknown;
+}
+
+function play(matchDo: MatchDOInstance, { playerId, action }: Move): Promise<Response> {
+  return matchDo.fetch(jsonRequest("/action", { playerId, action }));
+}
+
+const increment = (playerId: string): Move => ({ playerId, action: { t: "increment" } });
+const pick = (playerId: string, value: number): Move => ({
+  playerId,
+  action: { t: "pick", value },
+});
+
+// Everyone takes their sequential turn, in join order, which moves the
+// counter into its simultaneous phase with a deadline armed.
+async function reachSimultaneousPhase(matchDo: MatchDOInstance, players: string[]) {
+  for (const id of players) await play(matchDo, increment(id));
+}
+
+function snapshotsSentTo(socket: FakeSocket): MatchSnapshot[] {
+  return socket.sent.filter((m) => m.t === "snapshot") as unknown as MatchSnapshot[];
 }
 
 describe("MatchDO.commit() race across every await boundary", () => {
@@ -270,261 +344,272 @@ describe("MatchDO.commit() race across every await boundary", () => {
     delete serverGames.counter;
   });
 
-  // Every case below follows the same shape:
-  //   1. Get the match into some state, then dispatch (without awaiting) an
-  //      action whose commit() is armed to pause at `pausePoint`.
+  // Every case below follows the same shape, on a three-player match so a
+  // second player is always free to move while the first one's commit is
+  // blocked:
+  //   1. Get the match into some state, then dispatch (without awaiting) a
+  //      move whose commit() is armed to pause at `pausePoint`.
   //   2. `waitUntilPaused` to get a hard guarantee that commit() is now
   //      genuinely blocked at that exact await — not just "probably has run
   //      by now".
-  //   3. Run a second, fully-independent commit (bob re-joining under a new
-  //      nickname — allowed regardless of match status, so it is always
-  //      available as the "second mutation" no matter which phase the
-  //      paused commit left the match in) to completion.
+  //   3. Run a second, fully independent commit — another player's move —
+  //      to completion.
   //   4. Resume the paused commit and let it finish.
-  //   5. Assert everything the resumed commit broadcast/indexed reflects
-  //      the rejoin (nickname "Bobby"), not the pre-pause nickname ("Bob")
-  //      — the same class of staleness the status/waitingOn/deadline fields
-  //      would show, but probed via a field that stays observable no matter
-  //      which of the four await points is under test or what phase the
-  //      match is in when it's reached.
-  async function expectRejoinDuringPauseIsNotLost(
-    pausePoint: "getAlarm" | "setAlarm" | "deleteAlarm" | "dbBatch",
+  //   5. Assert that everything the resumed commit broadcast/indexed
+  //      reflects the second move: its player is no longer waited on. A
+  //      commit that kept using what it read before pausing would still
+  //      show them as waiting.
+  //
+  // There is no deleteAlarm case. The counter fixture clears its deadline
+  // only on the move that finishes the match, and no route can change a
+  // finished match, so there is no second commit to interleave with one
+  // paused there.
+  async function expectSecondMoveDuringPauseIsNotLost(
+    pausePoint: "getAlarm" | "setAlarm" | "names" | "dbBatch",
     // Runs first, entirely unpaused (the pause is armed only afterwards) —
-    // gets the match into whatever phase is needed for the *next* action to
-    // hit `pausePoint`.
-    setUp: (matchDo: InstanceType<typeof MatchDO>) => Promise<void>,
-    // The exact single action whose own commit() should hit `pausePoint`.
-    // Must be exactly one `matchDo.fetch()` call — not a sequence — or a
-    // later, unpaused call in the same sequence would silently re-read
-    // fresh state on its own and mask staleness left behind by the first.
-    dispatchPausedAction: (matchDo: InstanceType<typeof MatchDO>) => Promise<Response>,
+    // gets the match into whatever phase is needed for `pausedMove` to hit
+    // `pausePoint`.
+    setUp: (matchDo: MatchDOInstance) => Promise<void>,
+    // The single move whose own commit() should hit `pausePoint`. Exactly
+    // one `matchDo.fetch()` call — not a sequence — or a later, unpaused
+    // call in the same sequence would silently re-read fresh state on its
+    // own and mask staleness left behind by the first.
+    pausedMove: Move,
+    secondMove: Move,
   ) {
-    const pauses = createPauseController();
-    const alarmController = createAlarmController(pauses);
-    const alice = createFakeSocket("alice", "Alice");
-    const bob = createFakeSocket("bob", "Bob");
-    const db = createFakeDB(pauses);
-    const ctx = createFakeCtx(alarmController, [alice, bob]);
-    const env = { DB: db } as unknown as Env;
-    const matchDo = new MatchDO(ctx, env);
-
-    await matchDo.fetch(
-      jsonRequest("/lobby/create", {
-        matchId: "m1",
-        gameId: "counter",
-        host: { id: "alice", nickname: "Alice" },
-      }),
-    );
-    await matchDo.fetch(jsonRequest("/lobby/join", { id: "bob", nickname: "Bob" }));
-    await matchDo.fetch(jsonRequest("/start", { playerId: "alice" }));
+    const { matchDo, pauses, db, sockets } = await createMatch(["alice", "bob", "carol"]);
     await setUp(matchDo);
 
     pauses.armPause(pausePoint);
-    const pausedAction = dispatchPausedAction(matchDo);
+    const pausedAction = play(matchDo, pausedMove);
 
     // Hard guarantee: the paused commit is now genuinely blocked at
-    // `pausePoint`, having already captured whatever pre-rejoin
-    // current/waitingOn/deadline it read on the way there.
+    // `pausePoint`, having already captured whatever it read on the way
+    // there.
     await pauses.waitUntilPaused(pausePoint);
 
-    // Dispatch a fully independent second commit — bob re-joining under a
-    // new nickname. For the `dbBatch` pause point specifically, this
-    // commit's *own* syncIndex() call queues behind the paused one on
-    // `dbWriteQueue` (see match.ts) and so cannot fully resolve until the
-    // paused one is resumed below — deliberately not awaited here for that
-    // reason; it is awaited together with `pausedAction` once both are in
-    // flight.
-    // Baseline: every snapshot alice has received *up to and including this
-    // point* was necessarily computed before rejoin's persisted write — new
-    // ones from here on are the only ones that could possibly show it.
-    const snapshotCountBeforeRejoin = alice.sent.filter((m) => m.t === "snapshot").length;
+    // Baselines. Every snapshot alice has received up to this point was
+    // computed before the second move's write, so only later ones can show
+    // it; and the call counts below include every call setup made, so the
+    // waits after the second move is dispatched count from here.
+    const snapshotCountBefore = snapshotsSentTo(sockets.alice).length;
+    const getAlarmCallsBefore = pauses.callCount("getAlarm");
+    const dbBatchCallsBefore = pauses.callCount("dbBatch");
 
-    const rejoin = matchDo.fetch(jsonRequest("/lobby/join", { id: "bob", nickname: "Bobby" }));
+    // For the `dbBatch` pause point, the second commit's *own* syncIndex()
+    // call queues behind the paused one on `dbWriteQueue` (see match.ts) and
+    // so cannot fully resolve until the paused one is resumed below — which
+    // is why it is not awaited here, but together with `pausedAction` once
+    // both are in flight.
+    const second = play(matchDo, secondMove);
 
-    // Hard guarantee (see the comment on `callCounts` above): rejoin's own
-    // commit() has reached — and therefore already run its stage-1
-    // `writeMatch()` before — its own `getAlarm()` call. `handleLobbyJoin`
-    // itself starts with `await request.json()`, so this is *not*
-    // guaranteed just because `matchDo.fetch()` for rejoin was already
-    // called on this synchronous turn.
-    await pauses.waitForCallCount("getAlarm", 2);
+    // Hard guarantee: the second commit has reached its own `getAlarm()`,
+    // so its stage-1 `writeMatch()` has already landed. `handleActionRequest`
+    // starts with `await request.json()`, so this is *not* guaranteed just
+    // because `matchDo.fetch()` was already called on this synchronous turn.
+    await pauses.waitForCallCount("getAlarm", getAlarmCallsBefore + 1);
 
-    // Best-effort (not a hard guarantee, and deliberately bounded): give
-    // rejoin's own env.DB.batch() call a chance to reach `pausePoint` too
-    // and, if nothing is gating it there (i.e. `pausePoint` is not
-    // "dbBatch", or `dbWriteQueue` is not actually serializing calls),
-    // let it run all the way to completion before the paused action is
-    // resumed below. This raises the odds of deterministically reproducing
-    // the D1-write-ordering race — the resumed (paused) commit's own,
-    // already-stale-by-the-time-it-was-built batch() payload landing
-    // *after* rejoin's fresher one — when `dbWriteQueue`'s serialization
-    // is missing. It cannot be a hard `await`: with `dbWriteQueue` present
-    // and `pausePoint === "dbBatch"`, rejoin's own call is permanently
-    // gated behind the still-paused one until `resume()` below, so waiting
-    // unconditionally here would deadlock.
+    // Best-effort (not a hard guarantee, and deliberately bounded): give the
+    // second commit's own env.DB.batch() call a chance to run all the way to
+    // completion before the paused one resumes. That raises the odds of
+    // reproducing the D1-write-ordering race — the resumed commit's own,
+    // already-stale batch() payload landing *after* the second commit's
+    // fresher one — when `dbWriteQueue`'s serialization is missing. It
+    // cannot be a hard `await`: with `dbWriteQueue` present and `pausePoint
+    // === "dbBatch"`, the second call is gated behind the paused one until
+    // `resume()` below, so waiting unconditionally here would deadlock.
     await Promise.race([
-      pauses.waitForCallCount("dbBatch", 2),
+      pauses.waitForCallCount("dbBatch", dbBatchCallsBefore + 1),
       new Promise((resolve) => setTimeout(resolve, 10)),
     ]);
 
     pauses.resume(pausePoint);
-    const [pausedResponse, rejoinResponse] = await Promise.all([pausedAction, rejoin]);
+    const [pausedResponse, secondResponse] = await Promise.all([pausedAction, second]);
     expect(pausedResponse.status).toBe(200);
-    expect(rejoinResponse.status).toBe(200);
+    expect(secondResponse.status).toBe(200);
 
-    // The bug: the resumed commit would broadcast/index the nickname it
-    // captured before pausing ("Bob"), not the truth as of when it actually
-    // finished ("Bobby"). Two commits both broadcast to alice's socket from
-    // here (the paused-then-resumed action, and bob's rejoin), in no
-    // guaranteed relative order — picking "the last snapshot", or even "the
-    // one with the highest seq" (ties are common: an idempotent re-join
-    // appends no event, so it often shares its seq with whichever commit's
-    // event most recently landed), is not reliable enough to isolate what
-    // the paused commit itself sent. Instead: every snapshot sent to alice
-    // *after* the baseline captured above must show "Bobby" — rejoin's own
-    // broadcast is correct by construction, so this only fails if the
-    // *other* (paused) commit's broadcast is the stale one.
-    const aliceSnapshotsAfterRejoin = (
-      alice.sent.filter((m) => m.t === "snapshot") as {
-        players: { id: string; nickname: string }[];
-      }[]
-    ).slice(snapshotCountBeforeRejoin);
-    expect(aliceSnapshotsAfterRejoin.length).toBeGreaterThan(0);
-    for (const snapshot of aliceSnapshotsAfterRejoin) {
-      const bobPlayerInSnapshot = snapshot.players.find((p) => p.id === "bob");
-      expect(bobPlayerInSnapshot?.nickname).toBe("Bobby");
-    }
+    // Both commits broadcast to alice from here, in no guaranteed relative
+    // order, so "the last snapshot" does not isolate what the paused commit
+    // sent. Instead, every snapshot after the baseline must show the second
+    // move: the second commit's own broadcast is correct by construction, so
+    // this fails only if the paused commit's broadcast is the stale one.
+    const after = snapshotsSentTo(sockets.alice).slice(snapshotCountBefore);
+    expect(after.length).toBeGreaterThan(0);
+    for (const snapshot of after) expect(snapshot.waitingOn).not.toContain(secondMove.playerId);
 
-    const allStatements = db.batches.flat();
-    const bobIndexRows = allStatements.filter(
-      (s) => s.sql.includes("INSERT INTO match_players") && s.args[1] === "bob",
-    );
-    expect(bobIndexRows.length).toBeGreaterThan(0);
-    const lastBobIndexRow = bobIndexRows[bobIndexRows.length - 1];
-    expect(lastBobIndexRow.args[3]).toBe("Bobby");
+    const rows = db.batches
+      .flat()
+      .filter(
+        (s) => s.sql.includes("INSERT INTO match_players") && s.args[1] === secondMove.playerId,
+      );
+    expect(rows.length).toBeGreaterThan(0);
+    const [, , waiting] = rows[rows.length - 1].args;
+    expect(waiting).toBe(0);
   }
 
-  // Advances the match through the sequential phase into "simultaneous"
-  // with a deadline armed — shared, unpaused setup for the getAlarm/dbBatch
-  // cases below, both of which pause on alice's first (non-finishing) pick.
-  async function setUpSimultaneousPhase(matchDo: InstanceType<typeof MatchDO>) {
-    await matchDo.fetch(jsonRequest("/action", { playerId: "alice", action: { t: "increment" } }));
-    await matchDo.fetch(jsonRequest("/action", { playerId: "bob", action: { t: "increment" } }));
-  }
+  const everyone = ["alice", "bob", "carol"];
 
   it("re-validates freshness after the getAlarm await", async () => {
-    // getAlarm fires unconditionally on every commit — alice's first pick
+    // getAlarm fires unconditionally on every commit — alice's pick
     // (simultaneous phase, deadline already armed) is enough to reach it.
-    await expectRejoinDuringPauseIsNotLost("getAlarm", setUpSimultaneousPhase, (matchDo) =>
-      matchDo.fetch(
-        jsonRequest("/action", { playerId: "alice", action: { t: "pick", value: 10 } }),
-      ),
+    await expectSecondMoveDuringPauseIsNotLost(
+      "getAlarm",
+      (matchDo) => reachSimultaneousPhase(matchDo, everyone),
+      pick("alice", 10),
+      pick("bob", 20),
     );
   });
 
   it("re-validates freshness after the setAlarm await", async () => {
-    // setAlarm only fires when the deadline changes to a new non-null
-    // value — the sequential -> simultaneous transition (bob's second
-    // increment) is the only place the counter fixture hits it. The paused
-    // action here IS the second increment, so setup is only alice's first.
-    await expectRejoinDuringPauseIsNotLost(
+    // setAlarm only fires when the deadline changes to a new non-null value
+    // — the sequential -> simultaneous transition (carol's increment, the
+    // last of the three) is the only place the counter fixture hits it.
+    // Once it has persisted, alice is free to pick.
+    await expectSecondMoveDuringPauseIsNotLost(
       "setAlarm",
-      (matchDo) =>
-        matchDo
-          .fetch(jsonRequest("/action", { playerId: "alice", action: { t: "increment" } }))
-          .then(() => undefined),
-      (matchDo) =>
-        matchDo.fetch(jsonRequest("/action", { playerId: "bob", action: { t: "increment" } })),
+      async (matchDo) => {
+        await play(matchDo, increment("alice"));
+        await play(matchDo, increment("bob"));
+      },
+      increment("carol"),
+      pick("alice", 10),
     );
   });
 
-  it("re-validates freshness after the deleteAlarm await", async () => {
-    // deleteAlarm only fires when the deadline goes from non-null to null
-    // — with this fixture that only happens on the finishing pick. Setup
-    // gets both players through the sequential phase and alice through her
-    // (non-finishing) pick; the paused action is bob's finishing pick.
-    await expectRejoinDuringPauseIsNotLost(
-      "deleteAlarm",
-      async (matchDo) => {
-        await setUpSimultaneousPhase(matchDo);
-        await matchDo.fetch(
-          jsonRequest("/action", { playerId: "alice", action: { t: "pick", value: 10 } }),
-        );
-      },
-      (matchDo) =>
-        matchDo.fetch(
-          jsonRequest("/action", { playerId: "bob", action: { t: "pick", value: 20 } }),
-        ),
+  it("re-validates freshness after the player-name lookup await", async () => {
+    // Every broadcast names its roster from the player registry first, so
+    // this await, like getAlarm, is on every commit's path.
+    await expectSecondMoveDuringPauseIsNotLost(
+      "names",
+      (matchDo) => reachSimultaneousPhase(matchDo, everyone),
+      pick("alice", 10),
+      pick("bob", 20),
     );
   });
 
   it("re-validates freshness after the dbBatch await inside syncIndex", async () => {
     // syncIndex's env.DB.batch() call fires unconditionally on every
     // commit, same as getAlarm — reuse the same setup.
-    await expectRejoinDuringPauseIsNotLost("dbBatch", setUpSimultaneousPhase, (matchDo) =>
-      matchDo.fetch(
-        jsonRequest("/action", { playerId: "alice", action: { t: "pick", value: 10 } }),
-      ),
+    await expectSecondMoveDuringPauseIsNotLost(
+      "dbBatch",
+      (matchDo) => reachSimultaneousPhase(matchDo, everyone),
+      pick("alice", 10),
+      pick("bob", 20),
     );
   });
 
   it("still broadcasts and indexes the finishing 'done' status correctly when a second commit finishes the match while the first is paused", async () => {
-    // The original, game-outcome-shaped repro (kept alongside the
-    // nickname-based probes above): alice's pick is paused at getAlarm;
+    // The game-outcome-shaped repro: alice's pick is paused at getAlarm;
     // while it is blocked there, bob's pick runs to completion and finishes
     // the match. Alice's resumed commit must reflect "done", not the
     // "active" state it saw on the way into the pause.
-    const pauses = createPauseController();
-    const alarmController = createAlarmController(pauses);
-    const alice = createFakeSocket("alice", "Alice");
-    const bob = createFakeSocket("bob", "Bob");
-    const db = createFakeDB(pauses);
-    const ctx = createFakeCtx(alarmController, [alice, bob]);
-    const env = { DB: db } as unknown as Env;
-    const matchDo = new MatchDO(ctx, env);
-
-    await matchDo.fetch(
-      jsonRequest("/lobby/create", {
-        matchId: "m1",
-        gameId: "counter",
-        host: { id: "alice", nickname: "Alice" },
-      }),
-    );
-    await matchDo.fetch(jsonRequest("/lobby/join", { id: "bob", nickname: "Bob" }));
-    await matchDo.fetch(jsonRequest("/start", { playerId: "alice" }));
-    await matchDo.fetch(jsonRequest("/action", { playerId: "alice", action: { t: "increment" } }));
-    await matchDo.fetch(jsonRequest("/action", { playerId: "bob", action: { t: "increment" } }));
+    const { matchDo, pauses, alarmController, db, sockets } = await createMatch(["alice", "bob"]);
+    await reachSimultaneousPhase(matchDo, ["alice", "bob"]);
     expect(alarmController.value).not.toBeNull();
 
     pauses.armPause("getAlarm");
-    const alicePick = matchDo.fetch(
-      jsonRequest("/action", { playerId: "alice", action: { t: "pick", value: 10 } }),
-    );
+    const alicePick = play(matchDo, pick("alice", 10));
     await pauses.waitUntilPaused("getAlarm");
 
-    const bobResponse = await matchDo.fetch(
-      jsonRequest("/action", { playerId: "bob", action: { t: "pick", value: 20 } }),
-    );
+    const bobResponse = await play(matchDo, pick("bob", 20));
     expect(bobResponse.status).toBe(200);
 
     pauses.resume("getAlarm");
     const aliceResponse = await alicePick;
     expect(aliceResponse.status).toBe(200);
 
-    const aliceSnapshots = alice.sent.filter((m) => m.t === "snapshot");
-    const aliceLast = aliceSnapshots[aliceSnapshots.length - 1];
-    expect(aliceLast.status).toBe("done");
-    expect(aliceLast.waitingOn).toEqual([]);
-    expect(aliceLast.deadline).toBeNull();
+    const aliceLast = snapshotsSentTo(sockets.alice).at(-1);
+    expect(aliceLast?.status).toBe("done");
+    expect(aliceLast?.waitingOn).toEqual([]);
+    expect(aliceLast?.deadline).toBeNull();
 
-    const allStatements = db.batches.flat();
-    const matchUpserts = allStatements.filter((s) => s.sql.includes("INSERT INTO matches"));
+    const matchUpserts = db.batches.flat().filter((s) => s.sql.includes("INSERT INTO matches"));
     expect(matchUpserts.length).toBeGreaterThan(0);
-    const lastMatchUpsert = matchUpserts[matchUpserts.length - 1];
-    const [, , status, , , deadline] = lastMatchUpsert.args;
+    const [, , status, , , deadline] = matchUpserts[matchUpserts.length - 1].args;
     expect(status).toBe("done");
     expect(deadline).toBeNull();
 
     expect(alarmController.value).toBeNull();
+  });
+});
+
+describe("MatchDO rosters", () => {
+  beforeEach(() => {
+    serverGames.counter = counterGame;
+  });
+
+  afterEach(() => {
+    delete serverGames.counter;
+  });
+
+  async function viewFor(matchDo: MatchDOInstance, playerId: string): Promise<MatchSnapshot> {
+    const res = await matchDo.fetch(new Request(`http://do/view?playerId=${playerId}`));
+    expect(res.status).toBe(200);
+    return (await res.json()) as MatchSnapshot;
+  }
+
+  const namesIn = (roster: { players: PlayerInfo[] }) => roster.players.map((p) => p.nickname);
+
+  it("names every roster from the registry as it is sent, so a rename reaches the match at once", async () => {
+    const { matchDo, db, sockets } = await createMatch(["alice", "bob"]);
+    expect(namesIn(await viewFor(matchDo, "alice"))).toEqual(["Alice", "Bob"]);
+
+    db.registry.bob = "Robert";
+    expect(namesIn(await viewFor(matchDo, "alice"))).toEqual(["Alice", "Robert"]);
+
+    await play(matchDo, increment("alice"));
+    const broadcast = snapshotsSentTo(sockets.bob).at(-1);
+    expect(broadcast && namesIn(broadcast)).toEqual(["Alice", "Robert"]);
+  });
+
+  it("stores ids, never names: not in the match record, the event log or the index", async () => {
+    const { matchDo, db, ctx } = await createMatch(["alice", "bob"]);
+    await play(matchDo, increment("alice"));
+
+    const [stored] = ctx.storage.sql
+      .exec("SELECT value FROM meta WHERE key = 'match'")
+      .toArray() as { value: string }[];
+    const events = await (
+      await matchDo.fetch(new Request("http://do/events?playerId=alice"))
+    ).text();
+    for (const written of [stored.value, events, JSON.stringify(db.batches)]) {
+      expect(written).not.toMatch(/Alice|Bob/);
+    }
+  });
+
+  it("shows a placeholder when the registry cannot be read, rather than failing the snapshot", async () => {
+    const { matchDo, db } = await createMatch(["alice", "bob"]);
+    db.failLookups = true;
+    expect(namesIn(await viewFor(matchDo, "alice"))).toEqual([UNKNOWN_NICKNAME, UNKNOWN_NICKNAME]);
+  });
+
+  it("names a player who joins while the roster is being looked up", async () => {
+    const { matchDo, pauses } = await createMatch(["alice"], { start: false });
+    pauses.armPause("names");
+    const lobby = matchDo.fetch(new Request("http://do/snapshot"));
+    await pauses.waitUntilPaused("names");
+
+    const join = await matchDo.fetch(jsonRequest("/lobby/join", { playerId: "bob" }));
+    expect(join.status).toBe(200);
+
+    pauses.resume("names");
+    const summary = (await (await lobby).json()) as MatchSummary;
+    expect(summary.players).toEqual([
+      { id: "alice", nickname: "Alice" },
+      { id: "bob", nickname: "Bob" },
+    ]);
+  });
+
+  it("treats a re-join as a no-op that changes nothing", async () => {
+    const { matchDo } = await createMatch(["alice", "bob"]);
+    const before = await (
+      await matchDo.fetch(new Request("http://do/events?playerId=alice"))
+    ).text();
+    const rejoin = await matchDo.fetch(jsonRequest("/lobby/join", { playerId: "bob" }));
+    expect(rejoin.status).toBe(200);
+    const after = await (
+      await matchDo.fetch(new Request("http://do/events?playerId=alice"))
+    ).text();
+    expect(after).toBe(before);
   });
 });

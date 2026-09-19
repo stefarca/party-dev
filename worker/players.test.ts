@@ -1,9 +1,16 @@
 import { readFileSync } from "node:fs";
 import { DatabaseSync } from "node:sqlite";
 
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { NicknameTakenError, findPlayerById, playerStats, renamePlayer, signIn } from "./players";
+import {
+  NicknameTakenError,
+  findPlayerById,
+  playerStats,
+  renamePlayer,
+  resetStats,
+  signIn,
+} from "./players";
 
 // The registry's whole job is "one nickname, one player", and the thing
 // that actually enforces it is a SQL unique index — so this runs the real
@@ -21,6 +28,8 @@ function createDb(): D1Database {
     "migrations/0001_init.sql",
     "migrations/0002_match_index_columns.sql",
     "migrations/0003_players_and_results.sql",
+    "migrations/0004_player_stats_since.sql",
+    "migrations/0005_match_players_by_id.sql",
   ]) {
     db.exec(readFileSync(file, "utf8"));
   }
@@ -57,18 +66,19 @@ function seedMatch(
   matchId: string,
   status: string,
   players: { id: string; won: 0 | 1 }[],
+  createdAt = 0,
 ) {
   return Promise.all([
     db
       .prepare(
-        "INSERT INTO matches (id, game_id, status, created_at, updated_at) VALUES (?, 'tictactoe', ?, 0, 0)",
+        "INSERT INTO matches (id, game_id, status, created_at, updated_at) VALUES (?, 'tictactoe', ?, ?, ?)",
       )
-      .bind(matchId, status)
+      .bind(matchId, status, createdAt, createdAt)
       .run(),
     ...players.map((p) =>
       db
         .prepare(
-          "INSERT INTO match_players (match_id, player_id, waiting, nickname, won) VALUES (?, ?, 0, 'x', ?)",
+          "INSERT INTO match_players (match_id, player_id, waiting, won) VALUES (?, ?, 0, ?)",
         )
         .bind(matchId, p.id, p.won)
         .run(),
@@ -165,12 +175,12 @@ describe("playerStats", () => {
   });
 
   it("is all zeroes for a player who has played nothing", async () => {
-    expect(await playerStats(db, "ada")).toEqual({ played: 0, finished: 0, won: 0 });
+    expect(await playerStats(db, "ada")).toEqual({ played: 0, finished: 0, won: 0, since: null });
   });
 
   it("counts matches in flight as played but not finished", async () => {
     await seedMatch(db, "M1", "active", [{ id: "ada", won: 0 }]);
-    expect(await playerStats(db, "ada")).toEqual({ played: 1, finished: 0, won: 0 });
+    expect(await playerStats(db, "ada")).toEqual({ played: 1, finished: 0, won: 0, since: null });
   });
 
   it("counts a finished match, and the win in it", async () => {
@@ -182,14 +192,100 @@ describe("playerStats", () => {
       { id: "ada", won: 0 },
       { id: "grace", won: 1 },
     ]);
-    expect(await playerStats(db, "ada")).toEqual({ played: 2, finished: 2, won: 1 });
-    expect(await playerStats(db, "grace")).toEqual({ played: 2, finished: 2, won: 1 });
+    expect(await playerStats(db, "ada")).toEqual({ played: 2, finished: 2, won: 1, since: null });
+    expect(await playerStats(db, "grace")).toEqual({ played: 2, finished: 2, won: 1, since: null });
   });
 
   it("follows the player id, not the nickname — so a rename keeps the record", async () => {
     const ada = await signIn(db, "Ada");
     await seedMatch(db, "M1", "done", [{ id: ada.id, won: 1 }]);
     await renamePlayer(db, ada.id, "Countess");
-    expect(await playerStats(db, ada.id)).toEqual({ played: 1, finished: 1, won: 1 });
+    expect(await playerStats(db, ada.id)).toEqual({ played: 1, finished: 1, won: 1, since: null });
+  });
+});
+
+describe("resetStats", () => {
+  let db: D1Database;
+  beforeEach(() => {
+    db = createDb();
+  });
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  function resetAt(playerId: string, now: number) {
+    vi.spyOn(Date, "now").mockReturnValue(now);
+    return resetStats(db, playerId);
+  }
+
+  it("starts the record at zero and remembers since when", async () => {
+    const ada = await signIn(db, "Ada");
+    await seedMatch(db, "M1", "done", [{ id: ada.id, won: 1 }], 500);
+    expect(await resetAt(ada.id, 1_000)).toBe(true);
+    expect(await playerStats(db, ada.id)).toEqual({ played: 0, finished: 0, won: 0, since: 1_000 });
+  });
+
+  it("counts every match created from the reset on", async () => {
+    const ada = await signIn(db, "Ada");
+    await seedMatch(db, "M1", "done", [{ id: ada.id, won: 1 }], 500);
+    await resetAt(ada.id, 1_000);
+    await seedMatch(db, "M2", "done", [{ id: ada.id, won: 1 }], 1_000);
+    await seedMatch(db, "M3", "active", [{ id: ada.id, won: 0 }], 2_000);
+    expect(await playerStats(db, ada.id)).toEqual({ played: 2, finished: 1, won: 1, since: 1_000 });
+  });
+
+  it("leaves out a match already under way at the reset, even once it is won", async () => {
+    const ada = await signIn(db, "Ada");
+    await seedMatch(db, "M1", "active", [{ id: ada.id, won: 0 }], 500);
+    await resetAt(ada.id, 1_000);
+    await db.prepare("UPDATE matches SET status = 'done' WHERE id = 'M1'").bind().run();
+    await db.prepare("UPDATE match_players SET won = 1 WHERE match_id = 'M1'").bind().run();
+    expect((await playerStats(db, ada.id)).played).toBe(0);
+  });
+
+  it("deletes nothing — every match the record counted is still in the index", async () => {
+    const ada = await signIn(db, "Ada");
+    await seedMatch(db, "M1", "done", [{ id: ada.id, won: 1 }], 500);
+    await seedMatch(db, "M2", "active", [{ id: ada.id, won: 0 }], 600);
+    await resetAt(ada.id, 1_000);
+    const row = await db
+      .prepare("SELECT COUNT(*) AS n FROM match_players WHERE player_id = ?")
+      .bind(ada.id)
+      .first<{ n: number }>();
+    expect(row?.n).toBe(2);
+  });
+
+  it("resets only the caller's record, not their opponents'", async () => {
+    const ada = await signIn(db, "Ada");
+    const grace = await signIn(db, "Grace");
+    await seedMatch(
+      db,
+      "M1",
+      "done",
+      [
+        { id: ada.id, won: 0 },
+        { id: grace.id, won: 1 },
+      ],
+      500,
+    );
+    await resetAt(ada.id, 1_000);
+    expect(await playerStats(db, grace.id)).toEqual({
+      played: 1,
+      finished: 1,
+      won: 1,
+      since: null,
+    });
+  });
+
+  it("survives a rename, which moves the same player", async () => {
+    const ada = await signIn(db, "Ada");
+    await seedMatch(db, "M1", "done", [{ id: ada.id, won: 1 }], 500);
+    await resetAt(ada.id, 1_000);
+    await renamePlayer(db, ada.id, "Countess");
+    expect(await playerStats(db, ada.id)).toEqual({ played: 0, finished: 0, won: 0, since: 1_000 });
+  });
+
+  it("reports a player the registry has no row for", async () => {
+    expect(await resetAt("unknown-player", 1_000)).toBe(false);
   });
 });

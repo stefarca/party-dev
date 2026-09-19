@@ -62,13 +62,19 @@ in that file, is what makes a claim atomic, so each write there is written to lo
 gracefully. There is no password: whoever claims a nickname first owns it, and whoever types it
 afterwards is signed in as them. The hub's record (`played`/`finished`/`won`) is read from the
 derived index — `match_players.won` is written by `writeIndexNow()` from `result()` — and follows
-the player id, so a rename keeps it.
+the player id, so a rename keeps it. A reset sets `players.stats_since`, and the record then counts
+only matches created from that moment on. Nothing is deleted.
+
+**`players` is the only place a nickname is stored.** Match records, the event log and
+`match_players` hold player ids. Every roster is named from `players` when it is read: the hub
+JOINs it, and `MatchDO.readNamedMatch()` looks up names before any snapshot or summary leaves the
+DO. So a rename reaches every match at once. A name the lookup cannot find shows as
+`UNKNOWN_NICKNAME` (`shared/nickname.ts`) and is never stored.
 
 **Worker → DO boundary.** A match code is the DO name: `MATCH.idFromName(normalizeMatchCode(code))`
 (`shared/ids.ts`). `worker/api.ts` and `worker/index.ts` verify the session and then forward to the
 DO's internal routes (`/lobby/create`, `/lobby/join`, `/snapshot`, `/view`, `/events`, `/start`,
-`/action`, `/ws`). They pass the caller's `playerId` in the JSON body, or in `X-Player-Id`/`X-Player-Nickname`
-headers for `/ws`. The DO trusts that id and only checks membership, so it must always come from
+`/action`, `/ws`). They pass the caller's `playerId` in the JSON body, or in an `X-Player-Id` header for `/ws`. The DO trusts that id and only checks membership, so it must always come from
 the verified session and never from a client payload.
 
 **Everything funnels through `MatchDO.commit()`** — lobby create, join, start, action, and `alarm()`.
@@ -78,7 +84,9 @@ index → Slack-nudge newly-waited-on disconnected players. Two rules hold insid
 
 - Stages 1–2 are synchronous and protected by the DO input gate. Every stage after the first
   `await` must re-read `this.readMatch()` and recompute via `deriveWaitingAndDeadline()` before
-  using either value — another request or an alarm can run to completion across any await.
+  using either value — another request or an alarm can run to completion across any await. The
+  broadcast's name lookup is one of those awaits, so stage 5 builds its snapshots from the record
+  `readNamedMatch()` returns, which is re-read after the lookup.
 - D1 writes go through `syncIndex()`, which queues onto `dbWriteQueue` and re-reads canonical
   state at its own turn, so the last writer to the queue always writes the latest truth.
 

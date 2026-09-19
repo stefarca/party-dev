@@ -68,11 +68,25 @@ function createCtx(): DurableObjectState {
   } as unknown as DurableObjectState;
 }
 
-// Swallows the index writes; D1 is derived and nothing here reads it.
+// Swallows the index writes; D1 is derived and nothing here reads it. The
+// one read is the roster's names, which come from the player registry.
+const REGISTRY: Record<string, string> = { alice: "Alice", bob: "Bob" };
+
 function createEnv(): Env {
   return {
     DB: {
-      prepare: (sql: string) => ({ bind: (...args: unknown[]) => ({ sql, args }) }),
+      prepare: (sql: string) => ({
+        bind: (...args: unknown[]) => ({
+          sql,
+          args,
+          all: () =>
+            Promise.resolve({
+              results: (args as string[])
+                .filter((id) => id in REGISTRY)
+                .map((id) => ({ id, nickname: REGISTRY[id] })),
+            }),
+        }),
+      }),
       batch: () => Promise.resolve([]),
     },
   } as unknown as Env;
@@ -92,10 +106,10 @@ async function startedMatch(gameId: string) {
     post("/lobby/create", {
       matchId: "M1",
       gameId,
-      host: { id: "alice", nickname: "Alice" },
+      hostId: "alice",
     }),
   );
-  await matchDo.fetch(post("/lobby/join", { id: "bob", nickname: "Bob" }));
+  await matchDo.fetch(post("/lobby/join", { playerId: "bob" }));
   await matchDo.fetch(post("/start", { playerId: "alice" }));
   return matchDo;
 }
@@ -118,11 +132,13 @@ describe("the event log", () => {
     delete serverGames.counter;
   });
 
+  // By id only: the history panel names each player from the roster, so a
+  // rename relabels the whole log rather than leaving old lines behind.
   it("records who joined and that the match started", async () => {
     const matchDo = await startedMatch("tictactoe");
     expect((await readEvents(matchDo)).map((e) => e.payload)).toEqual([
-      { type: "player_joined", id: "alice", nickname: "Alice" },
-      { type: "player_joined", id: "bob", nickname: "Bob" },
+      { type: "player_joined", id: "alice" },
+      { type: "player_joined", id: "bob" },
       { type: "match_started" },
     ]);
   });

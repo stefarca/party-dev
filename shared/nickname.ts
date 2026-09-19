@@ -21,6 +21,11 @@ export function nicknameKey(nickname: string): string {
   return nickname.normalize("NFKC").replace(/\s+/g, " ").trim().toLowerCase();
 }
 
+// What a roster shows for a player the registry cannot name right now — a
+// failed lookup, or an id with no `players` row. Only ever displayed, never
+// stored: the next lookup that succeeds replaces it.
+export const UNKNOWN_NICKNAME = "?";
+
 // The display form: the player's own capitalisation, with the same
 // whitespace tidying so the roster never shows a name padded out with
 // spaces.

@@ -27,11 +27,10 @@ interface Line {
   actor: PlayerId | null;
 }
 
-function nameFor(players: PlayerInfo[], id: PlayerId, joinedNickname?: string): string {
-  // A player who has since left the roster (or an event older than the
-  // roster the snapshot carries) still has the nickname the event itself
-  // recorded to fall back on.
-  return players.find((p) => p.id === id)?.nickname ?? joinedNickname ?? id;
+// Events name players by id only, so a rename relabels the whole history. The
+// snapshot's roster is named from the registry every time it is sent.
+function nameFor(players: PlayerInfo[], id: PlayerId): string {
+  return players.find((p) => p.id === id)?.nickname ?? id;
 }
 
 // One event, as a sentence. A move's own string comes from `tGame`, fixed
@@ -46,7 +45,7 @@ function lineFor(
   switch (payload.type) {
     case "player_joined":
       return {
-        text: t("history.joined", { name: nameFor(players, payload.id, payload.nickname) }),
+        text: t("history.joined", { name: nameFor(players, payload.id) }),
         glyph: "👋",
         actor: payload.id,
       };

@@ -70,7 +70,17 @@
       "label": "Il tuo bilancio",
       "played": "giocate",
       "finished": "concluse",
-      "won": "vinte"
+      "won": "vinte",
+      "since": "dal {{date}}",
+      "reset": {
+        "trigger": "Azzera",
+        "label": "Azzera il tuo bilancio",
+        "title": "Azzerare il tuo bilancio?",
+        "body": "Giocate, vinte e concluse ripartono da zero e contano solo le partite iniziate da adesso. Tutte le partite restano nelle tue liste: non viene cancellato nulla.",
+        "confirm": "Azzera bilancio",
+        "cancel": "Annulla",
+        "failed": "Impossibile azzerare il bilancio."
+      }
     }
   },
   "tile": {

@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { CSSProperties, FormEvent } from "react";
 
-import { Button, FieldError, Form, Input, Tabs, TextField } from "@heroui/react";
+import { AlertDialog, Button, FieldError, Form, Input, Tabs, TextField } from "@heroui/react";
 import { useTranslation } from "react-i18next";
 
 import type { GameMeta } from "../../games/catalog";
 import { normalizeMatchCode } from "../../shared/ids";
 import type { MatchSummary } from "../../shared/protocol";
-import { ApiError, createMatch, getGames, joinMatch, listMatches } from "../api";
+import { ApiError, createMatch, getGames, joinMatch, listMatches, resetStats } from "../api";
 import type { MatchBuckets, PlayerStats } from "../api";
 import { setDashboardYourTurn } from "../badge";
 import { GameGlyph } from "../components/GameGlyph";
@@ -15,7 +15,7 @@ import { MatchCard } from "../components/MatchCard";
 import { EmptyState, Notice, Skeleton } from "../components/states";
 import { errorText } from "../errors";
 import { playerRange } from "../format";
-import { useGameName } from "../i18n";
+import { useGameName, useLanguage } from "../i18n";
 import { navigate } from "../router";
 import { useSession } from "../session";
 
@@ -223,36 +223,114 @@ function DashboardSkeleton() {
   );
 }
 
+// Asks before starting the record over. Nothing is deleted, but the numbers a player has built up
+// disappear from view, so one stray tap must not do it.
+function ResetRecord({ onReset }: { onReset: () => Promise<void> }) {
+  const { t } = useTranslation();
+  const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  function handleOpenChange(next: boolean) {
+    setOpen(next);
+    if (next) setError(null);
+  }
+
+  async function handleConfirm() {
+    setBusy(true);
+    setError(null);
+    try {
+      await onReset();
+      setOpen(false);
+    } catch (err) {
+      setError(errorText(t, err, t("hub.stats.reset.failed")));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <AlertDialog isOpen={open} onOpenChange={handleOpenChange}>
+      <Button
+        variant="ghost"
+        size="sm"
+        aria-label={t("hub.stats.reset.label")}
+        className="rounded-[var(--radius-pill)] text-[var(--text-muted)]"
+      >
+        {t("hub.stats.reset.trigger")}
+      </Button>
+      <AlertDialog.Backdrop>
+        <AlertDialog.Container>
+          <AlertDialog.Dialog className="sm:max-w-[400px]">
+            <AlertDialog.Header>
+              <AlertDialog.Icon status="warning" />
+              <AlertDialog.Heading>{t("hub.stats.reset.title")}</AlertDialog.Heading>
+            </AlertDialog.Header>
+            <AlertDialog.Body className="flex flex-col gap-2">
+              <p className="m-0">{t("hub.stats.reset.body")}</p>
+              {error && (
+                <p role="alert" className="m-0 text-sm text-danger">
+                  {error}
+                </p>
+              )}
+            </AlertDialog.Body>
+            <AlertDialog.Footer>
+              <Button slot="close" variant="tertiary">
+                {t("hub.stats.reset.cancel")}
+              </Button>
+              <Button variant="danger" isDisabled={busy} onPress={handleConfirm}>
+                {t("hub.stats.reset.confirm")}
+              </Button>
+            </AlertDialog.Footer>
+          </AlertDialog.Dialog>
+        </AlertDialog.Container>
+      </AlertDialog.Backdrop>
+    </AlertDialog>
+  );
+}
+
 // The player's record, which follows the nickname rather than the browser:
 // signing in with the same one anywhere shows the same three numbers. Three
 // is deliberately all of them — a bigger scoreboard would need per-game
-// breakdowns the index does not carry.
-function StatsStrip({ stats }: { stats: PlayerStats }) {
+// breakdowns the index does not carry. After a reset it says since when it
+// counts, so a short record never passes for a lifetime one.
+function StatsStrip({ stats, onReset }: { stats: PlayerStats; onReset: () => Promise<void> }) {
   const { t } = useTranslation();
-  const cells: [keyof PlayerStats, string][] = [
+  const language = useLanguage();
+  const cells: ["played" | "won" | "finished", string][] = [
     ["played", t("hub.stats.played")],
     ["won", t("hub.stats.won")],
     ["finished", t("hub.stats.finished")],
   ];
   return (
-    <dl aria-label={t("hub.stats.label")} className="party-pop m-0 flex flex-wrap gap-2 sm:gap-3">
-      {cells.map(([key, label]) => (
-        <div
-          key={key}
-          className="flex items-baseline gap-1.5 rounded-[var(--radius-pill)] border border-[var(--border-subtle)] bg-[var(--surface-1)] px-3.5 py-1.5 shadow-[var(--edge-highlight)]"
-        >
-          <dt className="sr-only">{label}</dt>
-          {/* Number and word share one element, with a real space between them, so the whole
-              cell reads as "12 played" to a screen reader and to a test alike. */}
-          <dd className="m-0 text-xs text-[var(--text-muted)]">
-            <span className="font-display text-lg font-bold tabular-nums text-[var(--text-primary)]">
-              {stats[key]}
-            </span>{" "}
-            <span aria-hidden="true">{label}</span>
-          </dd>
-        </div>
-      ))}
-    </dl>
+    <div className="party-pop flex flex-wrap items-center gap-2 sm:gap-3">
+      <dl aria-label={t("hub.stats.label")} className="m-0 flex flex-wrap gap-2 sm:gap-3">
+        {cells.map(([key, label]) => (
+          <div
+            key={key}
+            className="flex items-baseline gap-1.5 rounded-[var(--radius-pill)] border border-[var(--border-subtle)] bg-[var(--surface-1)] px-3.5 py-1.5 shadow-[var(--edge-highlight)]"
+          >
+            <dt className="sr-only">{label}</dt>
+            {/* Number and word share one element, with a real space between them, so the whole
+                cell reads as "12 played" to a screen reader and to a test alike. */}
+            <dd className="m-0 text-xs text-[var(--text-muted)]">
+              <span className="font-display text-lg font-bold tabular-nums text-[var(--text-primary)]">
+                {stats[key]}
+              </span>{" "}
+              <span aria-hidden="true">{label}</span>
+            </dd>
+          </div>
+        ))}
+      </dl>
+      {stats.since !== null && (
+        <p className="m-0 text-xs text-[var(--text-muted)]">
+          {t("hub.stats.since", {
+            date: new Intl.DateTimeFormat(language, { dateStyle: "medium" }).format(stats.since),
+          })}
+        </p>
+      )}
+      <ResetRecord onReset={onReset} />
+    </div>
   );
 }
 
@@ -362,6 +440,21 @@ export function Dashboard() {
     }
   }
 
+  // Swaps in the record the server replies with, rather than refetching: the buckets it would
+  // also bring back are exactly what a reset leaves alone.
+  async function handleResetStats() {
+    try {
+      const stats = await resetStats();
+      setBuckets((prev) => (prev ? { ...prev, stats } : prev));
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 401) {
+        notifyUnauthorized();
+        return;
+      }
+      throw err;
+    }
+  }
+
   async function handleJoin(e: FormEvent) {
     e.preventDefault();
     const code = normalizeMatchCode(joinCode);
@@ -408,7 +501,7 @@ export function Dashboard() {
     yourTurn: [],
     waiting: [],
     finished: [],
-    stats: { played: 0, finished: 0, won: 0 },
+    stats: { played: 0, finished: 0, won: 0, since: null },
   };
   const turnCount = data.yourTurn.length;
   // Coming-soon games go at the very end, after the join tile, so every
@@ -425,7 +518,10 @@ export function Dashboard() {
         <p className="mt-2 mb-4 text-[var(--text-secondary)]">
           {turnCount > 0 ? t("hub.movesNeeded", { count: turnCount }) : t("hub.noMovesNeeded")}
         </p>
-        {data.stats.played > 0 && <StatsStrip stats={data.stats} />}
+        {/* Still shown at zero after a reset, so the reset visibly took. */}
+        {(data.stats.played > 0 || data.stats.since !== null) && (
+          <StatsStrip stats={data.stats} onReset={handleResetStats} />
+        )}
       </section>
 
       <section className="mb-10">

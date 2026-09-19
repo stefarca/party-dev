@@ -70,7 +70,17 @@
       "label": "Your record",
       "played": "played",
       "finished": "finished",
-      "won": "won"
+      "won": "won",
+      "since": "since {{date}}",
+      "reset": {
+        "trigger": "Reset",
+        "label": "Reset your record",
+        "title": "Reset your record?",
+        "body": "Played, won and finished start again from zero, counting only matches started from now on. Every match stays in your lists — nothing is deleted.",
+        "confirm": "Reset record",
+        "cancel": "Cancel",
+        "failed": "Could not reset your record."
+      }
     }
   },
   "tile": {

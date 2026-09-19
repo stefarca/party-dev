@@ -2,6 +2,7 @@ import { Hono } from "hono";
 
 import { GAME_CATALOG, getGameMeta } from "../games/catalog";
 import { MATCH_CODE_RE, generateMatchCode, normalizeMatchCode } from "../shared/ids";
+import { UNKNOWN_NICKNAME } from "../shared/nickname";
 import {
   ActionRequestSchema,
   CreateMatchRequestSchema,
@@ -18,7 +19,14 @@ import {
   sessionMiddleware,
   writeSession,
 } from "./auth";
-import { NicknameTakenError, findPlayerById, playerStats, renamePlayer, signIn } from "./players";
+import {
+  NicknameTakenError,
+  findPlayerById,
+  playerStats,
+  renamePlayer,
+  resetStats,
+  signIn,
+} from "./players";
 
 export const api = new Hono<SessionBindings>();
 
@@ -149,6 +157,19 @@ api.get("/me", requireSession(), async (c) => {
   return c.json({ playerId: player.id, nickname: player.nickname });
 });
 
+// Starts the caller's record over, and only the record: every match it
+// counted stays in the index and on the hub. Replies with the new record so
+// the hub can show it without refetching everything. GET /me registers any
+// session the registry is missing on page load, so a missing row here means
+// the session no longer names a player.
+api.post("/me/stats/reset", requireSession(), async (c) => {
+  const session = c.get("session") as Session;
+  if (!(await resetStats(c.env.DB, session.pid))) {
+    return c.json({ error: "no_identity" }, 401);
+  }
+  return c.json(await playerStats(c.env.DB, session.pid));
+});
+
 api.post("/matches", requireSession(), async (c) => {
   const body = await readJsonBody(c.req.raw);
   const parsed = CreateMatchRequestSchema.safeParse(body);
@@ -199,7 +220,7 @@ api.post("/matches", requireSession(), async (c) => {
       body: JSON.stringify({
         matchId,
         gameId: parsed.data.gameId,
-        host: { id: session.pid, nickname: session.nick },
+        hostId: session.pid,
       }),
     });
     if (!res.ok) throw new Error(`lobby create failed with status ${res.status}`);
@@ -244,7 +265,7 @@ api.post("/matches/:code/join", async (c) => {
   const res = await stub.fetch("http://do/lobby/join", {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ id: session.pid, nickname: session.nick }),
+    body: JSON.stringify({ playerId: session.pid }),
   });
 
   if (res.status === 404) return c.json({ error: "not_found" }, 404);
@@ -409,15 +430,17 @@ api.get("/matches", requireSession(), async (c) => {
   // One D1 query for the caller's matches, joined against match_players
   // twice: once to find the caller's own matches + waiting flag, once more
   // to pull every player row for those matches, so the dashboard needs no
-  // per-match follow-up query.
+  // per-match follow-up query. The index holds player ids only; each name
+  // comes from the registry, so a rename shows on every card at once.
   const { results } = await c.env.DB.prepare(
     `SELECT m.id AS id, m.game_id AS game_id, m.status AS status, m.host_id AS host_id,
             m.updated_at AS updated_at, m.deadline AS deadline,
             mine.waiting AS my_waiting,
-            p.player_id AS player_id, p.nickname AS nickname
+            p.player_id AS player_id, pl.nickname AS nickname
      FROM matches m
      JOIN match_players mine ON mine.match_id = m.id AND mine.player_id = ?
      JOIN match_players p ON p.match_id = m.id
+     LEFT JOIN players pl ON pl.id = p.player_id
      ORDER BY m.updated_at DESC`,
   )
     .bind(session.pid)
@@ -444,7 +467,7 @@ api.get("/matches", requireSession(), async (c) => {
       myWaiting.set(row.id, Boolean(row.my_waiting));
       order.push(row.id);
     }
-    summary.players.push({ id: row.player_id, nickname: row.nickname ?? "" });
+    summary.players.push({ id: row.player_id, nickname: row.nickname ?? UNKNOWN_NICKNAME });
   }
 
   const yourTurn: MatchSummary[] = [];

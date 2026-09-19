@@ -81,6 +81,13 @@ export interface PlayerStats {
   played: number;
   finished: number;
   won: number;
+  // When the player last reset their record (epoch ms), or null if they never have.
+  since: number | null;
+}
+
+// Starts the record over. Only the numbers: every match stays in the hub's lists.
+export function resetStats(): Promise<PlayerStats> {
+  return request<PlayerStats>("/api/me/stats/reset", { method: "POST", body: JSON.stringify({}) });
 }
 
 export interface MatchBuckets {
