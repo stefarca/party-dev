@@ -4,7 +4,8 @@ A new game is a folder under `games/<id>/` plus one line each in `games/registry
 optionally, one in `games/icons.ts`) — nothing else. Checklist, in order:
 
 1. **`games/<id>/game.ts`** implements `GameModule<S, A>` from `shared/game.ts`: `id`, `meta`,
-   `actionSchema`, `init`, `reduce`, `view`, `waitingOn`, `deadline`, `onDeadline`, `result`.
+   `actionSchema`, `init`, `reduce`, `view`, `waitingOn`, `deadline`, `onDeadline`, `result`, and
+   (optionally, but write one) `describeAction`.
 2. **Pick a phase type:**
    - **Sequential** — `waitingOn(state)` returns exactly one player at a time; see
      `games/connect4/game.ts`.
@@ -24,7 +25,20 @@ optionally, one in `games/icons.ts`) — nothing else. Checklist, in order:
      resolution on the round/turn number already in `state` and no-op if it has already resolved —
      re-running it on an already-resolved round must return state that is unchanged in every
      observable way (same `deadline()`, same `result()`).
-4. **`games/<id>/ui.tsx`** default-exports a component typed `GameUiProps` (`shared/protocol.ts`):
+4. **`describeAction(state, action, by)`** is how a move reads in the match history. Return
+   `{ key, values }`, where `key` names a string in your own `locales/<lng>.json` (by convention
+   under `history.`) and `values` are its interpolations; the panel adds `name`, the player's
+   nickname, itself. `state` is the state the action was played _against_, before `reduce` applies
+   it. Two things follow from this:
+   - Write one. A game without it shows "<name> made a move" for every move, which is true and
+     useless.
+   - **A description is broadcast to every player, so it is bound by the same rule as `view()`.**
+     Never put a choice in it that `view()` hides — in a simultaneous game the log goes out the
+     instant the move lands, long before the reveal. `games/trivia/game.ts` names the round and
+     stops there; the raw action is deliberately not logged at all when a game describes its moves.
+     Coordinates must also mean the same thing to both players: `games/checkers/game.ts` names
+     squares against the board itself, because its board is drawn flipped for one of them.
+5. **`games/<id>/ui.tsx`** default-exports a component typed `GameUiProps` (`shared/protocol.ts`):
    render `view`, call `send(action)` for intents, and use the shared `TurnIndicator` (mounted by
    `MatchPage`, not by your UI) for the generic "whose turn / deadline" display — do not duplicate
    it.
@@ -56,25 +70,26 @@ optionally, one in `games/icons.ts`) — nothing else. Checklist, in order:
      `web/translations.test.ts` fails if a language is missing a key. Tailwind only emits classes it can see statically, so never build a class name from
      a runtime value (e.g. `` `bg-seat-${n}` ``) — use a static lookup table of complete class
      strings, or set a CSS custom property inline instead.
-5. **Register it** — one line in each map in `games/registry.ts`:
+6. **Register it** — one line in each map in `games/registry.ts`:
    - `serverGames`: `<id>: yourGame` (statically imported — the Worker bundle must contain every
      game's rules with no network round-trip).
    - `gameUi`: `<id>: () => import("./<id>/ui")` (dynamically imported — keeps the client bundle
      from growing with every game that isn't the one currently open).
-6. **Optional: `games/<id>/icon.tsx`** default-exports the icon on the game's tile — the contents
+7. **Optional: `games/<id>/icon.tsx`** default-exports the icon on the game's tile — the contents
    of a 24×24 `<svg>` (no `<svg>` element of its own), drawn in `currentColor` over the tile's
    gradient; keep it to a few bold shapes, since it renders at about 30px. Register it with one line
    in `gameIcons` in `games/icons.ts`, not in `games/registry.ts`: the Worker imports the registry,
    and an icon is a `.tsx` module. A game without an icon gets an abstract motif picked by hashing
    its id.
-7. **`games/<id>/game.test.ts`** covers, at minimum:
+8. **`games/<id>/game.test.ts`** covers, at minimum:
    - purity (`reduce`/`onDeadline` do not mutate their input and return a new object),
    - determinism (`init`/`reduce` given the same seed/actions produce identical output),
    - `onDeadline` idempotence (running it twice on the same overdue state is a no-op the second
      time),
    - view leakage (`view(state, p)` never contains another player's hidden information or, once
-     applicable, the correct answer/outcome before it should be visible).
-8. **`games/<id>/ui.spec.ts`** plays the game in real browsers with Playwright
+     applicable, the correct answer/outcome before it should be visible),
+   - the same for `describeAction`, if the game hides anything: what it returns is broadcast.
+9. **`games/<id>/ui.spec.ts`** plays the game in real browsers with Playwright
    (`npm run test:e2e`, or `npm run test:e2e:ui` to watch it while you work on `ui.tsx`). Import
    `test` and `expect` from `e2e/fixtures.ts`:
    - `const { players: [first, second] } = await startMatch("<id>")` signs in two players, then

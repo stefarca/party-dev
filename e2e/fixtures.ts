@@ -5,6 +5,15 @@ import type { BrowserContext, Locator, Page } from "@playwright/test";
 // do, through the rendered UI and its accessible names, and never import app code: a spec
 // breaking means a player would notice.
 
+// A nickname is an account, and the e2e database outlives a run (`.wrangler/e2e`), so two
+// specs that both wanted "Alice" would be signing in as the *same* player — sharing matches,
+// and racing each other's renames. Every spec gets its own nickname instead: the base name it
+// asked for, so a failure still reads like the spec, plus enough randomness to be unique across
+// parallel workers and across runs. Assertions must use `player.nickname`, never the base.
+export function uniqueNickname(name: string): string {
+  return `${name}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
 // One player is one browser context, with a session cookie of its own: the same isolation two
 // coworkers on two laptops have. `context.request` shares that cookie, so API calls made
 // through it act as this player.
@@ -52,22 +61,25 @@ export async function joinMatch(guest: Player, code: string): Promise<void> {
 }
 
 interface Fixtures {
-  // Signs in a new player in a fresh browser context and leaves its page blank.
-  newPlayer: (nickname: string) => Promise<Player>;
+  // Signs in a new player in a fresh browser context and leaves its page blank. `name` names
+  // the player for readability only — the nickname actually claimed is `uniqueNickname(name)`,
+  // and `player.nickname` is the one to assert against.
+  newPlayer: (name: string) => Promise<Player>;
   // Signs in one player per nickname. The first creates a `gameId` match, the rest join it in
   // order, and the first starts it. Then it opens the match for everyone and waits until each
   // page is live. Setup goes through the HTTP API, so a game's spec starts at its first move.
   // e2e/lobby.spec.ts covers the same steps through the UI.
-  startMatch: (gameId: string, nicknames?: string[]) => Promise<Match>;
+  startMatch: (gameId: string, names?: string[]) => Promise<Match>;
 }
 
 export const test = base.extend<Fixtures>({
   newPlayer: async ({ browser }, use) => {
     const contexts: BrowserContext[] = [];
-    await use(async (nickname) => {
+    await use(async (name) => {
       // Picks up `use` from playwright.config.ts (baseURL, device, tracing) like `page` does.
       const context = await browser.newContext();
       contexts.push(context);
+      const nickname = uniqueNickname(name);
       const res = await context.request.post("/api/identity", { data: { nickname } });
       await expect(res, `sign in as ${nickname}`).toBeOK();
       const me = (await res.json()) as { playerId: string; nickname: string };
@@ -77,11 +89,11 @@ export const test = base.extend<Fixtures>({
   },
 
   startMatch: async ({ newPlayer }, use) => {
-    await use((gameId, nicknames = ["Alice", "Bob"]) =>
+    await use((gameId, names = ["Alice", "Bob"]) =>
       test.step(
-        `start a ${gameId} match for ${nicknames.join(", ")}`,
+        `start a ${gameId} match for ${names.join(", ")}`,
         async () => {
-          const players = await Promise.all(nicknames.map((nickname) => newPlayer(nickname)));
+          const players = await Promise.all(names.map((name) => newPlayer(name)));
           const [host, ...guests] = players;
 
           const code = await createMatch(host, gameId);

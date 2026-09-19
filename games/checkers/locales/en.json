@@ -44,5 +44,10 @@
     "finished": "Match finished."
   },
   "quietDraw_one": "No capture or man moved in a while: the game is drawn in {{count}} more turn without one.",
-  "quietDraw_other": "No capture or man moved in a while: the game is drawn in {{count}} more turns without one."
+  "quietDraw_other": "No capture or man moved in a while: the game is drawn in {{count}} more turns without one.",
+  "history": {
+    "move": "{{name}} moved {{from}} to {{to}}",
+    "jump_one": "{{name}} jumped {{from}} to {{to}}, taking {{count}} piece",
+    "jump_other": "{{name}} jumped {{from}} to {{to}}, taking {{count}} pieces"
+  }
 }

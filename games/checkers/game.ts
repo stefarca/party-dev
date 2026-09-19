@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { nextInt } from "../../shared/prng";
-import type { GameModule, Result } from "../../shared/game";
+import type { ActionDescription, GameModule, Result } from "../../shared/game";
 import type { PlayerId } from "../../shared/protocol";
 
 // Checkers (English draughts) — a sequential game for two players on the 32
@@ -345,6 +345,32 @@ export function result(state: CheckersState): Result | null {
   return null;
 }
 
+// Algebraic notation for one square: file letter, then rank counted from
+// blue's back row. The board is *drawn* flipped for blue, so a row index
+// would name a different square for each player — a name fixed to the board
+// itself is the only one both players read the same way.
+export function squareName(square: number): string {
+  const row = Math.floor(square / SIZE);
+  const col = square % SIZE;
+  return `${String.fromCharCode("a".charCodeAt(0) + col)}${row + 1}`;
+}
+
+// The action carries only the squares the piece lands on, so the number of
+// pieces taken comes from matching it against the legal moves — the same
+// lookup `reduce` does. An unmatched path is still described (the engine
+// only ever logs an action `reduce` has already accepted, but a description
+// must never be the thing that throws).
+export function describeAction(state: CheckersState, action: MoveAction): ActionDescription {
+  const from = action.path[0];
+  const to = action.path[action.path.length - 1];
+  const move = legalMoves(state.board, state.turn).find((m) => samePath(m.path, action.path));
+  const captured = move?.captured.length ?? 0;
+  const values = { from: squareName(from), to: squareName(to) };
+  return captured > 0
+    ? { key: "history.jump", values: { ...values, count: captured } }
+    : { key: "history.move", values };
+}
+
 export const checkersGame: GameModule<CheckersState, MoveAction> = {
   id: "checkers",
   meta: { name: "Checkers", minPlayers: 2, maxPlayers: 2 },
@@ -356,4 +382,5 @@ export const checkersGame: GameModule<CheckersState, MoveAction> = {
   deadline,
   onDeadline,
   result,
+  describeAction,
 };

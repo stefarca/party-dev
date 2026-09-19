@@ -47,18 +47,34 @@ that old Worker, like the existing `ADD COLUMN`s. One-time operator setup is in 
 ## Architecture
 
 **One `MatchDO` class runs every game.** `worker/match.ts` holds no game-specific knowledge; it
-looks games up through `games/registry.ts`. The Durable Object is authoritative; D1
-(`migrations/*.sql`) is a derived, dashboard-only index that may be rebuilt or lag without
-affecting correctness. Never read match truth from D1. The one other job D1 has is match-code
-reservation. `POST /api/matches` inserts a placeholder `matches` row to claim a fresh code
-(retrying on a primary-key collision) and deletes it if the DO create fails. Join checks that row
-before it contacts the DO.
+looks games up through `games/registry.ts`. The Durable Object is authoritative; D1's `matches` and
+`match_players` (`migrations/*.sql`) are a derived, dashboard-only index that may be rebuilt or lag
+without affecting correctness. Never read match truth from D1. D1 has two other jobs. One is
+match-code reservation: `POST /api/matches` inserts a placeholder `matches` row to claim a fresh
+code (retrying on a primary-key collision) and deletes it if the DO create fails, and join checks
+that row before it contacts the DO. The other is the player registry.
+
+**`players` is the one authoritative table in D1.** A nickname is the account — the same one on a
+second device is the same player, with the same matches and record — so `players` and its unique
+index on `nickname_key` (`shared/nickname.ts` folds case, whitespace and NFKC) cannot be rebuilt
+from anything. `worker/players.ts` owns every read and write of it. The unique index, not any check
+in that file, is what makes a claim atomic, so each write there is written to lose that race
+gracefully. There is no password: whoever claims a nickname first owns it, and whoever types it
+afterwards is signed in as them. The hub's record (`played`/`finished`/`won`) is read from the
+derived index — `match_players.won` is written by `writeIndexNow()` from `result()` — and follows
+the player id, so a rename keeps it. A reset sets `players.stats_since`, and the record then counts
+only matches created from that moment on. Nothing is deleted.
+
+**`players` is the only place a nickname is stored.** Match records, the event log and
+`match_players` hold player ids. Every roster is named from `players` when it is read: the hub
+JOINs it, and `MatchDO.readNamedMatch()` looks up names before any snapshot or summary leaves the
+DO. So a rename reaches every match at once. A name the lookup cannot find shows as
+`UNKNOWN_NICKNAME` (`shared/nickname.ts`) and is never stored.
 
 **Worker → DO boundary.** A match code is the DO name: `MATCH.idFromName(normalizeMatchCode(code))`
 (`shared/ids.ts`). `worker/api.ts` and `worker/index.ts` verify the session and then forward to the
-DO's internal routes (`/lobby/create`, `/lobby/join`, `/snapshot`, `/view`, `/start`, `/action`,
-`/ws`). They pass the caller's `playerId` in the JSON body, or in `X-Player-Id`/`X-Player-Nickname`
-headers for `/ws`. The DO trusts that id and only checks membership, so it must always come from
+DO's internal routes (`/lobby/create`, `/lobby/join`, `/snapshot`, `/view`, `/events`, `/start`,
+`/action`, `/ws`). They pass the caller's `playerId` in the JSON body, or in an `X-Player-Id` header for `/ws`. The DO trusts that id and only checks membership, so it must always come from
 the verified session and never from a client payload.
 
 **Everything funnels through `MatchDO.commit()`** — lobby create, join, start, action, and `alarm()`.
@@ -68,7 +84,9 @@ index → Slack-nudge newly-waited-on disconnected players. Two rules hold insid
 
 - Stages 1–2 are synchronous and protected by the DO input gate. Every stage after the first
   `await` must re-read `this.readMatch()` and recompute via `deriveWaitingAndDeadline()` before
-  using either value — another request or an alarm can run to completion across any await.
+  using either value — another request or an alarm can run to completion across any await. The
+  broadcast's name lookup is one of those awaits, so stage 5 builds its snapshots from the record
+  `readNamedMatch()` returns, which is re-read after the lookup.
 - D1 writes go through `syncIndex()`, which queues onto `dbWriteQueue` and re-reads canonical
   state at its own turn, so the last writer to the queue always writes the latest truth.
 
@@ -80,6 +98,15 @@ authority, mandatory per-player `view()`, seeded PRNG from `shared/prng.ts` thre
 idempotent `onDeadline` — are enforced by convention and by each game's own tests, not by the
 engine. `games/README.md` is the authoring checklist; `games/connect4` (sequential) and
 `games/trivia` (simultaneous + deadline) are the two reference implementations.
+
+Optional `describeAction(state, action, by)` returns `{ key, values }` naming a string in the game's
+own i18n namespace, and is what the history panel renders (`state` is the one the action was played
+against). A game that has one keeps its raw actions out of the event log entirely — the description
+is stored and broadcast instead, and a throwing `describeAction` falls back to the raw action rather
+than failing the move. That is a correctness rule, not a cosmetic one: events go to every connected
+player the instant they are appended, so a raw action would leak what `view()` hides (a trivia
+answer before its reveal). The event payload union, `MatchEventPayload` in `shared/protocol.ts`, is
+closed; a new event type needs wording in `web/components/HistoryPanel.tsx` and `web/locales/`.
 
 What the engine _does_ handle, so a game need not: before `reduce` runs, `MatchDO.handleAction`
 parses the action with `actionSchema` and rejects any player who is not in `waitingOn(state)`
@@ -96,12 +123,15 @@ grow with every game. A game's tile icon is optional and lives in a third, clien
 falls back to a hash-picked motif.
 
 **Two transports, one shape.** The WebSocket at `/ws/:id` and the HTTP routes
-(`GET /api/matches/:id/snapshot`, `POST /api/matches/:id/actions`, `POST /api/matches/:id/start`)
-both speak `MatchSnapshot` from `shared/protocol.ts`. WS is an optimization, never the only path —
-anything reachable over the socket needs an HTTP equivalent. `web/useMatch.ts` fetches the HTTP
-snapshot first, then attaches the socket as an add-on with backoff, and falls back to HTTP for
-sends. Snapshots carry the event-log `seq`, and the client drops any snapshot older than the one
-it is showing. Bump `PROTOCOL_VERSION` in `shared/version.ts` when a `shared/protocol.ts` message
+(`GET /api/matches/:id/snapshot`, `GET /api/matches/:id/events`, `POST /api/matches/:id/actions`,
+`POST /api/matches/:id/start`) speak `MatchSnapshot`/`MatchEvent` from `shared/protocol.ts`. WS is
+an optimization, never the only path — anything reachable over the socket needs an HTTP equivalent.
+`web/useMatch.ts` fetches the HTTP snapshot first, _then_ the event log, then attaches the socket as
+an add-on with backoff, and falls back to HTTP for sends. That order is load-bearing: applying a
+snapshot moves `since` to the latest seq, so without the events fetch a reloaded page would ask the
+socket only for events newer than ones it never had, and show an empty history until the next move.
+`HISTORY_LIMIT` bounds both the server's reply and the client's buffer. Snapshots carry the
+event-log `seq`, and the client drops any snapshot older than the one it is showing. Bump `PROTOCOL_VERSION` in `shared/version.ts` when a `shared/protocol.ts` message
 shape changes incompatibly. The constant is not sent or checked at runtime, and
 `shared/version.test.ts` pins its value, so bumping it means updating that test too.
 
@@ -119,6 +149,14 @@ message exists only to answer non-conforming clients and must not be used for ke
 `SESSION_SECRET`). No password, no session store. A missing secret fails closed with a 500 —
 never fall back to an unsigned or constant key. Every inbound payload, REST bodies included, is
 zod-validated with a schema from `shared/protocol.ts` or the game's own `actionSchema`.
+`POST /api/identity` does two different things. With no session it signs in, adopting whoever
+holds that nickname (which is what makes a second device work). With a session it renames that
+player, keeping their id and refusing (`409 nickname_taken`) a nickname someone else holds.
+`POST /api/identity/signout` is the only way to switch players on a device that already has a
+session. `GET /api/me` re-reads the registry instead of trusting the cookie's copy of the nickname,
+so a rename made elsewhere reaches this device. A cookie whose player has no registry row (a
+pre-registry session that never played, or one minted by the old Worker during a deploy) is
+registered under its own nickname if that is free, and dropped if it is not.
 
 `wrangler.jsonc`'s `run_worker_first` limits the Worker to `/api/*` and `/ws/*`; every other path,
 including deep-linked SPA routes like `/m/ABCDEF`, is served by Static Assets with SPA fallback.
@@ -133,15 +171,20 @@ including deep-linked SPA routes like `/m/ABCDEF`, is served by Static Assets wi
 - `*.test.ts` is Vitest and `*.spec.ts` is Playwright; neither runner picks up the other's.
   `vitest.config.ts` includes only `**/*.test.ts` — a `.test.tsx` file would be silently skipped,
   so game UI is not unit-tested. The Playwright specs cover it instead.
-- There is no `@cloudflare/vitest-pool-workers` setup. `worker/match.test.ts` exercises `MatchDO`
-  by mocking `cloudflare:workers` and hand-building the slice of `DurableObjectState`/`Env` it
-  touches, backed by `node:sqlite` (typed by the local `worker/node-sqlite.d.ts`, since the worker
-  project loads no `@types` packages). Engine tests run against `games/__fixtures__/counter.ts`, a
-  test-only game that is deliberately left out of the registry; the test adds it to `serverGames`
-  and removes it afterwards.
+- There is no `@cloudflare/vitest-pool-workers` setup. `worker/match.test.ts` and
+  `worker/history.test.ts` exercise `MatchDO` by mocking `cloudflare:workers` and hand-building the
+  slice of `DurableObjectState`/`Env` it touches, backed by `node:sqlite` (typed by the local
+  `worker/node-builtins.d.ts`, since the worker project loads no `@types` packages). Engine tests
+  run against `games/__fixtures__/counter.ts`, a test-only game that is deliberately left out of the
+  registry; the test adds it to `serverGames` and removes it afterwards. `worker/players.test.ts`
+  runs the registry against the real `migrations/*.sql` on `node:sqlite` — keep its migration list
+  in step when adding one, since the unique index under test comes from them.
 - Playwright specs drive the real app (Vite + workerd) through the UI and never import app code.
-  `e2e/fixtures.ts` is the harness. `newPlayer(nickname)` gives each player a browser context of
-  their own, signed in over the API. `startMatch(gameId)` creates, joins and starts a match over
+  `e2e/fixtures.ts` is the harness. `newPlayer(name)` gives each player a browser context of
+  their own, signed in over the API as `uniqueNickname(name)` — a nickname is an account and the e2e
+  database outlives a run, so two specs sharing a literal would share a player. Assert against
+  `player.nickname`, never the base name, and use `uniqueNickname()` for any nickname a spec types
+  into the gate itself. `startMatch(gameId)` creates, joins and starts a match over
   HTTP, then opens it for every player and waits until each socket is live; its `players[0]` is
   whoever the game waits on first. Each game has `games/<id>/ui.spec.ts`; flows shared by every
   game (identity, hub, lobby, transports) are in `e2e/*.spec.ts`. Locate elements by role and

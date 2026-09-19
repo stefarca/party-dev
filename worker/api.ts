@@ -2,6 +2,7 @@ import { Hono } from "hono";
 
 import { GAME_CATALOG, getGameMeta } from "../games/catalog";
 import { MATCH_CODE_RE, generateMatchCode, normalizeMatchCode } from "../shared/ids";
+import { UNKNOWN_NICKNAME } from "../shared/nickname";
 import {
   ActionRequestSchema,
   CreateMatchRequestSchema,
@@ -11,7 +12,21 @@ import {
 } from "../shared/protocol";
 import type { MatchSummary } from "../shared/protocol";
 import type { Session, SessionBindings } from "./auth";
-import { MissingSecretError, requireSession, sessionMiddleware, writeSession } from "./auth";
+import {
+  MissingSecretError,
+  clearSession,
+  requireSession,
+  sessionMiddleware,
+  writeSession,
+} from "./auth";
+import {
+  NicknameTakenError,
+  findPlayerById,
+  playerStats,
+  renamePlayer,
+  resetStats,
+  signIn,
+} from "./players";
 
 export const api = new Hono<SessionBindings>();
 
@@ -67,6 +82,17 @@ async function readJsonBody(request: Request): Promise<unknown> {
   }
 }
 
+// Sign in, and rename. Which one it is depends on whether the caller
+// already has a session, and the difference matters:
+//
+//  - no session: whoever holds this nickname *is* who you are signing in
+//    as, matches and record included. That is what makes the app work on a
+//    second device, and it is also why there is nothing here stopping you
+//    from signing in as a coworker — a nickname is a claim, not a proof.
+//  - a session: you keep your player id and move it onto the new nickname,
+//    so nothing you have played is left behind. A nickname somebody else
+//    holds is refused rather than silently switching you into their
+//    account; signing out first is the way to do that on purpose.
 api.post("/identity", async (c) => {
   const body = await readJsonBody(c.req.raw);
   const parsed = IdentityRequestSchema.safeParse(body);
@@ -75,17 +101,73 @@ api.post("/identity", async (c) => {
   }
 
   const existing = c.get("session");
-  const session: Session = existing
-    ? { pid: existing.pid, nick: parsed.data.nickname, iat: existing.iat }
-    : { pid: crypto.randomUUID(), nick: parsed.data.nickname, iat: Date.now() };
+  let player;
+  try {
+    player = existing
+      ? await renamePlayer(c.env.DB, existing.pid, parsed.data.nickname)
+      : await signIn(c.env.DB, parsed.data.nickname);
+  } catch (err) {
+    if (err instanceof NicknameTakenError) {
+      return c.json({ error: "nickname_taken" }, 409);
+    }
+    throw err;
+  }
 
+  const session: Session = {
+    pid: player.id,
+    nick: player.nickname,
+    iat: existing?.iat ?? Date.now(),
+  };
   await writeSession(c, session);
   return c.json({ playerId: session.pid, nickname: session.nick });
 });
 
-api.get("/me", requireSession(), (c) => {
+// Drops the cookie, so the next load shows the nickname gate. The only way
+// to sign in as a different player on a device that already has a session.
+api.post("/identity/signout", (c) => {
+  clearSession(c);
+  return c.json({ ok: true });
+});
+
+// The registry, not the cookie, is the authority on who the caller is: a
+// rename made on another device has to reach this one.
+//
+// A cookie can also name a player the registry has no row for — one minted
+// before the registry existed who never played a match (so the backfill
+// never saw them), or one minted by the previous Worker in the window
+// between a deploy's migration and its new code going live. Such a
+// session is registered under its own nickname if that is still free,
+// rather than sent back to the gate to become someone new. Only if another
+// player already holds that nickname is the cookie dropped.
+api.get("/me", requireSession(), async (c) => {
   const session = c.get("session") as Session;
-  return c.json({ playerId: session.pid, nickname: session.nick });
+  let player = await findPlayerById(c.env.DB, session.pid);
+  if (!player) {
+    try {
+      player = await renamePlayer(c.env.DB, session.pid, session.nick);
+    } catch (err) {
+      if (!(err instanceof NicknameTakenError)) throw err;
+      clearSession(c);
+      return c.json({ error: "no_identity" }, 401);
+    }
+  }
+  if (player.nickname !== session.nick) {
+    await writeSession(c, { ...session, nick: player.nickname });
+  }
+  return c.json({ playerId: player.id, nickname: player.nickname });
+});
+
+// Starts the caller's record over, and only the record: every match it
+// counted stays in the index and on the hub. Replies with the new record so
+// the hub can show it without refetching everything. GET /me registers any
+// session the registry is missing on page load, so a missing row here means
+// the session no longer names a player.
+api.post("/me/stats/reset", requireSession(), async (c) => {
+  const session = c.get("session") as Session;
+  if (!(await resetStats(c.env.DB, session.pid))) {
+    return c.json({ error: "no_identity" }, 401);
+  }
+  return c.json(await playerStats(c.env.DB, session.pid));
 });
 
 api.post("/matches", requireSession(), async (c) => {
@@ -138,7 +220,7 @@ api.post("/matches", requireSession(), async (c) => {
       body: JSON.stringify({
         matchId,
         gameId: parsed.data.gameId,
-        host: { id: session.pid, nickname: session.nick },
+        hostId: session.pid,
       }),
     });
     if (!res.ok) throw new Error(`lobby create failed with status ${res.status}`);
@@ -183,7 +265,7 @@ api.post("/matches/:code/join", async (c) => {
   const res = await stub.fetch("http://do/lobby/join", {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ id: session.pid, nickname: session.nick }),
+    body: JSON.stringify({ playerId: session.pid }),
   });
 
   if (res.status === 404) return c.json({ error: "not_found" }, 404);
@@ -232,6 +314,32 @@ api.get("/matches/:id/snapshot", requireSession(), async (c) => {
   if (res.status === 404) return c.json(await res.json(), 404);
   if (res.status === 403) return c.json(await res.json(), 403);
   if (!res.ok) return c.json({ error: "snapshot_failed" }, 500);
+
+  return c.json(await res.json());
+});
+
+// The event log over HTTP. Not a fallback like the two routes below it —
+// this is the *only* way a page that has just loaded can fill its history
+// panel. The WS `hello` backfill only ever returns events newer than the
+// `since` the client already has, and a fresh page's first snapshot puts
+// `since` at the latest seq, so without this route a reload would show an
+// empty history until the next move.
+api.get("/matches/:id/events", requireSession(), async (c) => {
+  const session = c.get("session") as Session;
+  const code = normalizeMatchCode(c.req.param("id"));
+  if (!MATCH_CODE_RE.test(code)) {
+    return c.json({ error: "not_found" }, 404);
+  }
+
+  const since = c.req.query("since") ?? "0";
+  const id = c.env.MATCH.idFromName(code);
+  const stub = c.env.MATCH.get(id);
+  const res = await stub.fetch(
+    `http://do/events?playerId=${encodeURIComponent(session.pid)}&since=${encodeURIComponent(since)}`,
+  );
+  if (res.status === 404) return c.json(await res.json(), 404);
+  if (res.status === 403) return c.json(await res.json(), 403);
+  if (!res.ok) return c.json({ error: "events_failed" }, 500);
 
   return c.json(await res.json());
 });
@@ -313,18 +421,26 @@ interface MatchIndexRow {
 api.get("/matches", requireSession(), async (c) => {
   const session = c.get("session") as Session;
 
+  // The record travels with the player id, so it follows them onto a new
+  // device the moment the nickname signs them back in. Fetched alongside
+  // the buckets rather than from a route of its own — it reads the same two
+  // tables, and the hub draws both in one pass.
+  const stats = await playerStats(c.env.DB, session.pid);
+
   // One D1 query for the caller's matches, joined against match_players
   // twice: once to find the caller's own matches + waiting flag, once more
   // to pull every player row for those matches, so the dashboard needs no
-  // per-match follow-up query.
+  // per-match follow-up query. The index holds player ids only; each name
+  // comes from the registry, so a rename shows on every card at once.
   const { results } = await c.env.DB.prepare(
     `SELECT m.id AS id, m.game_id AS game_id, m.status AS status, m.host_id AS host_id,
             m.updated_at AS updated_at, m.deadline AS deadline,
             mine.waiting AS my_waiting,
-            p.player_id AS player_id, p.nickname AS nickname
+            p.player_id AS player_id, pl.nickname AS nickname
      FROM matches m
      JOIN match_players mine ON mine.match_id = m.id AND mine.player_id = ?
      JOIN match_players p ON p.match_id = m.id
+     LEFT JOIN players pl ON pl.id = p.player_id
      ORDER BY m.updated_at DESC`,
   )
     .bind(session.pid)
@@ -351,7 +467,7 @@ api.get("/matches", requireSession(), async (c) => {
       myWaiting.set(row.id, Boolean(row.my_waiting));
       order.push(row.id);
     }
-    summary.players.push({ id: row.player_id, nickname: row.nickname ?? "" });
+    summary.players.push({ id: row.player_id, nickname: row.nickname ?? UNKNOWN_NICKNAME });
   }
 
   const yourTurn: MatchSummary[] = [];
@@ -368,7 +484,7 @@ api.get("/matches", requireSession(), async (c) => {
     }
   }
 
-  return c.json({ yourTurn, waiting, finished });
+  return c.json({ yourTurn, waiting, finished, stats });
 });
 
 api.notFound((c) => c.json({ ok: false, error: "not found" }, 404));

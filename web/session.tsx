@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 
-import { ApiError, getMe, setIdentity } from "./api";
+import { ApiError, getMe, setIdentity, signOut } from "./api";
 import type { Me } from "./api";
 
 export type SessionState = "loading" | "anon" | "ready";
@@ -12,6 +12,10 @@ interface SessionValue {
   error: string | null;
   signIn: (nickname: string) => Promise<void>;
   rename: (nickname: string) => Promise<void>;
+  // Ends the session on this device and returns to the nickname gate. The
+  // only way to sign in as a different player here — `rename` deliberately
+  // moves *this* player onto a new nickname instead.
+  signOut: () => Promise<void>;
   retry: () => void;
   // Called by any screen whose fetch comes back 401 (e.g. the cookie
   // expired between page loads) so the app falls back to the nickname gate
@@ -63,6 +67,13 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     setPlayer(me);
   }, []);
 
+  const endSession = useCallback(async () => {
+    await signOut();
+    setPlayer(null);
+    setError(null);
+    setState("anon");
+  }, []);
+
   const retry = useCallback(() => setAttempt((n) => n + 1), []);
 
   const notifyUnauthorized = useCallback(() => {
@@ -71,8 +82,17 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo<SessionValue>(
-    () => ({ state, player, error, signIn, rename, retry, notifyUnauthorized }),
-    [state, player, error, signIn, rename, retry, notifyUnauthorized],
+    () => ({
+      state,
+      player,
+      error,
+      signIn,
+      rename,
+      signOut: endSession,
+      retry,
+      notifyUnauthorized,
+    }),
+    [state, player, error, signIn, rename, endSession, retry, notifyUnauthorized],
   );
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;

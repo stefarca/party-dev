@@ -4,6 +4,7 @@ import type { FormEvent } from "react";
 import { Button, Form, I18nProvider, Input, Label, Popover, TextField } from "@heroui/react";
 import { useTranslation } from "react-i18next";
 
+import { NICKNAME_MAX_LENGTH } from "../shared/nickname";
 import { AppBackground } from "./components/AppBackground";
 import { LanguagePicker } from "./components/LanguagePicker";
 import { PlayerAvatar } from "./components/PlayerAvatar";
@@ -18,9 +19,14 @@ import { NicknameGate } from "./routes/NicknameGate";
 import { navigate, useRoute } from "./router";
 import { SessionProvider, useSession } from "./session";
 
+// The nickname is the account, so this one control covers both things a
+// player can do with it: move their own player onto a different nickname
+// (keeping every match), or end the session so someone else can sign in on
+// this device. Renaming into a nickname somebody else holds is refused by
+// the server — signing out is the way to switch into it deliberately.
 function RenameControl() {
   const { t } = useTranslation();
-  const { player, rename } = useSession();
+  const { player, rename, signOut } = useSession();
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(player?.nickname ?? "");
   const [error, setError] = useState<string | null>(null);
@@ -47,6 +53,14 @@ function RenameControl() {
     }
   }
 
+  async function handleSignOut() {
+    try {
+      await signOut();
+    } catch (err) {
+      setError(errorText(t, err, t("rename.signOutFailed")));
+    }
+  }
+
   return (
     <Popover isOpen={editing} onOpenChange={setOpen}>
       <Button
@@ -61,12 +75,13 @@ function RenameControl() {
       <Popover.Content placement="bottom end">
         <Popover.Dialog aria-label={t("rename.dialog")}>
           <Form onSubmit={handleRename} className="flex w-60 flex-col gap-3 p-4">
-            <TextField value={value} onChange={setValue} maxLength={24}>
+            <TextField value={value} onChange={setValue} maxLength={NICKNAME_MAX_LENGTH}>
               <Label className="text-xs font-bold text-[var(--text-muted)]">
                 {t("rename.label")}
               </Label>
               <Input autoFocus />
             </TextField>
+            <p className="m-0 text-xs text-[var(--text-muted)]">{t("rename.hint")}</p>
             {error && (
               <p role="alert" className="m-0 text-sm text-danger">
                 {error}
@@ -80,6 +95,15 @@ function RenameControl() {
                 {t("rename.cancel")}
               </Button>
             </div>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onPress={handleSignOut}
+              className="mt-1 self-start border-t border-[var(--border-subtle)] text-[var(--text-muted)]"
+            >
+              {t("rename.signOut")}
+            </Button>
           </Form>
         </Popover.Dialog>
       </Popover.Content>

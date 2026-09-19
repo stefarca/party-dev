@@ -22,5 +22,8 @@
   "answerScored": "{{name}}: {{answer}} (+1)",
   "noAnswer": "no answer",
   "finalScoreboard": "Final scoreboard",
-  "winner": "winner"
+  "winner": "winner",
+  "history": {
+    "answer": "{{name}} answered round {{round}}"
+  }
 }

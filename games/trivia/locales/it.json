@@ -22,5 +22,8 @@
   "answerScored": "{{name}}: {{answer}} (+1)",
   "noAnswer": "nessuna risposta",
   "finalScoreboard": "Classifica finale",
-  "winner": "vincitore"
+  "winner": "vincitore",
+  "history": {
+    "answer": "{{name}} ha risposto al round {{round}}"
+  }
 }

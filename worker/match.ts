@@ -3,14 +3,18 @@ import { z } from "zod";
 
 import { getGameMeta } from "../games/catalog";
 import { getGame } from "../games/registry";
-import type { GameModule } from "../shared/game";
+import type { GameModule, Result } from "../shared/game";
+import { HISTORY_LIMIT } from "../shared/history";
+import { UNKNOWN_NICKNAME } from "../shared/nickname";
 import { ClientMessageSchema } from "../shared/protocol";
 import type {
   MatchEvent,
+  MatchEventPayload,
   MatchSnapshot,
   MatchStatus,
   MatchSummary,
   PlayerId,
+  PlayerInfo,
   ServerMessage,
 } from "../shared/protocol";
 import { sendSlackNudge, shouldNudge } from "./nudge";
@@ -28,9 +32,11 @@ import { sendSlackNudge, shouldNudge } from "./nudge";
 // log, alarm-driven `onDeadline`, and hibernatable WebSockets. It holds no
 // game-specific knowledge — games come from `games/registry.ts`.
 
+// Ids only. A player's name is identity, not match data — it lives in the
+// `players` registry and is looked up whenever a roster leaves this object
+// (see `readNamedMatch()`), so a rename reaches every match at once.
 interface MatchPlayerRecord {
   id: string;
-  nickname: string;
   joinedAt: number;
 }
 
@@ -60,7 +66,6 @@ interface MatchRecord {
 // in-memory Map keyed by socket.
 interface ConnectionAttachment {
   playerId: string;
-  nickname: string;
 }
 
 type ActionResult =
@@ -71,15 +76,7 @@ type MutationResult = { ok: true } | { ok: false; code: string; message: string 
 const LobbyCreateBody = z.object({
   matchId: z.string().min(1),
   gameId: z.string().min(1),
-  host: z.object({
-    id: z.string().min(1),
-    nickname: z.string().min(1),
-  }),
-});
-
-const LobbyJoinBody = z.object({
-  id: z.string().min(1),
-  nickname: z.string().min(1),
+  hostId: z.string().min(1),
 });
 
 const ActorBody = z.object({ playerId: z.string().min(1) });
@@ -104,6 +101,19 @@ function statusForCode(code: string): number {
     default:
       return 400;
   }
+}
+
+// Who a finished match counts as a win for, in the one place the D1 index
+// needs to agree with every game at once. A "scores" result has no declared
+// winner, so the top score takes it and a tie counts for everyone on it —
+// the same reading the scoreboard UI gives.
+function winnersOf(result: Result | null): Set<PlayerId> {
+  if (result === null || result.kind === "draw") return new Set();
+  if (result.kind === "win") return new Set(result.winners);
+  const scores = Object.entries(result.scores);
+  if (scores.length === 0) return new Set();
+  const best = Math.max(...scores.map(([, score]) => score));
+  return new Set(scores.filter(([, score]) => score === best).map(([id]) => id));
 }
 
 export class MatchDO extends DurableObject<Env> {
@@ -163,6 +173,10 @@ export class MatchDO extends DurableObject<Env> {
       return this.handleViewRequest(url);
     }
 
+    if (request.method === "GET" && url.pathname === "/events") {
+      return this.handleEventsRequest(url);
+    }
+
     if (request.method === "POST" && url.pathname === "/start") {
       return this.handleStartRequest(request);
     }
@@ -199,7 +213,7 @@ export class MatchDO extends DurableObject<Env> {
   }
 
   // Returns the new row's seq.
-  private appendEvent(payload: object): number {
+  private appendEvent(payload: MatchEventPayload): number {
     const ts = Date.now();
     this.ctx.storage.sql.exec(
       "INSERT INTO events (ts, payload) VALUES (?, ?)",
@@ -212,7 +226,7 @@ export class MatchDO extends DurableObject<Env> {
     return row.seq;
   }
 
-  private eventsSince(since: number, limit = 200): MatchEvent[] {
+  private eventsSince(since: number, limit = HISTORY_LIMIT): MatchEvent[] {
     const rows = this.ctx.storage.sql
       .exec(
         "SELECT seq, ts, payload FROM events WHERE seq > ? ORDER BY seq ASC LIMIT ?",
@@ -223,6 +237,22 @@ export class MatchDO extends DurableObject<Env> {
     return rows.map((r) => ({ seq: r.seq, ts: r.ts, payload: JSON.parse(r.payload) }));
   }
 
+  // The *newest* `limit` events after `since`, still returned oldest-first.
+  // `eventsSince` above is the catch-up read — it takes the oldest rows in
+  // the gap, which is what a reconnecting socket needs next. A page that
+  // just loaded wants the other end: the tail of a long match, not its
+  // opening moves.
+  private recentEvents(since: number, limit = HISTORY_LIMIT): MatchEvent[] {
+    const rows = this.ctx.storage.sql
+      .exec(
+        "SELECT seq, ts, payload FROM events WHERE seq > ? ORDER BY seq DESC LIMIT ?",
+        since,
+        limit,
+      )
+      .toArray() as { seq: number; ts: number; payload: string }[];
+    return rows.map((r) => ({ seq: r.seq, ts: r.ts, payload: JSON.parse(r.payload) })).reverse();
+  }
+
   private currentSeq(): number {
     const row = this.ctx.storage.sql
       .exec("SELECT COALESCE(MAX(seq), 0) AS seq FROM events")
@@ -230,12 +260,60 @@ export class MatchDO extends DurableObject<Env> {
     return row.seq;
   }
 
-  private toSummary(record: MatchRecord): MatchSummary {
+  // Looks up the display names of `ids` in the player registry. Never throws:
+  // a failed lookup costs the names (they show as UNKNOWN_NICKNAME until the
+  // next snapshot), never the snapshot itself — and `alarm()` and
+  // `webSocketMessage()` both reach this through commit(), where a throw is
+  // not allowed.
+  private async lookupNames(ids: PlayerId[]): Promise<Map<PlayerId, string>> {
+    const names = new Map<PlayerId, string>();
+    if (ids.length === 0) return names;
+    try {
+      const { results } = await this.env.DB.prepare(
+        `SELECT id, nickname FROM players WHERE id IN (${ids.map(() => "?").join(", ")})`,
+      )
+        .bind(...ids)
+        .all<{ id: string; nickname: string }>();
+      for (const row of results) names.set(row.id, row.nickname);
+    } catch (err) {
+      console.error("player name lookup failed", err);
+    }
+    return names;
+  }
+
+  // The match as it stands once every player in it has been named. The
+  // lookup is an await, and a join can land during it, so the record is
+  // re-read after each lookup and whoever that join added is looked up in
+  // turn. An id is never asked for twice, so one the registry has no row for
+  // cannot keep this looping. Callers use the record returned here, never
+  // one they read before calling it.
+  private async readNamedMatch(): Promise<{
+    record: MatchRecord;
+    names: Map<PlayerId, string>;
+  } | null> {
+    let record = this.readMatch();
+    const names = new Map<PlayerId, string>();
+    const asked = new Set<PlayerId>();
+    while (record) {
+      const missing = record.players.map((p) => p.id).filter((id) => !asked.has(id));
+      if (missing.length === 0) break;
+      for (const id of missing) asked.add(id);
+      for (const [id, name] of await this.lookupNames(missing)) names.set(id, name);
+      record = this.readMatch();
+    }
+    return record ? { record, names } : null;
+  }
+
+  private rosterOf(record: MatchRecord, names: Map<PlayerId, string>): PlayerInfo[] {
+    return record.players.map((p) => ({ id: p.id, nickname: names.get(p.id) ?? UNKNOWN_NICKNAME }));
+  }
+
+  private toSummary(record: MatchRecord, names: Map<PlayerId, string>): MatchSummary {
     return {
       id: record.id,
       gameId: record.gameId,
       status: record.status,
-      players: record.players.map((p) => ({ id: p.id, nickname: p.nickname })),
+      players: this.rosterOf(record, names),
       hostId: record.hostId,
       waiting: false, // lobby-only summary — see handleLobbySnapshot below.
       updatedAt: record.updatedAt,
@@ -247,14 +325,18 @@ export class MatchDO extends DurableObject<Env> {
   // Shared by the WS `hello`/action-result replies, the
   // broadcast in `commit()`, and the HTTP `/view` fallback, so all three
   // transports agree on exactly one shape.
-  private snapshotFor(record: MatchRecord, playerId: PlayerId): MatchSnapshot {
+  private snapshotFor(
+    record: MatchRecord,
+    playerId: PlayerId,
+    names: Map<PlayerId, string>,
+  ): MatchSnapshot {
     const module = getGame(record.gameId) as GameModule<unknown, unknown> | undefined;
     const state = record.state;
     const hasState = module !== undefined && state !== null;
     return {
       seq: this.currentSeq(),
       status: record.status,
-      players: record.players.map((p) => ({ id: p.id, nickname: p.nickname })),
+      players: this.rosterOf(record, names),
       view: hasState ? module.view(state, playerId) : null,
       waitingOn: hasState ? module.waitingOn(state) : [],
       deadline: hasState ? module.deadline(state) : null,
@@ -300,7 +382,7 @@ export class MatchDO extends DurableObject<Env> {
   // join, start, action, alarm — funnels through this single method.
   // ---------------------------------------------------------------------
 
-  private async commit(record: MatchRecord, events: object[]): Promise<void> {
+  private async commit(record: MatchRecord, events: MatchEventPayload[]): Promise<void> {
     const module = getGame(record.gameId) as GameModule<unknown, unknown> | undefined;
 
     // Read the previously-persisted waitingOn *before* overwriting the
@@ -369,26 +451,29 @@ export class MatchDO extends DurableObject<Env> {
       await this.ctx.storage.deleteAlarm();
     }
 
-    // Re-read after await #2 (setAlarm/deleteAlarm, when either ran) — a
-    // fully independent commit could have run to completion while this one
-    // was suspended there, so `current`/`derived` from stage 3 can no
-    // longer be trusted.
-    current = this.readMatch() ?? record;
-    // eslint-disable-next-line no-useless-assignment -- defensive re-read for symmetry with the other stages; overwritten again after await #3 below but kept so future edits reordering this block stay safe
-    derived = this.deriveWaitingAndDeadline(module, current);
-
     // 5. Broadcast a per-player snapshot to every connected socket, using
     // that socket's own view(state, playerId) — N tailored messages, never
     // one shared payload. O(players) view() + JSON
     // serialization per commit; fine for the <=8-player games this engine
     // targets, but keep reducers/views small (the 10ms CPU budget
-    // applies here too). This loop itself has no `await` in it, so
-    // `current`/`derived` re-read immediately above stay valid for its
-    // entire duration.
+    // applies here too).
+    //
+    // The roster is named from the player registry first, which is await
+    // #3. `readNamedMatch()` reads the record right after await #2
+    // (setAlarm/deleteAlarm, when either ran) and again after its own
+    // lookup, so the `current` it returns is fresh as of both — a fully
+    // independent commit could have run to completion during either. The
+    // loop itself has no `await` in it, so `current`/`derived` stay valid
+    // for its entire duration.
+    const named = await this.readNamedMatch();
+    current = named?.record ?? record;
+    const names = named?.names ?? new Map<PlayerId, string>();
+    // eslint-disable-next-line no-useless-assignment -- recomputed from the fresh `current` for symmetry with the other stages; no stage reads it before the re-read after await #4 below
+    derived = this.deriveWaitingAndDeadline(module, current);
     for (const ws of this.ctx.getWebSockets()) {
       const attachment = ws.deserializeAttachment() as ConnectionAttachment | null;
       if (!attachment) continue;
-      const snapshot = this.snapshotFor(current, attachment.playerId);
+      const snapshot = this.snapshotFor(current, attachment.playerId, names);
       this.safeSend(ws, { t: "snapshot", ...snapshot });
       if (newEvents.length > 0) {
         this.safeSend(ws, { t: "events", events: newEvents });
@@ -402,8 +487,8 @@ export class MatchDO extends DurableObject<Env> {
     // it, would not be enough on its own.
     await this.syncIndex();
 
-    // Re-read after await #3 (syncIndex's internal `env.DB.batch` call) —
-    // same reasoning as after awaits #1 and #2.
+    // Re-read after await #4 (syncIndex's internal `env.DB.batch` call) —
+    // same reasoning as after the awaits before it.
     current = this.readMatch() ?? record;
     derived = this.deriveWaitingAndDeadline(module, current);
 
@@ -452,27 +537,33 @@ export class MatchDO extends DurableObject<Env> {
     for (const id of eligible) record.nudgedAt[id] = now;
     this.writeMatch(record);
 
-    const players = eligible
-      .map((id) => record.players.find((p) => p.id === id))
-      .filter((p): p is MatchPlayerRecord => p !== undefined);
-    if (players.length === 0) return;
+    const playerIds = eligible.filter((id) => record.players.some((p) => p.id === id));
+    if (playerIds.length === 0) return;
 
     const meta = getGameMeta(record.gameId);
     const url = `${this.env.PUBLIC_BASE_URL}/m/${record.id}`;
 
     // Fire-and-forget via ctx.waitUntil() so the move's own response is
-    // never blocked on Slack, and never let a Slack outage escape this
-    // pipeline (sendSlackNudge itself never throws; the .catch here is
-    // belt-and-suspenders against a future regression there).
+    // never blocked on the name lookup or on Slack, and never let a Slack
+    // outage escape this pipeline (lookupNames and sendSlackNudge never
+    // throw; the .catch here is belt-and-suspenders against a future
+    // regression there).
     this.ctx.waitUntil(
-      sendSlackNudge(this.env, {
-        matchId: record.id,
-        gameName: meta?.name ?? record.gameId,
-        players: players.map((p) => ({ id: p.id, nickname: p.nickname })),
-        url,
-      }).catch((err) => {
-        console.error("nudgeHook: sendSlackNudge rejected unexpectedly", err);
-      }),
+      this.lookupNames(playerIds)
+        .then((names) =>
+          sendSlackNudge(this.env, {
+            matchId: record.id,
+            gameName: meta?.name ?? record.gameId,
+            players: playerIds.map((id) => ({
+              id,
+              nickname: names.get(id) ?? UNKNOWN_NICKNAME,
+            })),
+            url,
+          }),
+        )
+        .catch((err) => {
+          console.error("nudgeHook: sendSlackNudge rejected unexpectedly", err);
+        }),
     );
   }
 
@@ -489,26 +580,33 @@ export class MatchDO extends DurableObject<Env> {
       return Response.json({ ok: false, error: "already_exists" }, { status: 409 });
     }
 
-    const { matchId, gameId, host } = parsed.data;
+    const { matchId, gameId, hostId } = parsed.data;
     const now = Date.now();
     const record: MatchRecord = {
       id: matchId,
       gameId,
       status: "lobby",
-      hostId: host.id,
-      players: [{ id: host.id, nickname: host.nickname, joinedAt: now }],
+      hostId,
+      players: [{ id: hostId, joinedAt: now }],
       createdAt: now,
       updatedAt: now,
       seed: Math.floor(Math.random() * 2 ** 31),
       state: null,
       nudgedAt: {},
     };
-    await this.commit(record, [{ type: "player_joined", id: host.id, nickname: host.nickname }]);
-    return Response.json(this.toSummary(record));
+    await this.commit(record, [{ type: "player_joined", id: hostId }]);
+    return this.namedSummaryResponse();
+  }
+
+  // The lobby summary every lobby route replies with, named as of now.
+  private async namedSummaryResponse(): Promise<Response> {
+    const named = await this.readNamedMatch();
+    if (!named) return Response.json({ ok: false, error: "not_found" }, { status: 404 });
+    return Response.json(this.toSummary(named.record, named.names));
   }
 
   private async handleLobbyJoin(request: Request): Promise<Response> {
-    const parsed = LobbyJoinBody.safeParse(await request.json().catch(() => null));
+    const parsed = ActorBody.safeParse(await request.json().catch(() => null));
     if (!parsed.success) {
       return Response.json({ ok: false, error: "invalid_body" }, { status: 400 });
     }
@@ -517,16 +615,10 @@ export class MatchDO extends DurableObject<Env> {
       return Response.json({ ok: false, error: "not_found" }, { status: 404 });
     }
 
-    const { id, nickname } = parsed.data;
-    const existing = record.players.find((p) => p.id === id);
-    const events: object[] = [];
-    if (existing) {
-      // Idempotent re-join: succeeds regardless of match status. We also
-      // lazily refresh the nickname here rather than fanning out nickname
-      // changes to every match the player is in — stale opponent names in
-      // old matches are acceptable.
-      existing.nickname = nickname;
-    } else {
+    const id = parsed.data.playerId;
+    // A re-join is idempotent and succeeds regardless of match status. It
+    // changes nothing, so there is nothing to commit.
+    if (!record.players.some((p) => p.id === id)) {
       if (record.status !== "lobby") {
         return Response.json({ ok: false, error: "not_joinable" }, { status: 409 });
       }
@@ -535,23 +627,17 @@ export class MatchDO extends DurableObject<Env> {
       if (record.players.length >= maxPlayers) {
         return Response.json({ ok: false, error: "lobby_full" }, { status: 409 });
       }
-      record.players.push({ id, nickname, joinedAt: Date.now() });
-      events.push({ type: "player_joined", id, nickname });
+      record.players.push({ id, joinedAt: Date.now() });
+      await this.commit(record, [{ type: "player_joined", id }]);
     }
-
-    await this.commit(record, events);
-    return Response.json(this.toSummary(record));
+    return this.namedSummaryResponse();
   }
 
   // This route stays a lobby-only summary — a MatchSnapshot with a real
   // per-player `view` is served separately by GET /view, GET /ws and the
   // /action fallback. `/api/matches/:code` is the only caller.
-  private handleLobbySnapshot(): Response {
-    const record = this.readMatch();
-    if (!record) {
-      return Response.json({ ok: false, error: "not_found" }, { status: 404 });
-    }
-    return Response.json(this.toSummary(record));
+  private handleLobbySnapshot(): Promise<Response> {
+    return this.namedSummaryResponse();
   }
 
   // D1 is derived state: the DO stays authoritative even if this write
@@ -582,18 +668,21 @@ export class MatchDO extends DurableObject<Env> {
     if (!record) return;
     const module = getGame(record.gameId) as GameModule<unknown, unknown> | undefined;
     const { waitingOn, deadline } = this.deriveWaitingAndDeadline(module, record);
+    const result = module && record.state !== null ? module.result(record.state) : null;
+    const winners = winnersOf(result);
     try {
       const waitingSet = new Set(waitingOn);
       const statements = [
         this.env.DB.prepare(
-          `INSERT INTO matches (id, game_id, status, created_at, updated_at, deadline, host_id)
-           VALUES (?, ?, ?, ?, ?, ?, ?)
+          `INSERT INTO matches (id, game_id, status, created_at, updated_at, deadline, host_id, result_kind)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)
            ON CONFLICT(id) DO UPDATE SET
              game_id = excluded.game_id,
              status = excluded.status,
              updated_at = excluded.updated_at,
              deadline = excluded.deadline,
-             host_id = excluded.host_id`,
+             host_id = excluded.host_id,
+             result_kind = excluded.result_kind`,
         ).bind(
           record.id,
           record.gameId,
@@ -602,15 +691,16 @@ export class MatchDO extends DurableObject<Env> {
           record.updatedAt,
           deadline,
           record.hostId,
+          result?.kind ?? null,
         ),
         ...record.players.map((p) =>
           this.env.DB.prepare(
-            `INSERT INTO match_players (match_id, player_id, waiting, nickname)
+            `INSERT INTO match_players (match_id, player_id, waiting, won)
              VALUES (?, ?, ?, ?)
              ON CONFLICT(match_id, player_id) DO UPDATE SET
                waiting = excluded.waiting,
-               nickname = excluded.nickname`,
-          ).bind(record.id, p.id, waitingSet.has(p.id) ? 1 : 0, p.nickname),
+               won = excluded.won`,
+          ).bind(record.id, p.id, waitingSet.has(p.id) ? 1 : 0, winners.has(p.id) ? 1 : 0),
         ),
       ];
       await this.env.DB.batch(statements);
@@ -688,9 +778,36 @@ export class MatchDO extends DurableObject<Env> {
       return { ok: false, code: "invalid_move", message };
     }
 
+    // What gets logged is the game's own description of the move when it
+    // has one, and the raw action only when it does not. The distinction
+    // matters beyond readability: events are broadcast to every connected
+    // player, so logging a raw action would hand a simultaneous game's
+    // opponents a move that `view()` deliberately hides. A throwing
+    // `describeAction` must not cost the player their move — the action
+    // itself already succeeded — so it falls back to the raw form.
+    let logged: MatchEventPayload;
+    try {
+      const described = module.describeAction?.(record.state, parsedAction.data, playerId);
+      logged = described
+        ? { type: "action", by: playerId, describe: described }
+        : { type: "action", by: playerId, action: parsedAction.data };
+    } catch (err) {
+      console.error("describeAction threw", err);
+      logged = { type: "action", by: playerId, action: parsedAction.data };
+    }
+
     record.state = nextState;
-    await this.commit(record, [{ type: "action", by: playerId, action: parsedAction.data }]);
-    return { ok: true, snapshot: this.snapshotFor(record, playerId) };
+    await this.commit(record, [logged]);
+    const snapshot = await this.namedSnapshotFor(playerId);
+    if (!snapshot) return { ok: false, code: "not_found", message: "match not found" };
+    return { ok: true, snapshot };
+  }
+
+  // `playerId`'s snapshot of the match as it stands now, with its players
+  // named. Null only when there is no match.
+  private async namedSnapshotFor(playerId: PlayerId): Promise<MatchSnapshot | null> {
+    const named = await this.readNamedMatch();
+    return named ? this.snapshotFor(named.record, playerId, named.names) : null;
   }
 
   private async handleViewRequest(url: URL): Promise<Response> {
@@ -701,7 +818,25 @@ export class MatchDO extends DurableObject<Env> {
     if (!record.players.some((p) => p.id === playerId)) {
       return Response.json({ error: "not_a_player" }, { status: 403 });
     }
-    return Response.json(this.snapshotFor(record, playerId));
+    const snapshot = await this.namedSnapshotFor(playerId);
+    if (!snapshot) return Response.json({ error: "not_found" }, { status: 404 });
+    return Response.json(snapshot);
+  }
+
+  // The HTTP equivalent of the WS `hello` -> `events` backfill. Membership
+  // is checked exactly as `/view` checks it: the log names who joined and
+  // what they played, so it is no more public than the per-player snapshot.
+  private handleEventsRequest(url: URL): Response {
+    const playerId = url.searchParams.get("playerId");
+    if (!playerId) return Response.json({ error: "missing_player" }, { status: 400 });
+    const record = this.readMatch();
+    if (!record) return Response.json({ error: "not_found" }, { status: 404 });
+    if (!record.players.some((p) => p.id === playerId)) {
+      return Response.json({ error: "not_a_player" }, { status: 403 });
+    }
+    const rawSince = Number(url.searchParams.get("since") ?? "0");
+    const since = Number.isFinite(rawSince) && rawSince > 0 ? Math.floor(rawSince) : 0;
+    return Response.json({ events: this.recentEvents(since) });
   }
 
   private async handleStartRequest(request: Request): Promise<Response> {
@@ -715,8 +850,9 @@ export class MatchDO extends DurableObject<Env> {
         { status: statusForCode(result.code) },
       );
     }
-    const record = this.readMatch() as MatchRecord;
-    return Response.json(this.snapshotFor(record, parsed.data.playerId));
+    const snapshot = await this.namedSnapshotFor(parsed.data.playerId);
+    if (!snapshot) return Response.json({ error: "not_found" }, { status: 404 });
+    return Response.json(snapshot);
   }
 
   private async handleActionRequest(request: Request): Promise<Response> {
@@ -796,8 +932,7 @@ export class MatchDO extends DurableObject<Env> {
 
   private handleWsUpgrade(request: Request): Response {
     const playerId = request.headers.get("X-Player-Id");
-    const nickname = request.headers.get("X-Player-Nickname");
-    if (!playerId || !nickname) {
+    if (!playerId) {
       return Response.json({ error: "missing_identity" }, { status: 400 });
     }
 
@@ -810,7 +945,7 @@ export class MatchDO extends DurableObject<Env> {
     const pair = new WebSocketPair();
     const [client, server] = Object.values(pair);
     this.ctx.acceptWebSocket(server);
-    server.serializeAttachment({ playerId, nickname } satisfies ConnectionAttachment);
+    server.serializeAttachment({ playerId } satisfies ConnectionAttachment);
     return new Response(null, { status: 101, webSocket: client });
   }
 
@@ -854,12 +989,11 @@ export class MatchDO extends DurableObject<Env> {
       const msg = parsed.data;
       switch (msg.t) {
         case "hello": {
-          const record = this.readMatch();
-          if (!record) {
+          const snapshot = await this.namedSnapshotFor(attachment.playerId);
+          if (!snapshot) {
             this.safeSend(ws, { t: "error", code: "not_found", message: "match not found" });
             return;
           }
-          const snapshot = this.snapshotFor(record, attachment.playerId);
           this.safeSend(ws, { t: "snapshot", ...snapshot });
           const events = this.eventsSince(msg.since);
           if (events.length > 0) this.safeSend(ws, { t: "events", events });

@@ -32,7 +32,7 @@
     "placeholder": "es. alice",
     "submit": "Giochiamo",
     "submitting": "Un attimo…",
-    "footnote": "Nessuna password: gli altri vedono solo il tuo nickname.",
+    "footnote": "Niente password. Il tuo nickname è il tuo account — scrivi lo stesso su qualsiasi dispositivo e ritrovi le tue partite.",
     "failed": "Accesso non riuscito, riprova."
   },
   "rename": {
@@ -41,7 +41,10 @@
     "label": "Nickname",
     "save": "Salva",
     "cancel": "Annulla",
-    "failed": "Impossibile cambiare nickname."
+    "failed": "Impossibile cambiare nickname.",
+    "hint": "Cambiare nome non tocca le tue partite né il tuo bilancio.",
+    "signOut": "Esci",
+    "signOutFailed": "Impossibile uscire."
   },
   "hub": {
     "greeting": "Ciao {{nickname}} 👋",
@@ -62,6 +65,22 @@
       "yourTurn": "Per ora nessuna partita aspetta la tua mossa. Iniziane una qui sopra.",
       "waiting": "Nessuna partita in attesa di qualcun altro.",
       "finished": "Ancora nessuna partita finita."
+    },
+    "stats": {
+      "label": "Il tuo bilancio",
+      "played": "giocate",
+      "finished": "concluse",
+      "won": "vinte",
+      "since": "dal {{date}}",
+      "reset": {
+        "trigger": "Azzera",
+        "label": "Azzera il tuo bilancio",
+        "title": "Azzerare il tuo bilancio?",
+        "body": "Giocate, vinte e concluse ripartono da zero e contano solo le partite iniziate da adesso. Tutte le partite restano nelle tue liste: non viene cancellato nulla.",
+        "confirm": "Azzera bilancio",
+        "cancel": "Annulla",
+        "failed": "Impossibile azzerare il bilancio."
+      }
     }
   },
   "tile": {
@@ -152,7 +171,16 @@
   },
   "history": {
     "title": "Cronologia",
-    "empty": "Ancora nessuna mossa."
+    "empty": "Ancora nessuna mossa.",
+    "joined": "{{name}} è entrato",
+    "started": "La partita è iniziata",
+    "move": "{{name}} ha fatto una mossa",
+    "timedOut": "Tempo scaduto — il round è stato risolto automaticamente",
+    "won_one": "{{names}} ha vinto",
+    "won_other": "{{names}} hanno vinto",
+    "draw": "La partita è finita in parità",
+    "noWinner": "La partita è finita senza vincitori",
+    "scores": "Punteggi finali: {{scores}}"
   },
   "debug": {
     "note": "Nessuna interfaccia registrata per questo gioco: ecco la vista grezza del motore.",
@@ -167,6 +195,7 @@
     "invalid_action": "Questa mossa non è consentita.",
     "invalid_move": "Questa mossa non è consentita.",
     "lobby_full": "Questa lobby è piena.",
+    "nickname_taken": "Quel nickname è di qualcun altro. Scegline un altro, oppure esci e usalo per accedere.",
     "no_identity": "La sessione è scaduta, accedi di nuovo.",
     "not_a_player": "Non sei tra i giocatori di questa partita.",
     "not_active": "Questa partita non è in corso.",

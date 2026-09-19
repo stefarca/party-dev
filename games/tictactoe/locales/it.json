@@ -15,5 +15,8 @@
     "yourTurn": "Tocca a te: metti la tua {{mark}}.",
     "waitingFor": "In attesa di {{name}}…",
     "finished": "Partita finita."
+  },
+  "history": {
+    "place": "{{name}} ha messo {{mark}} in riga {{row}}, colonna {{column}}"
   }
 }

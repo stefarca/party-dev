@@ -1,5 +1,5 @@
 import type { Context, MiddlewareHandler } from "hono";
-import { getCookie, setCookie } from "hono/cookie";
+import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 
 // Nickname + HMAC-signed cookie. No
 // passwords, no KV/D1 session store — the cookie itself is the session,
@@ -135,6 +135,14 @@ export async function writeSession(c: Context<SessionBindings>, session: Session
     maxAge: 31536000, // seconds; ~1 year
     secure, // so local http dev keeps working
   });
+}
+
+// Signs the caller out by dropping the cookie. There is no session store to
+// revoke against — the cookie *is* the session — so this is the whole of
+// it. The path must match writeSession's, or the browser keeps the old one.
+export function clearSession(c: Context<SessionBindings>): void {
+  deleteCookie(c, SESSION_COOKIE, { path: "/" });
+  c.set("session", null);
 }
 
 // Parses the session cookie (if any) and puts it on the context. Does not

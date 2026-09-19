@@ -468,7 +468,7 @@ function MatchBody({
           {errorText(t, transportError, t("match.failed"))}
         </Notice>
       )}
-      <HistoryPanel events={events} />
+      <HistoryPanel events={events} players={snapshot.players} gameId={match.gameId} />
       {snapshot.result && (
         <Button
           variant="ghost"

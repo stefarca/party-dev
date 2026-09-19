@@ -35,11 +35,9 @@ app.get("/ws/:id", async (c) => {
   const stub = c.env.MATCH.get(id);
 
   // Forward the original request (preserving Upgrade/Sec-WebSocket-* headers
-  // needed for the handshake) with the player's identity attached as
-  // headers.
+  // needed for the handshake) with the player's id attached as a header.
   const headers = new Headers(c.req.raw.headers);
   headers.set("X-Player-Id", session.pid);
-  headers.set("X-Player-Nickname", session.nick);
   const forwarded = new Request(new URL("/ws", "http://do").toString(), {
     method: "GET",
     headers,
