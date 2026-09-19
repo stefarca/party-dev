@@ -243,12 +243,7 @@ function HostVisibility({
 
   return (
     <div className="flex flex-col items-center gap-2 border-t border-[var(--border-subtle)] pt-4">
-      <VisibilitySwitch
-        visibility={shown}
-        onChange={change}
-        isDisabled={pending}
-        className="items-center"
-      />
+      <VisibilitySwitch visibility={shown} onChange={change} isDisabled={pending} />
       {error && (
         <p role="alert" className="m-0 text-sm text-danger">
           {error}

@@ -16,14 +16,19 @@ function publicCardHostedBy(page: Page, host: Player) {
   return page.getByRole("tabpanel").getByRole("link").filter({ hasText: host.nickname });
 }
 
+// The switch's label names the current setting, so it reads "Private match" while off.
 function publicSwitch(page: Page) {
-  return page.getByRole("switch", { name: "Public match" });
+  return page.getByRole("switch", { name: /^(Public|Private) match$/ });
 }
 
 // The switch's own input is visually hidden, under its thumb, so it is pressed the way a player
-// presses it: by its label.
+// presses it: by its label. The other setting's label is kept in the DOM, hidden, to hold the
+// switch's width, so only the visible one is clicked.
 async function pressPublicSwitch(page: Page): Promise<void> {
-  await page.getByText("Public match", { exact: true }).click();
+  await page
+    .getByText(/^(Public|Private) match$/)
+    .filter({ visible: true })
+    .click();
 }
 
 // The lobby's switch moves as soon as it is pressed, before the server has the change, so a spec
@@ -42,9 +47,14 @@ test("a match started as public is listed on the hub, and anyone can join it fro
 
   await alice.page.goto("/");
   await expect(publicSwitch(alice.page)).not.toBeChecked();
+  await expect(publicSwitch(alice.page)).toHaveAccessibleName("Private match");
   await pressPublicSwitch(alice.page);
   await expect(publicSwitch(alice.page)).toBeChecked();
-  await expect(alice.page.getByText("Listed under Public on everyone's hub")).toBeVisible();
+  await expect(publicSwitch(alice.page)).toHaveAccessibleName("Public match");
+  await alice.page.getByRole("button", { name: "What private and public mean" }).hover();
+  await expect(alice.page.getByRole("tooltip")).toContainText(
+    "Listed under Public on everyone's hub",
+  );
 
   await alice.page.getByRole("button", { name: "Start a new Tic-tac-toe match" }).click();
   await expect(alice.page).toHaveURL(/\/m\/[A-Z2-9]{6}$/);

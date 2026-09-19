@@ -66,7 +66,7 @@
       "yourTurn": "Nothing needs your move right now. Start something above.",
       "waiting": "No matches waiting on someone else.",
       "finished": "No finished matches yet.",
-      "open": "No public lobbies are looking for players right now. Turn on Public match above to host one."
+      "open": "No public lobbies are looking for players right now. Flip the switch above to Public match to host one."
     },
     "stats": {
       "label": "Your record",
@@ -142,9 +142,13 @@
     "copiedCheck": "Copied! ✓"
   },
   "visibility": {
-    "label": "Public match",
-    "private": "Invite only — people need the code to join.",
-    "public": "Listed under Public on everyone's hub, so anyone can join. Comes off after a day with nobody joining.",
+    "private": "Private match",
+    "public": "Public match",
+    "about": "What private and public mean",
+    "hint": {
+      "private": "Invite only — people need the code to join.",
+      "public": "Listed under Public on everyone's hub, so anyone can join. Comes off after a day with nobody joining."
+    },
     "failed": "Could not change who can join."
   },
   "lobby": {

@@ -66,7 +66,7 @@
       "yourTurn": "Per ora nessuna partita aspetta la tua mossa. Iniziane una qui sopra.",
       "waiting": "Nessuna partita in attesa di qualcun altro.",
       "finished": "Ancora nessuna partita finita.",
-      "open": "Al momento nessuna partita pubblica cerca giocatori. Attiva Partita pubblica qui sopra per ospitarne una."
+      "open": "Al momento nessuna partita pubblica cerca giocatori. Porta l'interruttore qui sopra su Partita pubblica per ospitarne una."
     },
     "stats": {
       "label": "Il tuo bilancio",
@@ -142,9 +142,13 @@
     "copiedCheck": "Copiato! ✓"
   },
   "visibility": {
-    "label": "Partita pubblica",
-    "private": "Solo su invito: per entrare serve il codice.",
-    "public": "Elencata in Pubbliche nella home di tutti: chiunque può entrare. Viene tolta dopo un giorno senza nuovi giocatori.",
+    "private": "Partita privata",
+    "public": "Partita pubblica",
+    "about": "Cosa vuol dire privata e pubblica",
+    "hint": {
+      "private": "Solo su invito: per entrare serve il codice.",
+      "public": "Elencata in Pubbliche nella home di tutti: chiunque può entrare. Viene tolta dopo un giorno senza nuovi giocatori."
+    },
     "failed": "Impossibile cambiare chi può entrare."
   },
   "lobby": {
