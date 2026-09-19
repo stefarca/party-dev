@@ -1,0 +1,79 @@
+{
+  "name": "Battleship",
+  "you": "{{name}} (you)",
+  "loading": "Loading the fleets…",
+  "ship": {
+    "carrier": "Carrier",
+    "battleship": "Battleship",
+    "cruiser": "Cruiser",
+    "submarine": "Submarine",
+    "destroyer": "Destroyer"
+  },
+  "theShip": {
+    "carrier": "the carrier",
+    "battleship": "the battleship",
+    "cruiser": "the cruiser",
+    "submarine": "the submarine",
+    "destroyer": "the destroyer"
+  },
+  "squares_one": "{{count}} square",
+  "squares_other": "{{count}} squares",
+  "afloat_one": "{{count}} ship afloat",
+  "afloat_other": "{{count}} ships afloat",
+  "board": {
+    "yours": "Your waters",
+    "enemy": "Enemy waters",
+    "of": "{{name}}'s waters"
+  },
+  "cell": {
+    "empty": "empty",
+    "unknown": "not fired at",
+    "miss": "miss",
+    "hit": "hit",
+    "sunk": "sunk",
+    "lastShot": "last shot",
+    "fireHere": "fire here",
+    "placeHere": "place {{ship}} here"
+  },
+  "dock": {
+    "title": "Your fleet",
+    "placed": "placed",
+    "notPlaced": "not placed",
+    "rotate": "Rotate",
+    "rotateLabel": "Rotate (now {{direction}})",
+    "horizontal": "horizontal",
+    "vertical": "vertical",
+    "random": "Random",
+    "clear": "Clear",
+    "ready": "Ready"
+  },
+  "status": {
+    "placeHorizontal": "Placing {{ship}}: pick the square for its left end.",
+    "placeVertical": "Placing {{ship}}: pick the square for its top end.",
+    "pickShip": "Fleet placed — press Ready, or pick a ship to move it.",
+    "ready": "Your fleet is ready. Waiting for {{name}} to place theirs…",
+    "placing": "Waiting for the fleets to be placed…",
+    "yourShot": "Your turn — pick a square in enemy waters to fire at.",
+    "waitingShot": "Waiting for {{name}} to fire…"
+  },
+  "lastShot": {
+    "youMiss": "You fired at {{cell}}: miss.",
+    "youHit": "You fired at {{cell}}: hit!",
+    "youSunk": "You fired at {{cell}} and sank {{ship}}!",
+    "theyMiss": "{{name}} fired at {{cell}}: miss.",
+    "theyHit": "{{name}} fired at {{cell}}: hit!",
+    "theySunk": "{{name}} fired at {{cell}} and sank {{ship}}!"
+  },
+  "history": {
+    "placed": "{{name}} placed their fleet",
+    "miss": "{{name}} fired at {{cell}}: miss",
+    "hit": "{{name}} fired at {{cell}}: hit",
+    "sunk": {
+      "carrier": "{{name}} fired at {{cell}} and sank the carrier",
+      "battleship": "{{name}} fired at {{cell}} and sank the battleship",
+      "cruiser": "{{name}} fired at {{cell}} and sank the cruiser",
+      "submarine": "{{name}} fired at {{cell}} and sank the submarine",
+      "destroyer": "{{name}} fired at {{cell}} and sank the destroyer"
+    }
+  }
+}
