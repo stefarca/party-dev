@@ -15,5 +15,8 @@
     "yourTurn": "Your turn — place your {{mark}}.",
     "waitingFor": "Waiting for {{name}}…",
     "finished": "Match finished."
+  },
+  "history": {
+    "place": "{{name}} placed {{mark}} on row {{row}}, column {{column}}"
   }
 }

@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { nextInt } from "../../shared/prng";
-import type { GameModule, Result } from "../../shared/game";
+import type { ActionDescription, GameModule, Result } from "../../shared/game";
 import type { PlayerId } from "../../shared/protocol";
 
 // Connect 4 — the first real game, proving the "sequential" phase type end
@@ -225,6 +225,13 @@ export function result(state: C4State): Result | null {
   return null;
 }
 
+// Columns are 0-indexed in the action and 1-indexed everywhere a player
+// reads one, so the history says "column 4" for the fourth column, matching
+// the board's own labels.
+export function describeAction(_state: C4State, action: DropAction): ActionDescription {
+  return { key: "history.drop", values: { column: action.col + 1 } };
+}
+
 export const connect4Game: GameModule<C4State, DropAction> = {
   id: "connect4",
   meta: { name: "Connect 4", minPlayers: 2, maxPlayers: 2 },
@@ -236,4 +243,5 @@ export const connect4Game: GameModule<C4State, DropAction> = {
   deadline,
   onDeadline,
   result,
+  describeAction,
 };

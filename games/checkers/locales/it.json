@@ -44,5 +44,10 @@
     "finished": "Partita finita."
   },
   "quietDraw_one": "Da un po' nessuna presa e nessuna pedina mossa: se va avanti così, la partita è patta tra {{count}} turno.",
-  "quietDraw_other": "Da un po' nessuna presa e nessuna pedina mossa: se va avanti così, la partita è patta tra {{count}} turni."
+  "quietDraw_other": "Da un po' nessuna presa e nessuna pedina mossa: se va avanti così, la partita è patta tra {{count}} turni.",
+  "history": {
+    "move": "{{name}} ha mosso da {{from}} a {{to}}",
+    "jump_one": "{{name}} ha saltato da {{from}} a {{to}}, mangiando {{count}} pedina",
+    "jump_other": "{{name}} ha saltato da {{from}} a {{to}}, mangiando {{count}} pedine"
+  }
 }

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { ApiError, getMatchSnapshot, postMatchAction, postMatchStart } from "./api";
+import { ApiError, getMatchEvents, getMatchSnapshot, postMatchAction, postMatchStart } from "./api";
+import { HISTORY_LIMIT } from "../shared/history";
 import type { MatchEvent, MatchSnapshot, ServerMessage } from "../shared/protocol";
 
 // The live match transport: "treat WS as an
@@ -33,7 +34,6 @@ export interface UseMatchResult {
   start: () => void;
 }
 
-const MAX_HISTORY = 200;
 const BASE_BACKOFF_MS = 1000;
 const MAX_BACKOFF_MS = 30_000;
 
@@ -91,7 +91,7 @@ export function useMatch(
       const seen = new Set(prev.map((e) => e.seq));
       const merged = prev.concat(incoming.filter((e) => !seen.has(e.seq)));
       merged.sort((a, b) => a.seq - b.seq);
-      return merged.length > MAX_HISTORY ? merged.slice(merged.length - MAX_HISTORY) : merged;
+      return merged.length > HISTORY_LIMIT ? merged.slice(merged.length - HISTORY_LIMIT) : merged;
     });
     for (const e of incoming) {
       if (e.seq > sinceRef.current) sinceRef.current = e.seq;
@@ -259,6 +259,23 @@ export function useMatch(
         const initial = await getMatchSnapshot(matchId);
         if (cancelled) return;
         applySnapshot(initial);
+
+        // The history, and only after the snapshot has been applied. Both
+        // orderings load the same rows, but this one cannot leave a hole:
+        // `applySnapshot` has already pushed `since` up to the snapshot's
+        // seq, and asking for everything (`since` 0) afterwards returns at
+        // least as far as that, so the `hello` that follows never skips an
+        // event neither fetch covered.
+        //
+        // A failure here is not fatal: history is an aside, the match is
+        // playable without it, and the socket backfills anything newer.
+        try {
+          const history = await getMatchEvents(matchId);
+          if (cancelled) return;
+          applyEvents(history);
+        } catch (err) {
+          console.warn("could not load match history", err);
+        }
       } catch (err) {
         if (cancelled) return;
         if (err instanceof ApiError && err.status === 401) {

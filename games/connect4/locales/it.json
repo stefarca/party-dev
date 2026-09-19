@@ -18,5 +18,8 @@
     "finished": "Partita finita.",
     "yourTurn": "Tocca a te: scegli una colonna.",
     "waiting": "In attesa dell'altro giocatore…"
+  },
+  "history": {
+    "drop": "{{name}} ha calato un gettone nella colonna {{column}}"
   }
 }

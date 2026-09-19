@@ -1,4 +1,4 @@
-import { expect, test } from "./fixtures";
+import { expect, test, uniqueNickname } from "./fixtures";
 import type { Player } from "./fixtures";
 
 // The header's language menu. Its accessible name says which language is showing, in that
@@ -14,19 +14,21 @@ async function switchLanguage(player: Player, to: string) {
 
 test("a player can switch to Italian, and it sticks", async ({ newPlayer }) => {
   const alice = await newPlayer("Alice");
+  const hey = `Hey ${alice.nickname} 👋`;
+  const ciao = `Ciao ${alice.nickname} 👋`;
   await alice.page.goto("/");
-  await expect(alice.page.getByRole("heading", { name: "Hey Alice 👋" })).toBeVisible();
+  await expect(alice.page.getByRole("heading", { name: hey })).toBeVisible();
 
   await switchLanguage(alice, "Italiano");
-  await expect(alice.page.getByRole("heading", { name: "Ciao Alice 👋" })).toBeVisible();
+  await expect(alice.page.getByRole("heading", { name: ciao })).toBeVisible();
   await expect(languageMenu(alice)).toHaveAccessibleName("Lingua: Italiano");
   await expect(alice.page.locator("html")).toHaveAttribute("lang", "it");
 
   await alice.page.reload();
-  await expect(alice.page.getByRole("heading", { name: "Ciao Alice 👋" })).toBeVisible();
+  await expect(alice.page.getByRole("heading", { name: ciao })).toBeVisible();
 
   await switchLanguage(alice, "English");
-  await expect(alice.page.getByRole("heading", { name: "Hey Alice 👋" })).toBeVisible();
+  await expect(alice.page.getByRole("heading", { name: hey })).toBeVisible();
   await expect(alice.page.locator("html")).toHaveAttribute("lang", "en");
 });
 
@@ -54,9 +56,10 @@ test.describe("in a browser set to Italian", () => {
     await page.getByRole("button", { name: "Giochiamo" }).click();
     await expect(page.getByText("Inserisci un nickname per continuare.")).toBeVisible();
 
-    await page.getByRole("textbox", { name: "Scegli un nickname" }).fill("Alice");
+    const nickname = uniqueNickname("Alice");
+    await page.getByRole("textbox", { name: "Scegli un nickname" }).fill(nickname);
     await page.getByRole("button", { name: "Giochiamo" }).click();
-    await expect(page.getByRole("heading", { name: "Ciao Alice 👋" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: `Ciao ${nickname} 👋` })).toBeVisible();
     await expect(
       page.getByRole("button", { name: /^Inizia una nuova partita a Dama/ }),
     ).toBeEnabled();

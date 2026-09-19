@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { shuffle } from "../../shared/prng";
-import type { GameModule, Result } from "../../shared/game";
+import type { ActionDescription, GameModule, Result } from "../../shared/game";
 import type { PlayerId } from "../../shared/protocol";
 import { QUESTIONS } from "./questions";
 import type { Question } from "./questions";
@@ -277,6 +277,15 @@ export function result(state: TriviaState): Result | null {
   return { kind: "scores", scores: { ...state.scores } };
 }
 
+// Says that an answer was submitted, never which one. The event log is
+// broadcast to every connected player the moment it is appended, so putting
+// the choice in here would undo exactly what `view()` goes to the trouble
+// of hiding until the round is revealed. The round comes from state, not
+// from the action, for the same reason `reduce` does not trust it.
+export function describeAction(state: TriviaState): ActionDescription {
+  return { key: "history.answer", values: { round: state.round + 1 } };
+}
+
 export const triviaGame: GameModule<TriviaState, AnswerAction> = {
   id: "trivia",
   // Shelved until the question bank is bigger — delete `comingSoon` to reopen it.
@@ -289,4 +298,5 @@ export const triviaGame: GameModule<TriviaState, AnswerAction> = {
   deadline,
   onDeadline,
   result,
+  describeAction,
 };

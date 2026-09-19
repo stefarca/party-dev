@@ -30,6 +30,29 @@ export interface GameModule<S, A> {
   // round when the platform retries the alarm.
   onDeadline(state: S, now: number): S; // auto-submit / skip / resolve round
   result(state: S): Result | null; // non-null => archive
+
+  // Optional. Turns one action into the line the match history shows for
+  // it. Called with the state the action was played against (i.e. *before*
+  // `reduce` applies it), so a description can name what was already there.
+  //
+  // A game that implements this keeps its raw actions out of the event log
+  // entirely — the log stores the description instead. That is what lets a
+  // simultaneous game describe a move without leaking it: everyone sees
+  // "Ada answered", nobody sees which choice, until the state itself
+  // reveals it.
+  describeAction?(state: S, action: A, by: PlayerId): ActionDescription;
+}
+
+// One logged action, in a form the client can render as a sentence.
+//
+// `key` is a key inside the game's own i18n namespace (so the string lives
+// in `games/<id>/locales/<lng>.json` next to the rest of that game), and
+// `values` are its interpolations. The renderer supplies `name` — the
+// player's nickname — itself; a game module knows player *ids*, never
+// nicknames, and the log would go stale on a rename if it stored them.
+export interface ActionDescription {
+  key: string;
+  values?: Record<string, string | number>;
 }
 
 export interface GameMeta {

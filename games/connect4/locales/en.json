@@ -18,5 +18,8 @@
     "finished": "Match finished.",
     "yourTurn": "Your turn — pick a column.",
     "waiting": "Waiting for the other player…"
+  },
+  "history": {
+    "drop": "{{name}} dropped a disc into column {{column}}"
   }
 }

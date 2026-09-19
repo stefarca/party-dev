@@ -1,4 +1,4 @@
-import { createMatch, expect, joinMatch, test } from "./fixtures";
+import { createMatch, expect, joinMatch, test, uniqueNickname } from "./fixtures";
 
 // The lobby is the same for every game; these use tic-tac-toe as the simplest one to fill.
 
@@ -27,7 +27,7 @@ test("the host opens a lobby from the shelf, and a guest joins with its code", a
   await expect(bob.page.getByRole("button", { name: /^Start match/ })).toHaveCount(0);
 
   // The host's lobby fills in live.
-  await expect(alice.page.getByRole("listitem").filter({ hasText: "Bob" })).toBeVisible();
+  await expect(alice.page.getByRole("listitem").filter({ hasText: bob.nickname })).toBeVisible();
   await expect(alice.page.getByText("Open seat")).toHaveCount(0);
   await start.click();
 
@@ -44,13 +44,14 @@ test("a signed-out guest who opens the match link signs in and lands in the lobb
   await alice.page.goto(`/m/${code}`);
   await expect(alice.live).toBeVisible();
 
+  const bob = uniqueNickname("Bob");
   await page.goto(`/m/${code}`);
-  await page.getByRole("textbox", { name: "Pick a nickname" }).fill("Bob");
+  await page.getByRole("textbox", { name: "Pick a nickname" }).fill(bob);
   await page.getByRole("button", { name: "Let's play" }).click();
 
   await expect(page).toHaveURL(`/m/${code}`);
   await expect(page.getByText("Waiting for the host to start.")).toBeVisible();
-  await expect(alice.page.getByRole("listitem").filter({ hasText: "Bob" })).toBeVisible();
+  await expect(alice.page.getByRole("listitem").filter({ hasText: bob })).toBeVisible();
   await expect(alice.page.getByRole("button", { name: /^Start match/ })).toBeEnabled();
 });
 

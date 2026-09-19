@@ -1,6 +1,7 @@
 import { z } from "zod";
 
-import type { Result } from "./game";
+import type { ActionDescription, Result } from "./game";
+import { NICKNAME_MAX_LENGTH } from "./nickname";
 
 // The single home for cross-boundary types and zod schemas.
 // Server authority is binding here: every inbound payload — REST bodies
@@ -44,7 +45,7 @@ export const IdentityRequestSchema = z.object({
     .string()
     .trim()
     .min(1, "nickname is required")
-    .max(24, "nickname must be 24 characters or fewer")
+    .max(NICKNAME_MAX_LENGTH, `nickname must be ${NICKNAME_MAX_LENGTH} characters or fewer`)
     .regex(NO_CONTROL_CHARS, "nickname must not contain control characters"),
 });
 export type IdentityRequest = z.infer<typeof IdentityRequestSchema>;
@@ -109,10 +110,28 @@ export const ClientMessageSchema = z.discriminatedUnion("t", [
 export type ClientMessage = z.infer<typeof ClientMessageSchema>;
 
 // Server -> client.
+
+// The event log's payloads. Closed on purpose: the history panel renders
+// every one of these as a sentence, so a new kind of event has to be given
+// its wording here and in web/locales/ before it can be appended.
+//
+// An `action` carries the game's own `describe` (see `ActionDescription`)
+// when the module implements `describeAction`, and the raw `action` only
+// when it does not. It is never both: a described action's payload is the
+// only thing broadcast, which is what keeps a hidden move (a trivia answer
+// before its reveal) out of every other player's event stream.
+export type MatchEventPayload =
+  | { type: "player_joined"; id: PlayerId; nickname: string }
+  | { type: "match_started" }
+  | { type: "action"; by: PlayerId; describe: ActionDescription }
+  | { type: "action"; by: PlayerId; action: unknown }
+  | { type: "deadline_resolved"; round: number }
+  | { type: "match_finished"; result: Result };
+
 export interface MatchEvent {
   seq: number;
   ts: number;
-  payload: unknown;
+  payload: MatchEventPayload;
 }
 
 // The shape shared by the WS `snapshot` message and the HTTP snapshot
@@ -134,6 +153,15 @@ export interface SnapshotMessage extends MatchSnapshot {
 
 export interface EventsMessage {
   t: "events";
+  events: MatchEvent[];
+}
+
+// Body of the HTTP history route (`GET /api/matches/:id/events`) — the
+// same `MatchEvent[]` the WS `events` message carries. Without it the event
+// log would be reachable over the socket only, and a reload (which starts
+// with no history and a `since` already at the latest seq) would show an
+// empty panel until the next move.
+export interface EventsResponse {
   events: MatchEvent[];
 }
 

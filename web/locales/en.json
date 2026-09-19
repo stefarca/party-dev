@@ -32,7 +32,7 @@
     "placeholder": "e.g. alice",
     "submit": "Let's play",
     "submitting": "Joining…",
-    "footnote": "No password — your nickname is all anyone sees.",
+    "footnote": "No password. Your nickname is your account — type the same one on any device to find your matches waiting.",
     "failed": "Could not sign in — try again."
   },
   "rename": {
@@ -41,7 +41,10 @@
     "label": "Nickname",
     "save": "Save",
     "cancel": "Cancel",
-    "failed": "Could not rename."
+    "failed": "Could not rename.",
+    "hint": "Renaming keeps your matches and your record.",
+    "signOut": "Sign out",
+    "signOutFailed": "Could not sign out."
   },
   "hub": {
     "greeting": "Hey {{nickname}} 👋",
@@ -62,6 +65,12 @@
       "yourTurn": "Nothing needs your move right now. Start something above.",
       "waiting": "No matches waiting on someone else.",
       "finished": "No finished matches yet."
+    },
+    "stats": {
+      "label": "Your record",
+      "played": "played",
+      "finished": "finished",
+      "won": "won"
     }
   },
   "tile": {
@@ -152,7 +161,16 @@
   },
   "history": {
     "title": "History",
-    "empty": "No moves yet."
+    "empty": "No moves yet.",
+    "joined": "{{name}} joined",
+    "started": "The match started",
+    "move": "{{name}} made a move",
+    "timedOut": "Time ran out — the round was resolved automatically",
+    "won_one": "{{names}} won",
+    "won_other": "{{names}} won",
+    "draw": "The match ended in a draw",
+    "noWinner": "The match ended with no winner",
+    "scores": "Final scores: {{scores}}"
   },
   "debug": {
     "note": "No UI is registered for this game — showing the raw engine view.",
@@ -167,6 +185,7 @@
     "invalid_action": "That move isn't allowed.",
     "invalid_move": "That move isn't allowed.",
     "lobby_full": "This lobby is full.",
+    "nickname_taken": "That nickname belongs to someone else. Pick another, or sign out and use it to sign in.",
     "no_identity": "Your session expired — sign in again.",
     "not_a_player": "You are not a player in this match.",
     "not_active": "This match isn't being played right now.",

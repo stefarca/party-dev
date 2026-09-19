@@ -13,6 +13,7 @@ const DESCRIBED_CODES = [
   "invalid_action",
   "invalid_move",
   "lobby_full",
+  "nickname_taken",
   "no_identity",
   "not_a_player",
   "not_active",

@@ -8,7 +8,7 @@ import type { GameMeta } from "../../games/catalog";
 import { normalizeMatchCode } from "../../shared/ids";
 import type { MatchSummary } from "../../shared/protocol";
 import { ApiError, createMatch, getGames, joinMatch, listMatches } from "../api";
-import type { MatchBuckets } from "../api";
+import type { MatchBuckets, PlayerStats } from "../api";
 import { setDashboardYourTurn } from "../badge";
 import { GameGlyph } from "../components/GameGlyph";
 import { MatchCard } from "../components/MatchCard";
@@ -223,6 +223,39 @@ function DashboardSkeleton() {
   );
 }
 
+// The player's record, which follows the nickname rather than the browser:
+// signing in with the same one anywhere shows the same three numbers. Three
+// is deliberately all of them — a bigger scoreboard would need per-game
+// breakdowns the index does not carry.
+function StatsStrip({ stats }: { stats: PlayerStats }) {
+  const { t } = useTranslation();
+  const cells: [keyof PlayerStats, string][] = [
+    ["played", t("hub.stats.played")],
+    ["won", t("hub.stats.won")],
+    ["finished", t("hub.stats.finished")],
+  ];
+  return (
+    <dl aria-label={t("hub.stats.label")} className="party-pop m-0 flex flex-wrap gap-2 sm:gap-3">
+      {cells.map(([key, label]) => (
+        <div
+          key={key}
+          className="flex items-baseline gap-1.5 rounded-[var(--radius-pill)] border border-[var(--border-subtle)] bg-[var(--surface-1)] px-3.5 py-1.5 shadow-[var(--edge-highlight)]"
+        >
+          <dt className="sr-only">{label}</dt>
+          {/* Number and word share one element, with a real space between them, so the whole
+              cell reads as "12 played" to a screen reader and to a test alike. */}
+          <dd className="m-0 text-xs text-[var(--text-muted)]">
+            <span className="font-display text-lg font-bold tabular-nums text-[var(--text-primary)]">
+              {stats[key]}
+            </span>{" "}
+            <span aria-hidden="true">{label}</span>
+          </dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
 type BucketKey = "yourTurn" | "waiting" | "finished";
 
 const BUCKET_TABS: { key: BucketKey; glyph: string }[] = [
@@ -371,7 +404,12 @@ export function Dashboard() {
   }
 
   const myPlayerId = player?.playerId ?? "";
-  const data = buckets ?? { yourTurn: [], waiting: [], finished: [] };
+  const data = buckets ?? {
+    yourTurn: [],
+    waiting: [],
+    finished: [],
+    stats: { played: 0, finished: 0, won: 0 },
+  };
   const turnCount = data.yourTurn.length;
   // Coming-soon games go at the very end, after the join tile, so every
   // tile that does something sits together at the front of the shelf.
@@ -384,9 +422,10 @@ export function Dashboard() {
         <h1 className="m-0 font-display text-3xl font-bold tracking-tight text-balance text-[var(--text-primary)] sm:text-4xl">
           {player ? t("hub.greeting", { nickname: player.nickname }) : t("hub.greetingNoName")}
         </h1>
-        <p className="mt-2 mb-0 text-[var(--text-secondary)]">
+        <p className="mt-2 mb-4 text-[var(--text-secondary)]">
           {turnCount > 0 ? t("hub.movesNeeded", { count: turnCount }) : t("hub.noMovesNeeded")}
         </p>
+        {data.stats.played > 0 && <StatsStrip stats={data.stats} />}
       </section>
 
       <section className="mb-10">

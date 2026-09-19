@@ -3,10 +3,12 @@ import { z } from "zod";
 
 import { getGameMeta } from "../games/catalog";
 import { getGame } from "../games/registry";
-import type { GameModule } from "../shared/game";
+import type { GameModule, Result } from "../shared/game";
+import { HISTORY_LIMIT } from "../shared/history";
 import { ClientMessageSchema } from "../shared/protocol";
 import type {
   MatchEvent,
+  MatchEventPayload,
   MatchSnapshot,
   MatchStatus,
   MatchSummary,
@@ -106,6 +108,19 @@ function statusForCode(code: string): number {
   }
 }
 
+// Who a finished match counts as a win for, in the one place the D1 index
+// needs to agree with every game at once. A "scores" result has no declared
+// winner, so the top score takes it and a tie counts for everyone on it —
+// the same reading the scoreboard UI gives.
+function winnersOf(result: Result | null): Set<PlayerId> {
+  if (result === null || result.kind === "draw") return new Set();
+  if (result.kind === "win") return new Set(result.winners);
+  const scores = Object.entries(result.scores);
+  if (scores.length === 0) return new Set();
+  const best = Math.max(...scores.map(([, score]) => score));
+  return new Set(scores.filter(([, score]) => score === best).map(([id]) => id));
+}
+
 export class MatchDO extends DurableObject<Env> {
   // Serializes every `env.DB.batch()` call this DO instance makes (see
   // `syncIndex()`). Two commits' own D1 writes can otherwise complete out
@@ -163,6 +178,10 @@ export class MatchDO extends DurableObject<Env> {
       return this.handleViewRequest(url);
     }
 
+    if (request.method === "GET" && url.pathname === "/events") {
+      return this.handleEventsRequest(url);
+    }
+
     if (request.method === "POST" && url.pathname === "/start") {
       return this.handleStartRequest(request);
     }
@@ -199,7 +218,7 @@ export class MatchDO extends DurableObject<Env> {
   }
 
   // Returns the new row's seq.
-  private appendEvent(payload: object): number {
+  private appendEvent(payload: MatchEventPayload): number {
     const ts = Date.now();
     this.ctx.storage.sql.exec(
       "INSERT INTO events (ts, payload) VALUES (?, ?)",
@@ -212,7 +231,7 @@ export class MatchDO extends DurableObject<Env> {
     return row.seq;
   }
 
-  private eventsSince(since: number, limit = 200): MatchEvent[] {
+  private eventsSince(since: number, limit = HISTORY_LIMIT): MatchEvent[] {
     const rows = this.ctx.storage.sql
       .exec(
         "SELECT seq, ts, payload FROM events WHERE seq > ? ORDER BY seq ASC LIMIT ?",
@@ -221,6 +240,22 @@ export class MatchDO extends DurableObject<Env> {
       )
       .toArray() as { seq: number; ts: number; payload: string }[];
     return rows.map((r) => ({ seq: r.seq, ts: r.ts, payload: JSON.parse(r.payload) }));
+  }
+
+  // The *newest* `limit` events after `since`, still returned oldest-first.
+  // `eventsSince` above is the catch-up read — it takes the oldest rows in
+  // the gap, which is what a reconnecting socket needs next. A page that
+  // just loaded wants the other end: the tail of a long match, not its
+  // opening moves.
+  private recentEvents(since: number, limit = HISTORY_LIMIT): MatchEvent[] {
+    const rows = this.ctx.storage.sql
+      .exec(
+        "SELECT seq, ts, payload FROM events WHERE seq > ? ORDER BY seq DESC LIMIT ?",
+        since,
+        limit,
+      )
+      .toArray() as { seq: number; ts: number; payload: string }[];
+    return rows.map((r) => ({ seq: r.seq, ts: r.ts, payload: JSON.parse(r.payload) })).reverse();
   }
 
   private currentSeq(): number {
@@ -300,7 +335,7 @@ export class MatchDO extends DurableObject<Env> {
   // join, start, action, alarm — funnels through this single method.
   // ---------------------------------------------------------------------
 
-  private async commit(record: MatchRecord, events: object[]): Promise<void> {
+  private async commit(record: MatchRecord, events: MatchEventPayload[]): Promise<void> {
     const module = getGame(record.gameId) as GameModule<unknown, unknown> | undefined;
 
     // Read the previously-persisted waitingOn *before* overwriting the
@@ -519,7 +554,7 @@ export class MatchDO extends DurableObject<Env> {
 
     const { id, nickname } = parsed.data;
     const existing = record.players.find((p) => p.id === id);
-    const events: object[] = [];
+    const events: MatchEventPayload[] = [];
     if (existing) {
       // Idempotent re-join: succeeds regardless of match status. We also
       // lazily refresh the nickname here rather than fanning out nickname
@@ -582,18 +617,21 @@ export class MatchDO extends DurableObject<Env> {
     if (!record) return;
     const module = getGame(record.gameId) as GameModule<unknown, unknown> | undefined;
     const { waitingOn, deadline } = this.deriveWaitingAndDeadline(module, record);
+    const result = module && record.state !== null ? module.result(record.state) : null;
+    const winners = winnersOf(result);
     try {
       const waitingSet = new Set(waitingOn);
       const statements = [
         this.env.DB.prepare(
-          `INSERT INTO matches (id, game_id, status, created_at, updated_at, deadline, host_id)
-           VALUES (?, ?, ?, ?, ?, ?, ?)
+          `INSERT INTO matches (id, game_id, status, created_at, updated_at, deadline, host_id, result_kind)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)
            ON CONFLICT(id) DO UPDATE SET
              game_id = excluded.game_id,
              status = excluded.status,
              updated_at = excluded.updated_at,
              deadline = excluded.deadline,
-             host_id = excluded.host_id`,
+             host_id = excluded.host_id,
+             result_kind = excluded.result_kind`,
         ).bind(
           record.id,
           record.gameId,
@@ -602,15 +640,23 @@ export class MatchDO extends DurableObject<Env> {
           record.updatedAt,
           deadline,
           record.hostId,
+          result?.kind ?? null,
         ),
         ...record.players.map((p) =>
           this.env.DB.prepare(
-            `INSERT INTO match_players (match_id, player_id, waiting, nickname)
-             VALUES (?, ?, ?, ?)
+            `INSERT INTO match_players (match_id, player_id, waiting, nickname, won)
+             VALUES (?, ?, ?, ?, ?)
              ON CONFLICT(match_id, player_id) DO UPDATE SET
                waiting = excluded.waiting,
-               nickname = excluded.nickname`,
-          ).bind(record.id, p.id, waitingSet.has(p.id) ? 1 : 0, p.nickname),
+               nickname = excluded.nickname,
+               won = excluded.won`,
+          ).bind(
+            record.id,
+            p.id,
+            waitingSet.has(p.id) ? 1 : 0,
+            p.nickname,
+            winners.has(p.id) ? 1 : 0,
+          ),
         ),
       ];
       await this.env.DB.batch(statements);
@@ -688,8 +734,26 @@ export class MatchDO extends DurableObject<Env> {
       return { ok: false, code: "invalid_move", message };
     }
 
+    // What gets logged is the game's own description of the move when it
+    // has one, and the raw action only when it does not. The distinction
+    // matters beyond readability: events are broadcast to every connected
+    // player, so logging a raw action would hand a simultaneous game's
+    // opponents a move that `view()` deliberately hides. A throwing
+    // `describeAction` must not cost the player their move — the action
+    // itself already succeeded — so it falls back to the raw form.
+    let logged: MatchEventPayload;
+    try {
+      const described = module.describeAction?.(record.state, parsedAction.data, playerId);
+      logged = described
+        ? { type: "action", by: playerId, describe: described }
+        : { type: "action", by: playerId, action: parsedAction.data };
+    } catch (err) {
+      console.error("describeAction threw", err);
+      logged = { type: "action", by: playerId, action: parsedAction.data };
+    }
+
     record.state = nextState;
-    await this.commit(record, [{ type: "action", by: playerId, action: parsedAction.data }]);
+    await this.commit(record, [logged]);
     return { ok: true, snapshot: this.snapshotFor(record, playerId) };
   }
 
@@ -702,6 +766,22 @@ export class MatchDO extends DurableObject<Env> {
       return Response.json({ error: "not_a_player" }, { status: 403 });
     }
     return Response.json(this.snapshotFor(record, playerId));
+  }
+
+  // The HTTP equivalent of the WS `hello` -> `events` backfill. Membership
+  // is checked exactly as `/view` checks it: the log names who joined and
+  // what they played, so it is no more public than the per-player snapshot.
+  private handleEventsRequest(url: URL): Response {
+    const playerId = url.searchParams.get("playerId");
+    if (!playerId) return Response.json({ error: "missing_player" }, { status: 400 });
+    const record = this.readMatch();
+    if (!record) return Response.json({ error: "not_found" }, { status: 404 });
+    if (!record.players.some((p) => p.id === playerId)) {
+      return Response.json({ error: "not_a_player" }, { status: 403 });
+    }
+    const rawSince = Number(url.searchParams.get("since") ?? "0");
+    const since = Number.isFinite(rawSince) && rawSince > 0 ? Math.floor(rawSince) : 0;
+    return Response.json({ events: this.recentEvents(since) });
   }
 
   private async handleStartRequest(request: Request): Promise<Response> {

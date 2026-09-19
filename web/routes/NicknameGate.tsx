@@ -5,6 +5,7 @@ import { Button, FieldError, Form, Input, Label, TextField } from "@heroui/react
 import type { TFunction } from "i18next";
 import { useTranslation } from "react-i18next";
 
+import { NICKNAME_MAX_LENGTH } from "../../shared/nickname";
 import { LanguagePicker } from "../components/LanguagePicker";
 import { ThemeToggle } from "../components/ThemeToggle";
 import { WordMark } from "../components/WordMark";
@@ -12,9 +13,9 @@ import { errorText } from "../errors";
 import { useSession } from "../session";
 
 // Mirrors the server's IdentityRequestSchema (shared/protocol.ts) so the
-// user sees the same 1-24 char / no-control-character rule before ever
-// hitting the network. The server re-validates regardless.
-const MAX_LEN = 24;
+// user sees the same length / no-control-character rule before ever hitting
+// the network. The server re-validates regardless.
+const MAX_LEN = NICKNAME_MAX_LENGTH;
 // eslint-disable-next-line no-control-regex -- control chars are the point of this validation
 const NO_CONTROL_CHARS = /^[^\x00-\x1F\x7F]*$/;
 

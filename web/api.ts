@@ -1,5 +1,5 @@
 import type { GameMeta } from "../games/catalog";
-import type { MatchSnapshot, MatchSummary } from "../shared/protocol";
+import type { EventsResponse, MatchEvent, MatchSnapshot, MatchSummary } from "../shared/protocol";
 
 // Thin typed client over worker/api.ts. Every call goes through request()
 // so credentials, headers, and error shape are consistent in one place —
@@ -67,14 +67,27 @@ export function setIdentity(nickname: string): Promise<Me> {
   });
 }
 
+// Ends the session on this device only. The player itself is untouched —
+// signing in with the same nickname anywhere brings it all back.
+export function signOut(): Promise<void> {
+  return request<void>("/api/identity/signout", { method: "POST", body: JSON.stringify({}) });
+}
+
 export function getGames(): Promise<GameMeta[]> {
   return request<GameMeta[]>("/api/games");
+}
+
+export interface PlayerStats {
+  played: number;
+  finished: number;
+  won: number;
 }
 
 export interface MatchBuckets {
   yourTurn: MatchSummary[];
   waiting: MatchSummary[];
   finished: MatchSummary[];
+  stats: PlayerStats;
 }
 
 export function listMatches(): Promise<MatchBuckets> {
@@ -109,6 +122,16 @@ export function getMatch(id: string): Promise<MatchSummary> {
 // can treat either transport interchangeably.
 export function getMatchSnapshot(id: string): Promise<MatchSnapshot> {
   return request<MatchSnapshot>(`/api/matches/${encodeURIComponent(id)}/snapshot`);
+}
+
+// The history a freshly-loaded page starts from. `since` defaults to 0 —
+// the whole (bounded) log — which is what a reload needs; the WebSocket
+// takes over for everything after it.
+export async function getMatchEvents(id: string, since = 0): Promise<MatchEvent[]> {
+  const body = await request<EventsResponse>(
+    `/api/matches/${encodeURIComponent(id)}/events?since=${since}`,
+  );
+  return body.events;
 }
 
 export function postMatchAction(id: string, action: unknown): Promise<MatchSnapshot> {

@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { nextInt } from "../../shared/prng";
-import type { GameModule, Result } from "../../shared/game";
+import type { ActionDescription, GameModule, Result } from "../../shared/game";
 import type { PlayerId } from "../../shared/protocol";
 
 // Tic-tac-toe — a sequential game for two players on a 3×3 grid. X always
@@ -197,6 +197,25 @@ export function result(state: TttState): Result | null {
   return null;
 }
 
+// Rows and columns are 1-indexed here, like the board's own accessible
+// labels ("Row 2, column 3"), so the history reads the same way the squares
+// announce themselves.
+export function describeAction(
+  state: TttState,
+  action: PlaceAction,
+  by: PlayerId,
+): ActionDescription {
+  const mark = state.players.X === by ? "X" : "O";
+  return {
+    key: "history.place",
+    values: {
+      mark,
+      row: Math.floor(action.cell / SIZE) + 1,
+      column: (action.cell % SIZE) + 1,
+    },
+  };
+}
+
 export const tictactoeGame: GameModule<TttState, PlaceAction> = {
   id: "tictactoe",
   meta: { name: "Tic-tac-toe", minPlayers: 2, maxPlayers: 2 },
@@ -208,4 +227,5 @@ export const tictactoeGame: GameModule<TttState, PlaceAction> = {
   deadline,
   onDeadline,
   result,
+  describeAction,
 };
