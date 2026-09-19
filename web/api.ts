@@ -1,5 +1,11 @@
 import type { GameMeta } from "../games/catalog";
-import type { EventsResponse, MatchEvent, MatchSnapshot, MatchSummary } from "../shared/protocol";
+import type {
+  EventsResponse,
+  MatchEvent,
+  MatchSnapshot,
+  MatchSummary,
+  MatchVisibility,
+} from "../shared/protocol";
 
 // Thin typed client over worker/api.ts. Every call goes through request()
 // so credentials, headers, and error shape are consistent in one place —
@@ -94,6 +100,8 @@ export interface MatchBuckets {
   yourTurn: MatchSummary[];
   waiting: MatchSummary[];
   finished: MatchSummary[];
+  // Public lobbies the player is not in, each with a seat left, newest first.
+  open: MatchSummary[];
   stats: PlayerStats;
 }
 
@@ -106,10 +114,22 @@ export interface CreateMatchResult {
   code: string;
 }
 
-export function createMatch(gameId: string): Promise<CreateMatchResult> {
+export function createMatch(
+  gameId: string,
+  visibility: MatchVisibility,
+): Promise<CreateMatchResult> {
   return request<CreateMatchResult>("/api/matches", {
     method: "POST",
-    body: JSON.stringify({ gameId }),
+    body: JSON.stringify({ gameId, visibility }),
+  });
+}
+
+// Host-only, and only while the match is a lobby. Replies with the lobby as it
+// now stands.
+export function setMatchVisibility(id: string, visibility: MatchVisibility): Promise<MatchSummary> {
+  return request<MatchSummary>(`/api/matches/${encodeURIComponent(id)}/visibility`, {
+    method: "POST",
+    body: JSON.stringify({ visibility }),
   });
 }
 

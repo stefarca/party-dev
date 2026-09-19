@@ -289,8 +289,12 @@ function jsonRequest(path: string, body: unknown): Request {
 type MatchDOInstance = InstanceType<typeof MatchDO>;
 
 // A counter match between `players` (the first one hosts), every one of them
-// connected, started unless told otherwise.
-async function createMatch(players: string[], { start = true } = {}) {
+// connected, started unless told otherwise. `visibility` is sent only when
+// given, so the default is the DO's own.
+async function createMatch(
+  players: string[],
+  { start = true, visibility }: { start?: boolean; visibility?: string } = {},
+) {
   const pauses = createPauseController();
   const alarmController = createAlarmController(pauses);
   const sockets = Object.fromEntries(players.map((id) => [id, createFakeSocket(id)]));
@@ -299,7 +303,12 @@ async function createMatch(players: string[], { start = true } = {}) {
   const matchDo = new MatchDO(ctx, { DB: db } as unknown as Env);
 
   await matchDo.fetch(
-    jsonRequest("/lobby/create", { matchId: "m1", gameId: "counter", hostId: players[0] }),
+    jsonRequest("/lobby/create", {
+      matchId: "m1",
+      gameId: "counter",
+      hostId: players[0],
+      ...(visibility === undefined ? {} : { visibility }),
+    }),
   );
   for (const id of players.slice(1)) {
     await matchDo.fetch(jsonRequest("/lobby/join", { playerId: id }));
@@ -611,5 +620,172 @@ describe("MatchDO rosters", () => {
       await matchDo.fetch(new Request("http://do/events?playerId=alice"))
     ).text();
     expect(after).toBe(before);
+  });
+});
+
+describe("MatchDO visibility", () => {
+  beforeEach(() => {
+    serverGames.counter = counterGame;
+  });
+
+  afterEach(() => {
+    delete serverGames.counter;
+  });
+
+  async function lobby(matchDo: MatchDOInstance): Promise<MatchSummary> {
+    return (await (await matchDo.fetch(new Request("http://do/snapshot"))).json()) as MatchSummary;
+  }
+
+  function setVisibility(matchDo: MatchDOInstance, playerId: string, visibility: string) {
+    return matchDo.fetch(jsonRequest("/lobby/visibility", { playerId, visibility }));
+  }
+
+  // The visibility the index was last told, from the newest `matches` upsert.
+  function indexedVisibility(db: ReturnType<typeof createFakeDB>): unknown {
+    const upserts = db.batches.flat().filter((s) => s.sql.includes("INSERT INTO matches"));
+    return upserts.at(-1)?.args.at(-1);
+  }
+
+  it("is private unless the host asks otherwise", async () => {
+    const { matchDo, db } = await createMatch(["alice"], { start: false });
+    expect((await lobby(matchDo)).visibility).toBe("private");
+    expect(indexedVisibility(db)).toBe("private");
+  });
+
+  it("is public from the start when created that way, in the lobby and in the index", async () => {
+    const { matchDo, db } = await createMatch(["alice"], { start: false, visibility: "public" });
+    expect((await lobby(matchDo)).visibility).toBe("public");
+    expect(indexedVisibility(db)).toBe("public");
+  });
+
+  it("lets the host change it in the lobby, without logging an event", async () => {
+    const { matchDo, db } = await createMatch(["alice", "bob"], { start: false });
+    const eventsBefore = await (
+      await matchDo.fetch(new Request("http://do/events?playerId=alice"))
+    ).text();
+
+    const res = await setVisibility(matchDo, "alice", "public");
+    expect(res.status).toBe(200);
+    expect(((await res.json()) as MatchSummary).visibility).toBe("public");
+    expect(indexedVisibility(db)).toBe("public");
+
+    await setVisibility(matchDo, "alice", "private");
+    expect((await lobby(matchDo)).visibility).toBe("private");
+    expect(indexedVisibility(db)).toBe("private");
+
+    const eventsAfter = await (
+      await matchDo.fetch(new Request("http://do/events?playerId=alice"))
+    ).text();
+    expect(eventsAfter).toBe(eventsBefore);
+  });
+
+  it("refuses anyone but the host", async () => {
+    const { matchDo } = await createMatch(["alice", "bob"], { start: false });
+    const res = await setVisibility(matchDo, "bob", "public");
+    expect(res.status).toBe(403);
+    expect(((await res.json()) as { error: string }).error).toBe("not_host");
+    expect((await lobby(matchDo)).visibility).toBe("private");
+  });
+
+  it("refuses once the match has started, since only a lobby takes new players", async () => {
+    const { matchDo } = await createMatch(["alice", "bob"]);
+    const res = await setVisibility(matchDo, "alice", "public");
+    expect(res.status).toBe(409);
+    expect(((await res.json()) as { error: string }).error).toBe("already_started");
+  });
+
+  it("rejects a setting that is neither private nor public", async () => {
+    const { matchDo } = await createMatch(["alice"], { start: false });
+    expect((await setVisibility(matchDo, "alice", "friends")).status).toBe(400);
+  });
+
+  it("reads a match recorded before visibility existed as private", async () => {
+    const { matchDo, ctx } = await createMatch(["alice"], { start: false, visibility: "public" });
+    const [stored] = ctx.storage.sql
+      .exec("SELECT value FROM meta WHERE key = 'match'")
+      .toArray() as { value: string }[];
+    const { visibility: _dropped, ...older } = JSON.parse(stored.value) as Record<string, unknown>;
+    ctx.storage.sql.exec("UPDATE meta SET value = ? WHERE key = 'match'", JSON.stringify(older));
+    expect((await lobby(matchDo)).visibility).toBe("private");
+  });
+
+  // A public lobby's alarm is when its listing runs out. The clock is faked (Date only, so the
+  // harness's own timers still run) to move a day forward without waiting one.
+  describe("listing expiry", () => {
+    const DAY = 24 * 60 * 60 * 1000;
+    const T0 = Date.UTC(2026, 8, 1, 9);
+
+    beforeEach(() => {
+      vi.useFakeTimers({ toFake: ["Date"] });
+      vi.setSystemTime(T0);
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it("arms the alarm for a day after the lobby goes public, and only then", async () => {
+      const { matchDo, alarmController } = await createMatch(["alice"], { start: false });
+      expect(alarmController.value).toBeNull();
+
+      vi.setSystemTime(T0 + 1000);
+      await setVisibility(matchDo, "alice", "public");
+      expect(alarmController.value).toBe(T0 + 1000 + DAY);
+
+      await setVisibility(matchDo, "alice", "private");
+      expect(alarmController.value).toBeNull();
+    });
+
+    it("takes a lobby nobody joined off the hub a day later, and leaves it a lobby", async () => {
+      const { matchDo, alarmController, db } = await createMatch(["alice"], {
+        start: false,
+        visibility: "public",
+      });
+      expect(alarmController.value).toBe(T0 + DAY);
+
+      vi.setSystemTime(T0 + DAY);
+      await matchDo.alarm();
+      const expired = await lobby(matchDo);
+      expect(expired.visibility).toBe("private");
+      expect(expired.status).toBe("lobby");
+      expect(indexedVisibility(db)).toBe("private");
+      expect(alarmController.value).toBeNull();
+
+      // Its code still works, and the host can list it again for another day.
+      expect((await matchDo.fetch(jsonRequest("/lobby/join", { playerId: "bob" }))).status).toBe(
+        200,
+      );
+      await setVisibility(matchDo, "alice", "public");
+      expect(alarmController.value).toBe(T0 + DAY + DAY);
+    });
+
+    it("starts the day over when somebody joins", async () => {
+      const { matchDo, alarmController } = await createMatch(["alice"], {
+        start: false,
+        visibility: "public",
+      });
+      vi.setSystemTime(T0 + DAY / 2);
+      await matchDo.fetch(jsonRequest("/lobby/join", { playerId: "bob" }));
+      expect(alarmController.value).toBe(T0 + DAY / 2 + DAY);
+
+      // An alarm firing at the original time finds half a day left, and waits for it.
+      vi.setSystemTime(T0 + DAY);
+      await matchDo.alarm();
+      expect((await lobby(matchDo)).visibility).toBe("public");
+      expect(alarmController.value).toBe(T0 + DAY / 2 + DAY);
+    });
+
+    it("hands the alarm to the game once the match starts", async () => {
+      const { matchDo, alarmController } = await createMatch(["alice", "bob"], {
+        visibility: "public",
+      });
+      // The counter's opening phase has no deadline, so nothing is armed at all.
+      expect(alarmController.value).toBeNull();
+
+      vi.setSystemTime(T0 + DAY);
+      await matchDo.alarm();
+      const view = await matchDo.fetch(new Request("http://do/view?playerId=alice"));
+      expect(((await view.json()) as MatchSnapshot).status).toBe("active");
+    });
   });
 });

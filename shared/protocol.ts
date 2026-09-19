@@ -18,6 +18,11 @@ export type PlayerId = string;
 
 export type MatchStatus = "lobby" | "active" | "done";
 
+// Who can join a lobby. Anyone with the code can join either kind; a public
+// one is also listed on every player's hub, so nobody needs the code.
+export const MatchVisibilitySchema = z.enum(["private", "public"]);
+export type MatchVisibility = z.infer<typeof MatchVisibilitySchema>;
+
 export interface PlayerInfo {
   id: PlayerId;
   nickname: string;
@@ -32,6 +37,7 @@ export interface MatchSummary {
   waiting: boolean;
   updatedAt: number;
   deadline: number | null;
+  visibility: MatchVisibility;
 }
 
 // No control characters (U+0000-U+001F, U+007F). Coworkers will open
@@ -50,10 +56,18 @@ export const IdentityRequestSchema = z.object({
 });
 export type IdentityRequest = z.infer<typeof IdentityRequestSchema>;
 
+// A match is private unless the host asks otherwise, so a client that never
+// sends `visibility` keeps getting the invite-only matches it always did.
 export const CreateMatchRequestSchema = z.object({
   gameId: z.string().min(1, "gameId is required"),
+  visibility: MatchVisibilitySchema.default("private"),
 });
 export type CreateMatchRequest = z.infer<typeof CreateMatchRequestSchema>;
+
+// Body of POST /api/matches/:id/visibility. Only the host may send it, and
+// only while the match is still a lobby.
+export const SetVisibilityRequestSchema = z.object({ visibility: MatchVisibilitySchema });
+export type SetVisibilityRequest = z.infer<typeof SetVisibilityRequestSchema>;
 
 // Joining takes no body; the schema exists (and every request is still run
 // through it) so an unexpected/extra payload gets a 400 like everything

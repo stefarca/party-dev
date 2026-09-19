@@ -2,7 +2,7 @@
 // one just to type what the worker tests reach for. Declares only the tiny
 // slice of node's built-in modules they actually use: `node:sqlite` backs
 // MatchDO's `ctx.storage.sql` mock (worker/match.test.ts,
-// worker/history.test.ts), and `node:fs` lets worker/players.test.ts run
+// worker/history.test.ts), and `node:fs` lets worker/__fixtures__/d1.ts run
 // the real migrations/*.sql rather than a hand-copied schema.
 declare module "node:sqlite" {
   export class DatabaseSync {
@@ -18,4 +18,5 @@ declare module "node:sqlite" {
 
 declare module "node:fs" {
   export function readFileSync(path: string, encoding: "utf8"): string;
+  export function readdirSync(path: string): string[];
 }
