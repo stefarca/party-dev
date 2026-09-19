@@ -1,0 +1,79 @@
+{
+  "name": "Battaglia navale",
+  "you": "{{name}} (tu)",
+  "loading": "Caricamento delle flotte…",
+  "ship": {
+    "carrier": "Portaerei",
+    "battleship": "Corazzata",
+    "cruiser": "Incrociatore",
+    "submarine": "Sottomarino",
+    "destroyer": "Cacciatorpediniere"
+  },
+  "theShip": {
+    "carrier": "la portaerei",
+    "battleship": "la corazzata",
+    "cruiser": "l'incrociatore",
+    "submarine": "il sottomarino",
+    "destroyer": "il cacciatorpediniere"
+  },
+  "squares_one": "{{count}} casella",
+  "squares_other": "{{count}} caselle",
+  "afloat_one": "{{count}} nave a galla",
+  "afloat_other": "{{count}} navi a galla",
+  "board": {
+    "yours": "Le tue acque",
+    "enemy": "Acque nemiche",
+    "of": "Acque di {{name}}"
+  },
+  "cell": {
+    "empty": "vuota",
+    "unknown": "nessun colpo",
+    "miss": "acqua",
+    "hit": "colpito",
+    "sunk": "affondato",
+    "lastShot": "ultimo colpo",
+    "fireHere": "spara qui",
+    "placeHere": "posiziona qui {{ship}}"
+  },
+  "dock": {
+    "title": "La tua flotta",
+    "placed": "in posizione",
+    "notPlaced": "da posizionare",
+    "rotate": "Ruota",
+    "rotateLabel": "Ruota (ora {{direction}})",
+    "horizontal": "in orizzontale",
+    "vertical": "in verticale",
+    "random": "Casuale",
+    "clear": "Svuota",
+    "ready": "Pronto"
+  },
+  "status": {
+    "placeHorizontal": "Posiziona {{ship}}: scegli la casella della sua estremità sinistra.",
+    "placeVertical": "Posiziona {{ship}}: scegli la casella della sua estremità superiore.",
+    "pickShip": "Flotta schierata: premi Pronto, o scegli una nave da spostare.",
+    "ready": "La tua flotta è pronta. In attesa che {{name}} schieri la sua…",
+    "placing": "In attesa che le flotte vengano schierate…",
+    "yourShot": "Tocca a te: scegli una casella nelle acque nemiche su cui sparare.",
+    "waitingShot": "In attesa che {{name}} spari…"
+  },
+  "lastShot": {
+    "youMiss": "Hai sparato in {{cell}}: acqua.",
+    "youHit": "Hai sparato in {{cell}}: colpito!",
+    "youSunk": "Hai sparato in {{cell}} e affondato {{ship}}!",
+    "theyMiss": "{{name}} ha sparato in {{cell}}: acqua.",
+    "theyHit": "{{name}} ha sparato in {{cell}}: colpito!",
+    "theySunk": "{{name}} ha sparato in {{cell}} e affondato {{ship}}!"
+  },
+  "history": {
+    "placed": "{{name}} ha schierato la flotta",
+    "miss": "{{name}} ha sparato in {{cell}}: acqua",
+    "hit": "{{name}} ha sparato in {{cell}}: colpito",
+    "sunk": {
+      "carrier": "{{name}} ha sparato in {{cell}} e affondato la portaerei",
+      "battleship": "{{name}} ha sparato in {{cell}} e affondato la corazzata",
+      "cruiser": "{{name}} ha sparato in {{cell}} e affondato l'incrociatore",
+      "submarine": "{{name}} ha sparato in {{cell}} e affondato il sottomarino",
+      "destroyer": "{{name}} ha sparato in {{cell}} e affondato il cacciatorpediniere"
+    }
+  }
+}

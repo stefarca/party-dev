@@ -73,8 +73,12 @@
  *   seat-3 on board-well (piece on the board)                8.67    8.67   >= 3.0
  *   seat-4 on board-well (piece on the board)                9.34    9.34   >= 3.0
  *   seat-1-contrast on seat-1 (piece glyph, tightest seat)   4.98    4.98   >= 4.5
+ *   board-hull on board-hole (a ship in the water)           7.60    7.60   >= 3.0
+ *   board-hull on board-well (grid coordinates, as text)     6.02    6.02   >= 4.5
+ *   board-peg on board-hole (a miss in the water)           16.15   16.15   >= 3.0
+ *   seat-1-contrast on board-hull (ring of a hit on a ship)  6.86    6.86   >= 3.0
  *
- * The seat ramp and the board well do not change between themes (see the
+ * The seat ramp and the board colours do not change between themes (see the
  * note on `--board-well` below), so both columns are identical for those.
  */
 :root {
@@ -165,6 +169,11 @@
      rather than a tint of `--accent`, which changes between themes and at
      low alpha over `--board-hole` lands right on `--board-rim`. */
   --board-mark: hsl(268, 62%, 42%);
+  /* A ship's hull, and the white peg that marks a shot into open water. A
+     red `--seat-1` peg on a hull is too close to it in lightness to stand
+     out alone, so a hit is ringed in `--seat-1-contrast` as well. */
+  --board-hull: hsl(210, 14%, 64%);
+  --board-peg: hsl(210, 40%, 92%);
 
   /* Seat colours: a game-agnostic ramp any game can assign to up to 4
      players. Colour is never the only signal — games pair these with a glyph

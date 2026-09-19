@@ -6,8 +6,8 @@ Cloudflare's free tier (Worker + Static Assets + Durable Objects + D1).
 **What works today:** nickname-only identity (no passwords) where the nickname is unique and
 _is_ the account — sign in with the same one on another device and your matches and record come
 with you — a dashboard that buckets your matches into "your turn" / "waiting on others" /
-"finished", four games (Checkers, Connect 4, Tic-tac-toe and Trivia) playable over a live WebSocket
-(with an HTTP fallback for every action) with a plain-language move history,
+"finished", five games (Battleship, Checkers, Connect 4, Tic-tac-toe and Trivia) playable over a
+live WebSocket (with an HTTP fallback for every action) with a plain-language move history,
 Slack nudges for players who are newly up and not currently connected, and the whole UI in
 English or Italian (picked from the browser's languages, switchable from the header). See
 [`games/README.md`](./games/README.md) for how to add another game.
