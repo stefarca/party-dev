@@ -1,8 +1,6 @@
-import { readFileSync } from "node:fs";
-import { DatabaseSync } from "node:sqlite";
-
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { createMigratedDb } from "./__fixtures__/d1";
 import {
   NicknameTakenError,
   findPlayerById,
@@ -16,47 +14,6 @@ import {
 // that actually enforces it is a SQL unique index — so this runs the real
 // statements against the real migrations, on node's built-in sqlite, rather
 // than a hand-written stand-in that would happily agree with the code.
-
-// Enough of the D1 binding for worker/players.ts: prepare().bind().first()
-// and .run(). D1 rejects on a constraint violation, which is the branch
-// every write in players.ts is built around, so the mock must too.
-function createDb(): D1Database {
-  const db = new DatabaseSync(":memory:");
-  // `migrations/*.sql` in order, exactly as `wrangler d1 migrations apply`
-  // would — the unique index and the columns under test come from them.
-  for (const file of [
-    "migrations/0001_init.sql",
-    "migrations/0002_match_index_columns.sql",
-    "migrations/0003_players_and_results.sql",
-    "migrations/0004_player_stats_since.sql",
-    "migrations/0005_match_players_by_id.sql",
-  ]) {
-    db.exec(readFileSync(file, "utf8"));
-  }
-
-  return {
-    prepare(sql: string) {
-      return {
-        bind(...args: unknown[]) {
-          return {
-            first<T>(): Promise<T | null> {
-              return Promise.resolve((db.prepare(sql).get(...args) as T) ?? null);
-            },
-            run() {
-              // Synchronous throws become rejections, which is how the real
-              // binding reports a constraint violation.
-              try {
-                return Promise.resolve({ meta: db.prepare(sql).run(...args) });
-              } catch (err) {
-                return Promise.reject(err);
-              }
-            },
-          };
-        },
-      };
-    },
-  } as unknown as D1Database;
-}
 
 // Seeds the match index directly. These rows are derived state in
 // production (MatchDO.writeIndexNow writes them); the registry only ever
@@ -89,7 +46,7 @@ function seedMatch(
 describe("signIn", () => {
   let db: D1Database;
   beforeEach(() => {
-    db = createDb();
+    db = createMigratedDb();
   });
 
   it("mints a player the first time a nickname is claimed", async () => {
@@ -125,7 +82,7 @@ describe("signIn", () => {
 describe("renamePlayer", () => {
   let db: D1Database;
   beforeEach(() => {
-    db = createDb();
+    db = createMigratedDb();
   });
 
   it("keeps the player id, so nothing they have played is left behind", async () => {
@@ -171,7 +128,7 @@ describe("renamePlayer", () => {
 describe("playerStats", () => {
   let db: D1Database;
   beforeEach(() => {
-    db = createDb();
+    db = createMigratedDb();
   });
 
   it("is all zeroes for a player who has played nothing", async () => {
@@ -207,7 +164,7 @@ describe("playerStats", () => {
 describe("resetStats", () => {
   let db: D1Database;
   beforeEach(() => {
-    db = createDb();
+    db = createMigratedDb();
   });
   afterEach(() => {
     vi.restoreAllMocks();

@@ -17,17 +17,21 @@ const STATUS_STYLE: Record<MatchStatus, { fill: string; ink: string }> = {
 // One match in any of the hub's buckets. `accent` lifts the card for the
 // "your turn" bucket — it is paired with the section heading and the card's
 // own "Your move" line, so the colour is never the only thing saying so.
+// `callToAction` says what opening the card does when that is not just
+// looking, like joining a public lobby.
 export function MatchCard({
   match,
   gameName,
   myPlayerId,
   accent = false,
+  callToAction,
   style,
 }: {
   match: MatchSummary;
   gameName: string;
   myPlayerId: string;
   accent?: boolean;
+  callToAction?: string;
   style?: CSSProperties;
 }) {
   const { t } = useTranslation();
@@ -82,6 +86,9 @@ export function MatchCard({
         <span className="flex items-center gap-3 text-xs text-[var(--text-muted)]">
           {accent && (
             <span className="font-bold text-[var(--accent-on-soft)]">{t("card.yourMove")}</span>
+          )}
+          {callToAction && (
+            <span className="font-bold text-[var(--accent-on-soft)]">{callToAction}</span>
           )}
           <span>{relativeTime(language, match.updatedAt, now)}</span>
           {match.deadline !== null && (

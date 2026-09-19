@@ -55,16 +55,18 @@
     "pickGame": "Pick a game",
     "loadFailed": "Failed to load matches.",
     "createFailed": "Could not create the match.",
-    "tabsLabel": "Your matches",
+    "tabsLabel": "Matches",
     "tabs": {
       "yourTurn": "Your turn",
       "waiting": "Their turn",
-      "finished": "Finished"
+      "finished": "Finished",
+      "open": "Public"
     },
     "empty": {
       "yourTurn": "Nothing needs your move right now. Start something above.",
       "waiting": "No matches waiting on someone else.",
-      "finished": "No finished matches yet."
+      "finished": "No finished matches yet.",
+      "open": "No public lobbies are looking for players right now. Turn on Public match above to host one."
     },
     "stats": {
       "label": "Your record",
@@ -110,7 +112,8 @@
     "waitingForOthers": "waiting for others to join",
     "yourMove": "Your move",
     "due": "due {{when}}",
-    "deadlinePassed": "deadline passed"
+    "deadlinePassed": "deadline passed",
+    "join": "Join ▸"
   },
   "connection": {
     "connecting": "Connecting…",
@@ -137,6 +140,12 @@
     "copy": "Copy link",
     "copied": "Copied!",
     "copiedCheck": "Copied! ✓"
+  },
+  "visibility": {
+    "label": "Public match",
+    "private": "Invite only — people need the code to join.",
+    "public": "Listed under Public on everyone's hub, so anyone can join. Comes off after a day with nobody joining.",
+    "failed": "Could not change who can join."
   },
   "lobby": {
     "players": "Players",

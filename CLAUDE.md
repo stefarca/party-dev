@@ -65,6 +65,16 @@ derived index — `match_players.won` is written by `writeIndexNow()` from `resu
 the player id, so a rename keeps it. A reset sets `players.stats_since`, and the record then counts
 only matches created from that moment on. Nothing is deleted.
 
+**Public lobbies.** A match's `visibility` (`private` by default, or `public`) lives on the DO
+record. The host picks it at creation and may change it through `/lobby/visibility` until the match
+starts. Anyone with the code can join either kind. A public one is also listed under the hub's
+Public tab, which `worker/hub.ts` reads from `matches.visibility` in the derived index. Only lobbies
+the caller is not in and that still have a seat are listed. The seat check runs in SQL, before the
+LIMIT, against seat counts taken from the game catalog. An index row whose `visibility` is NULL
+predates the column and counts as private. A listing lasts a day, and every join starts that day
+over: the record's `publicUntil` is the DO alarm while the match is a lobby, and `alarm()` turns a
+lobby private once it passes. Expiry only unlists: the lobby, its players and its code stay.
+
 **`players` is the only place a nickname is stored.** Match records, the event log and
 `match_players` hold player ids. Every roster is named from `players` when it is read: the hub
 JOINs it, and `MatchDO.readNamedMatch()` looks up names before any snapshot or summary leaves the
@@ -73,11 +83,12 @@ DO. So a rename reaches every match at once. A name the lookup cannot find shows
 
 **Worker → DO boundary.** A match code is the DO name: `MATCH.idFromName(normalizeMatchCode(code))`
 (`shared/ids.ts`). `worker/api.ts` and `worker/index.ts` verify the session and then forward to the
-DO's internal routes (`/lobby/create`, `/lobby/join`, `/snapshot`, `/view`, `/events`, `/start`,
-`/action`, `/ws`). They pass the caller's `playerId` in the JSON body, or in an `X-Player-Id` header for `/ws`. The DO trusts that id and only checks membership, so it must always come from
+DO's internal routes (`/lobby/create`, `/lobby/join`, `/lobby/visibility`, `/snapshot`, `/view`,
+`/events`, `/start`, `/action`, `/ws`). They pass the caller's `playerId` in the JSON body, or in an `X-Player-Id` header for `/ws`. The DO trusts that id and only checks membership, so it must always come from
 the verified session and never from a client payload.
 
-**Everything funnels through `MatchDO.commit()`** — lobby create, join, start, action, and `alarm()`.
+**Everything funnels through `MatchDO.commit()`** — lobby create, join, visibility, start, action,
+and `alarm()`.
 Its seven stages run in a binding order: persist → append events → recompute
 `waitingOn`/`deadline` → reconcile the DO alarm → broadcast a per-player snapshot → sync the D1
 index → Slack-nudge newly-waited-on disconnected players. Two rules hold inside it:
@@ -177,8 +188,9 @@ including deep-linked SPA routes like `/m/ABCDEF`, is served by Static Assets wi
   `worker/node-builtins.d.ts`, since the worker project loads no `@types` packages). Engine tests
   run against `games/__fixtures__/counter.ts`, a test-only game that is deliberately left out of the
   registry; the test adds it to `serverGames` and removes it afterwards. `worker/players.test.ts`
-  runs the registry against the real `migrations/*.sql` on `node:sqlite` — keep its migration list
-  in step when adding one, since the unique index under test comes from them.
+  and `worker/hub.test.ts` run their SQL against the real schema through
+  `worker/__fixtures__/d1.ts`, a D1 mock on `node:sqlite` that applies every `migrations/*.sql` in
+  name order. A new migration needs no change there.
 - Playwright specs drive the real app (Vite + workerd) through the UI and never import app code.
   `e2e/fixtures.ts` is the harness. `newPlayer(name)` gives each player a browser context of
   their own, signed in over the API as `uniqueNickname(name)` — a nickname is an account and the e2e

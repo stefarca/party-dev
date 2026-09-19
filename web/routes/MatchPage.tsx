@@ -12,8 +12,9 @@ import type {
   MatchStatus,
   MatchSnapshot,
   MatchSummary,
+  MatchVisibility,
 } from "../../shared/protocol";
-import { ApiError, getMatch, joinMatch } from "../api";
+import { ApiError, getMatch, joinMatch, setMatchVisibility } from "../api";
 import { clearMatchWaiting, setMatchWaiting } from "../badge";
 import { ConnectionBadge } from "../components/ConnectionBadge";
 import { Confetti } from "../components/Confetti";
@@ -24,6 +25,7 @@ import { HistoryPanel } from "../components/HistoryPanel";
 import { EmptyAvatar, PlayerAvatar } from "../components/PlayerAvatar";
 import { Notice, Skeleton } from "../components/states";
 import { TurnIndicator } from "../components/TurnIndicator";
+import { VisibilitySwitch } from "../components/VisibilitySwitch";
 import { errorText } from "../errors";
 import { playerRange } from "../format";
 import { useGameName } from "../i18n";
@@ -103,7 +105,17 @@ function GameSurfaceSkeleton() {
   );
 }
 
-function ShareCode({ code, collapsed }: { code: string; collapsed: boolean }) {
+// `children` goes at the foot of the full panel, and is dropped once it has
+// collapsed: whatever it holds is about getting people into the lobby.
+function ShareCode({
+  code,
+  collapsed,
+  children,
+}: {
+  code: string;
+  collapsed: boolean;
+  children?: ReactNode;
+}) {
   const { t } = useTranslation();
   const [copied, setCopied] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -185,7 +197,64 @@ function ShareCode({ code, collapsed }: { code: string; collapsed: boolean }) {
       >
         {copied ? t("share.copiedCheck") : t("share.copy")}
       </Button>
+      {children}
     </section>
+  );
+}
+
+// The host's say over who can join, for as long as the match is a lobby. The
+// switch moves as soon as it is pressed and moves back if the change is
+// refused. It is disabled while a change is in flight, so two presses can
+// never land out of order.
+function HostVisibility({
+  code,
+  visibility,
+  onChanged,
+}: {
+  code: string;
+  visibility: MatchVisibility;
+  onChanged: (match: MatchSummary) => void;
+}) {
+  const { t } = useTranslation();
+  const { notifyUnauthorized } = useSession();
+  const [shown, setShown] = useState(visibility);
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function change(next: MatchVisibility) {
+    setShown(next);
+    setPending(true);
+    setError(null);
+    try {
+      const updated = await setMatchVisibility(code, next);
+      setShown(updated.visibility);
+      onChanged(updated);
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 401) {
+        notifyUnauthorized();
+        return;
+      }
+      setShown(visibility);
+      setError(errorText(t, err, t("visibility.failed")));
+    } finally {
+      setPending(false);
+    }
+  }
+
+  return (
+    <div className="flex flex-col items-center gap-2 border-t border-[var(--border-subtle)] pt-4">
+      <VisibilitySwitch
+        visibility={shown}
+        onChange={change}
+        isDisabled={pending}
+        className="items-center"
+      />
+      {error && (
+        <p role="alert" className="m-0 text-sm text-danger">
+          {error}
+        </p>
+      )}
+    </div>
   );
 }
 
@@ -593,7 +662,11 @@ export function MatchPage({ code }: { code: string }) {
 
       {!loading && !error && match && (
         <div className="flex flex-col gap-4">
-          <ShareCode code={code} collapsed={status !== "lobby"} />
+          <ShareCode code={code} collapsed={status !== "lobby"}>
+            {match.hostId === myPlayerId && (
+              <HostVisibility code={code} visibility={match.visibility} onChanged={setMatch} />
+            )}
+          </ShareCode>
           <MatchBody
             match={match}
             snapshot={snapshot}

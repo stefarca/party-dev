@@ -2,12 +2,12 @@ import { Hono } from "hono";
 
 import { GAME_CATALOG, getGameMeta } from "../games/catalog";
 import { MATCH_CODE_RE, generateMatchCode, normalizeMatchCode } from "../shared/ids";
-import { UNKNOWN_NICKNAME } from "../shared/nickname";
 import {
   ActionRequestSchema,
   CreateMatchRequestSchema,
   IdentityRequestSchema,
   JoinMatchRequestSchema,
+  SetVisibilityRequestSchema,
   StartMatchRequestSchema,
 } from "../shared/protocol";
 import type { MatchSummary } from "../shared/protocol";
@@ -19,6 +19,8 @@ import {
   sessionMiddleware,
   writeSession,
 } from "./auth";
+import { HUB_LIST_LIMIT, openMatches, summarize } from "./hub";
+import type { MatchIndexRow } from "./hub";
 import {
   NicknameTakenError,
   findPlayerById,
@@ -221,6 +223,7 @@ api.post("/matches", requireSession(), async (c) => {
         matchId,
         gameId: parsed.data.gameId,
         hostId: session.pid,
+        visibility: parsed.data.visibility,
       }),
     });
     if (!res.ok) throw new Error(`lobby create failed with status ${res.status}`);
@@ -378,6 +381,38 @@ api.post("/matches/:id/start", requireSession(), async (c) => {
   return c.json(await res.json());
 });
 
+// Lists the lobby on every player's hub, or takes it off again. Host-only and
+// lobby-only, both checked by the DO. Replies with the lobby summary, so the
+// host's page can show the setting that actually took.
+api.post("/matches/:id/visibility", requireSession(), async (c) => {
+  const session = c.get("session") as Session;
+  const code = normalizeMatchCode(c.req.param("id"));
+  if (!MATCH_CODE_RE.test(code)) {
+    return c.json({ error: "not_found" }, 404);
+  }
+
+  const body = await readJsonBody(c.req.raw);
+  const parsed = SetVisibilityRequestSchema.safeParse(body);
+  if (!parsed.success) {
+    return c.json({ error: "invalid_body" }, 400);
+  }
+
+  const id = c.env.MATCH.idFromName(code);
+  const stub = c.env.MATCH.get(id);
+  const res = await stub.fetch("http://do/lobby/visibility", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ playerId: session.pid, visibility: parsed.data.visibility }),
+  });
+  if (res.status === 404) return c.json(await res.json(), 404);
+  if (res.status === 409) return c.json(await res.json(), 409);
+  if (res.status === 403) return c.json(await res.json(), 403);
+  if (res.status === 400) return c.json(await res.json(), 400);
+  if (!res.ok) return c.json({ error: "visibility_failed" }, 500);
+
+  return c.json(await res.json());
+});
+
 api.post("/matches/:id/actions", requireSession(), async (c) => {
   const session = c.get("session") as Session;
   const code = normalizeMatchCode(c.req.param("id"));
@@ -406,35 +441,17 @@ api.post("/matches/:id/actions", requireSession(), async (c) => {
   return c.json(await res.json());
 });
 
-interface MatchIndexRow {
-  id: string;
-  game_id: string;
-  status: MatchSummary["status"];
-  host_id: string | null;
-  updated_at: number;
-  deadline: number | null;
-  my_waiting: number;
-  player_id: string;
-  nickname: string | null;
-}
-
 api.get("/matches", requireSession(), async (c) => {
   const session = c.get("session") as Session;
-
-  // The record travels with the player id, so it follows them onto a new
-  // device the moment the nickname signs them back in. Fetched alongside
-  // the buckets rather than from a route of its own — it reads the same two
-  // tables, and the hub draws both in one pass.
-  const stats = await playerStats(c.env.DB, session.pid);
 
   // One D1 query for the caller's matches, joined against match_players
   // twice: once to find the caller's own matches + waiting flag, once more
   // to pull every player row for those matches, so the dashboard needs no
   // per-match follow-up query. The index holds player ids only; each name
   // comes from the registry, so a rename shows on every card at once.
-  const { results } = await c.env.DB.prepare(
+  const mine = c.env.DB.prepare(
     `SELECT m.id AS id, m.game_id AS game_id, m.status AS status, m.host_id AS host_id,
-            m.updated_at AS updated_at, m.deadline AS deadline,
+            m.updated_at AS updated_at, m.deadline AS deadline, m.visibility AS visibility,
             mine.waiting AS my_waiting,
             p.player_id AS player_id, pl.nickname AS nickname
      FROM matches m
@@ -446,45 +463,31 @@ api.get("/matches", requireSession(), async (c) => {
     .bind(session.pid)
     .all<MatchIndexRow>();
 
-  const order: string[] = [];
-  const summaries = new Map<string, MatchSummary>();
-  const myWaiting = new Map<string, boolean>();
-
-  for (const row of results) {
-    let summary = summaries.get(row.id);
-    if (!summary) {
-      summary = {
-        id: row.id,
-        gameId: row.game_id,
-        status: row.status,
-        players: [],
-        hostId: row.host_id ?? "",
-        waiting: Boolean(row.my_waiting),
-        updatedAt: row.updated_at,
-        deadline: row.deadline,
-      };
-      summaries.set(row.id, summary);
-      myWaiting.set(row.id, Boolean(row.my_waiting));
-      order.push(row.id);
-    }
-    summary.players.push({ id: row.player_id, nickname: row.nickname ?? UNKNOWN_NICKNAME });
-  }
+  // The record travels with the player id, so it follows them onto a new
+  // device the moment the nickname signs them back in. Fetched alongside
+  // the buckets rather than from a route of its own — it reads the same two
+  // tables, and the hub draws both in one pass. So is the list of public
+  // lobbies, which fills the hub's last tab.
+  const [{ results }, open, stats] = await Promise.all([
+    mine,
+    openMatches(c.env.DB, session.pid),
+    playerStats(c.env.DB, session.pid),
+  ]);
 
   const yourTurn: MatchSummary[] = [];
   const waiting: MatchSummary[] = [];
   const finished: MatchSummary[] = [];
-  for (const id of order) {
-    const summary = summaries.get(id) as MatchSummary;
+  for (const summary of summarize(results)) {
     if (summary.status === "done") {
-      if (finished.length < 50) finished.push(summary);
-    } else if (myWaiting.get(id)) {
-      if (yourTurn.length < 50) yourTurn.push(summary);
+      if (finished.length < HUB_LIST_LIMIT) finished.push(summary);
+    } else if (summary.waiting) {
+      if (yourTurn.length < HUB_LIST_LIMIT) yourTurn.push(summary);
     } else {
-      if (waiting.length < 50) waiting.push(summary);
+      if (waiting.length < HUB_LIST_LIMIT) waiting.push(summary);
     }
   }
 
-  return c.json({ yourTurn, waiting, finished, stats });
+  return c.json({ yourTurn, waiting, finished, open, stats });
 });
 
 api.notFound((c) => c.json({ ok: false, error: "not found" }, 404));

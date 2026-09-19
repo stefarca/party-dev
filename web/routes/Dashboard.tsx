@@ -6,13 +6,14 @@ import { useTranslation } from "react-i18next";
 
 import type { GameMeta } from "../../games/catalog";
 import { normalizeMatchCode } from "../../shared/ids";
-import type { MatchSummary } from "../../shared/protocol";
+import type { MatchSummary, MatchVisibility } from "../../shared/protocol";
 import { ApiError, createMatch, getGames, joinMatch, listMatches, resetStats } from "../api";
 import type { MatchBuckets, PlayerStats } from "../api";
 import { setDashboardYourTurn } from "../badge";
 import { GameGlyph } from "../components/GameGlyph";
 import { MatchCard } from "../components/MatchCard";
 import { EmptyState, Notice, Skeleton } from "../components/states";
+import { VisibilitySwitch } from "../components/VisibilitySwitch";
 import { errorText } from "../errors";
 import { playerRange } from "../format";
 import { useGameName, useLanguage } from "../i18n";
@@ -174,6 +175,7 @@ function Bucket({
   games,
   myPlayerId,
   accent,
+  callToAction,
   emptyText,
   emptyGlyph,
 }: {
@@ -181,6 +183,7 @@ function Bucket({
   games: GameMeta[];
   myPlayerId: string;
   accent?: boolean;
+  callToAction?: string;
   emptyText: string;
   emptyGlyph?: string;
 }) {
@@ -197,6 +200,7 @@ function Bucket({
           gameName={gameName(m.gameId, games.find((g) => g.id === m.gameId)?.name)}
           myPlayerId={myPlayerId}
           accent={accent}
+          callToAction={callToAction}
           style={staggerStyle(i)}
         />
       ))}
@@ -334,12 +338,15 @@ function StatsStrip({ stats, onReset }: { stats: PlayerStats; onReset: () => Pro
   );
 }
 
-type BucketKey = "yourTurn" | "waiting" | "finished";
+type BucketKey = "yourTurn" | "waiting" | "finished" | "open";
 
+// The first three are the player's own matches; `open` is everyone's public
+// lobbies they could join, which is why it comes last.
 const BUCKET_TABS: { key: BucketKey; glyph: string }[] = [
   { key: "yourTurn", glyph: "✦" },
   { key: "waiting", glyph: "⏳" },
   { key: "finished", glyph: "🏁" },
+  { key: "open", glyph: "🌐" },
 ];
 
 export function Dashboard() {
@@ -352,6 +359,9 @@ export function Dashboard() {
 
   const [creatingId, setCreatingId] = useState<string | null>(null);
   const [createError, setCreateError] = useState<string | null>(null);
+  // Who can join the next match a tile starts. Private every time the hub
+  // opens: listing a match for everyone should never happen by leftover.
+  const [newVisibility, setNewVisibility] = useState<MatchVisibility>("private");
 
   const [joinCode, setJoinCode] = useState("");
   const [joining, setJoining] = useState(false);
@@ -427,7 +437,7 @@ export function Dashboard() {
     setCreatingId(gameId);
     setCreateError(null);
     try {
-      const { code } = await createMatch(gameId);
+      const { code } = await createMatch(gameId, newVisibility);
       navigate(`/m/${code}`);
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) {
@@ -501,6 +511,7 @@ export function Dashboard() {
     yourTurn: [],
     waiting: [],
     finished: [],
+    open: [],
     stats: { played: 0, finished: 0, won: 0, since: null },
   };
   const turnCount = data.yourTurn.length;
@@ -525,9 +536,16 @@ export function Dashboard() {
       </section>
 
       <section className="mb-10">
-        <h2 className="mb-3 font-display text-sm font-bold tracking-[0.15em] text-[var(--text-muted)] uppercase">
-          {t("hub.pickGame")}
-        </h2>
+        <div className="mb-3 flex flex-wrap items-start justify-between gap-x-6 gap-y-2">
+          <h2 className="m-0 font-display text-sm font-bold tracking-[0.15em] text-[var(--text-muted)] uppercase">
+            {t("hub.pickGame")}
+          </h2>
+          <VisibilitySwitch
+            visibility={newVisibility}
+            onChange={setNewVisibility}
+            isDisabled={creatingId !== null}
+          />
+        </div>
         {createError && (
           <div className="mb-3">
             <Notice tone="danger">{createError}</Notice>
@@ -576,19 +594,22 @@ export function Dashboard() {
           onSelectionChange={(key) => setTab(key as BucketKey)}
           className="w-full"
         >
-          {/* The width overrides below undo HeroUI's own `min-w-full` on the
-              list and `w-full` on each tab, which would otherwise stretch
-              this pill across the whole page. */}
-          <Tabs.ListContainer className="w-fit max-w-full self-start bg-transparent">
+          {/* From `sm` up, the width overrides below undo HeroUI's own
+              `min-w-full` on the list and `w-full` on each tab, which would
+              otherwise stretch this pill across the whole page. A phone is
+              too narrow for all four tabs in one row, in either language, so
+              there they sit two by two, filling the width, rather than
+              wrapping inside a tab or scrolling one out of sight. */}
+          <Tabs.ListContainer className="w-full max-w-full self-start bg-transparent sm:w-fit">
             <Tabs.List
               aria-label={t("hub.tabsLabel")}
-              className="w-fit min-w-0 rounded-[var(--radius-pill)] border border-[var(--border-subtle)] bg-[var(--surface-2)] p-1"
+              className="grid w-full min-w-0 grid-cols-2 gap-1 rounded-[var(--radius-lg)] border border-[var(--border-subtle)] bg-[var(--surface-2)] p-1 sm:flex sm:w-fit sm:gap-0 sm:rounded-[var(--radius-pill)]"
             >
               {BUCKET_TABS.map((tab) => (
                 <Tabs.Tab
                   key={tab.key}
                   id={tab.key}
-                  className="w-auto gap-2 rounded-[var(--radius-pill)]"
+                  className="gap-2 rounded-[var(--radius-pill)] whitespace-nowrap sm:w-auto"
                 >
                   {t(`hub.tabs.${tab.key}`)}
                   <span className="text-xs font-bold opacity-70">{data[tab.key].length}</span>
@@ -604,6 +625,7 @@ export function Dashboard() {
                 games={games}
                 myPlayerId={myPlayerId}
                 accent={tab.key === "yourTurn"}
+                callToAction={tab.key === "open" ? t("card.join") : undefined}
                 emptyText={t(`hub.empty.${tab.key}`)}
                 emptyGlyph={tab.glyph}
               />

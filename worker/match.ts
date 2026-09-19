@@ -6,13 +6,14 @@ import { getGame } from "../games/registry";
 import type { GameModule, Result } from "../shared/game";
 import { HISTORY_LIMIT } from "../shared/history";
 import { UNKNOWN_NICKNAME } from "../shared/nickname";
-import { ClientMessageSchema } from "../shared/protocol";
+import { ClientMessageSchema, MatchVisibilitySchema } from "../shared/protocol";
 import type {
   MatchEvent,
   MatchEventPayload,
   MatchSnapshot,
   MatchStatus,
   MatchSummary,
+  MatchVisibility,
   PlayerId,
   PlayerInfo,
   ServerMessage,
@@ -49,6 +50,12 @@ interface MatchRecord {
   status: MatchStatus;
   hostId: string;
   players: MatchPlayerRecord[];
+  // Whether the hub lists this lobby for anyone to join. Absent on records
+  // created before it existed, which are all private.
+  visibility?: MatchVisibility;
+  // While the lobby is public: when it comes off the hub unless somebody
+  // joins first. Every join starts the day over.
+  publicUntil?: number;
   createdAt: number;
   updatedAt: number;
   seed: number; // rolled once at create time, never re-rolled
@@ -77,10 +84,26 @@ const LobbyCreateBody = z.object({
   matchId: z.string().min(1),
   gameId: z.string().min(1),
   hostId: z.string().min(1),
+  visibility: MatchVisibilitySchema.default("private"),
 });
 
 const ActorBody = z.object({ playerId: z.string().min(1) });
+const VisibilityBody = z.object({
+  playerId: z.string().min(1),
+  visibility: MatchVisibilitySchema,
+});
 const ActionBody = z.object({ playerId: z.string().min(1), action: z.unknown() });
+
+// How long a public lobby stays on the hub with nobody joining it.
+const PUBLIC_LISTING_MS = 24 * 60 * 60 * 1000;
+
+// When `record`'s place on the hub runs out, or null if it has none: it is
+// private, or no longer a lobby.
+function listingExpiry(record: MatchRecord): number | null {
+  return record.status === "lobby" && record.visibility === "public"
+    ? (record.publicUntil ?? null)
+    : null;
+}
 
 // Maps an internal error `code` (see ActionResult/MutationResult above) to
 // an HTTP status for the REST fallbacks. The WS path ignores this — errors
@@ -163,6 +186,10 @@ export class MatchDO extends DurableObject<Env> {
 
     if (request.method === "POST" && url.pathname === "/lobby/join") {
       return this.handleLobbyJoin(request);
+    }
+
+    if (request.method === "POST" && url.pathname === "/lobby/visibility") {
+      return this.handleVisibilityRequest(request);
     }
 
     if (request.method === "GET" && url.pathname === "/snapshot") {
@@ -318,6 +345,7 @@ export class MatchDO extends DurableObject<Env> {
       waiting: false, // lobby-only summary — see handleLobbySnapshot below.
       updatedAt: record.updatedAt,
       deadline: null,
+      visibility: record.visibility ?? "private",
     };
   }
 
@@ -444,9 +472,11 @@ export class MatchDO extends DurableObject<Env> {
     // 4. Reconcile the DO alarm against the new deadline, using the
     // freshly-read `derived.deadline` above so a commit that got overtaken
     // re-arms (or clears) against the latest truth instead of its own stale
-    // value.
-    if (derived.deadline !== null) {
-      if (existingAlarm !== derived.deadline) await this.ctx.storage.setAlarm(derived.deadline);
+    // value. A lobby has no game and so no deadline; a public one sets the
+    // alarm for when its listing runs out instead (see `expireListing()`).
+    const wakeAt = derived.deadline ?? listingExpiry(current);
+    if (wakeAt !== null) {
+      if (existingAlarm !== wakeAt) await this.ctx.storage.setAlarm(wakeAt);
     } else if (existingAlarm !== null) {
       await this.ctx.storage.deleteAlarm();
     }
@@ -580,7 +610,7 @@ export class MatchDO extends DurableObject<Env> {
       return Response.json({ ok: false, error: "already_exists" }, { status: 409 });
     }
 
-    const { matchId, gameId, hostId } = parsed.data;
+    const { matchId, gameId, hostId, visibility } = parsed.data;
     const now = Date.now();
     const record: MatchRecord = {
       id: matchId,
@@ -588,6 +618,8 @@ export class MatchDO extends DurableObject<Env> {
       status: "lobby",
       hostId,
       players: [{ id: hostId, joinedAt: now }],
+      visibility,
+      ...(visibility === "public" ? { publicUntil: now + PUBLIC_LISTING_MS } : {}),
       createdAt: now,
       updatedAt: now,
       seed: Math.floor(Math.random() * 2 ** 31),
@@ -627,8 +659,49 @@ export class MatchDO extends DurableObject<Env> {
       if (record.players.length >= maxPlayers) {
         return Response.json({ ok: false, error: "lobby_full" }, { status: 409 });
       }
-      record.players.push({ id, joinedAt: Date.now() });
+      const now = Date.now();
+      record.players.push({ id, joinedAt: now });
+      if (record.visibility === "public") record.publicUntil = now + PUBLIC_LISTING_MS;
       await this.commit(record, [{ type: "player_joined", id }]);
+    }
+    return this.namedSummaryResponse();
+  }
+
+  // Lists the lobby on every hub for a day, or takes it off. It changes who
+  // may join, which is the host's call, and means nothing once the match has
+  // started: only a lobby accepts new players. Logs no event — nothing about
+  // the game itself happened. An unchanged setting commits nothing.
+  private async setVisibility(
+    playerId: PlayerId,
+    visibility: MatchVisibility,
+  ): Promise<MutationResult> {
+    const record = this.readMatch();
+    if (!record) return { ok: false, code: "not_found", message: "match not found" };
+    if (record.status !== "lobby") {
+      return { ok: false, code: "already_started", message: "match has already started" };
+    }
+    if (record.hostId !== playerId) {
+      return { ok: false, code: "not_host", message: "only the host can change who can join" };
+    }
+    if ((record.visibility ?? "private") !== visibility) {
+      record.visibility = visibility;
+      if (visibility === "public") record.publicUntil = Date.now() + PUBLIC_LISTING_MS;
+      else delete record.publicUntil;
+      await this.commit(record, []);
+    }
+    return { ok: true };
+  }
+
+  private async handleVisibilityRequest(request: Request): Promise<Response> {
+    const parsed = VisibilityBody.safeParse(await request.json().catch(() => null));
+    if (!parsed.success) return Response.json({ error: "invalid_body" }, { status: 400 });
+
+    const result = await this.setVisibility(parsed.data.playerId, parsed.data.visibility);
+    if (!result.ok) {
+      return Response.json(
+        { error: result.code, message: result.message },
+        { status: statusForCode(result.code) },
+      );
     }
     return this.namedSummaryResponse();
   }
@@ -674,15 +747,16 @@ export class MatchDO extends DurableObject<Env> {
       const waitingSet = new Set(waitingOn);
       const statements = [
         this.env.DB.prepare(
-          `INSERT INTO matches (id, game_id, status, created_at, updated_at, deadline, host_id, result_kind)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+          `INSERT INTO matches (id, game_id, status, created_at, updated_at, deadline, host_id, result_kind, visibility)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
            ON CONFLICT(id) DO UPDATE SET
              game_id = excluded.game_id,
              status = excluded.status,
              updated_at = excluded.updated_at,
              deadline = excluded.deadline,
              host_id = excluded.host_id,
-             result_kind = excluded.result_kind`,
+             result_kind = excluded.result_kind,
+             visibility = excluded.visibility`,
         ).bind(
           record.id,
           record.gameId,
@@ -692,6 +766,7 @@ export class MatchDO extends DurableObject<Env> {
           deadline,
           record.hostId,
           result?.kind ?? null,
+          record.visibility ?? "private",
         ),
         ...record.players.map((p) =>
           this.env.DB.prepare(
@@ -875,6 +950,10 @@ export class MatchDO extends DurableObject<Env> {
 
   async alarm(): Promise<void> {
     const record = this.readMatch();
+    if (record?.status === "lobby") {
+      await this.expireListing(record);
+      return;
+    }
     if (!record || record.status !== "active" || record.state == null) return;
 
     const module = getGame(record.gameId) as GameModule<unknown, unknown> | undefined;
@@ -924,6 +1003,23 @@ export class MatchDO extends DurableObject<Env> {
     // finished — that is what clears the alarm and zeroes every
     // match_players.waiting row via syncIndex.
     await this.commit(record, [{ type: "deadline_resolved", round: due }]);
+  }
+
+  // A public lobby nobody has joined for a day comes off the hub by turning
+  // private, which is all the listing ever was. It stays a lobby, its code
+  // still works, and the host can list it again for another day. Like the
+  // rest of alarm(), it must not throw, and commit() does not.
+  private async expireListing(record: MatchRecord): Promise<void> {
+    const due = listingExpiry(record);
+    if (due === null) return;
+    if (Date.now() < due) {
+      // Spurious/early fire — reschedule and return without mutating state.
+      await this.ctx.storage.setAlarm(due);
+      return;
+    }
+    record.visibility = "private";
+    delete record.publicUntil;
+    await this.commit(record, []);
   }
 
   // ---------------------------------------------------------------------

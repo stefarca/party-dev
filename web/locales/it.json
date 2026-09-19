@@ -55,16 +55,18 @@
     "pickGame": "Scegli un gioco",
     "loadFailed": "Impossibile caricare le partite.",
     "createFailed": "Impossibile creare la partita.",
-    "tabsLabel": "Le tue partite",
+    "tabsLabel": "Partite",
     "tabs": {
       "yourTurn": "Tocca a te",
       "waiting": "Tocca agli altri",
-      "finished": "Finite"
+      "finished": "Finite",
+      "open": "Pubbliche"
     },
     "empty": {
       "yourTurn": "Per ora nessuna partita aspetta la tua mossa. Iniziane una qui sopra.",
       "waiting": "Nessuna partita in attesa di qualcun altro.",
-      "finished": "Ancora nessuna partita finita."
+      "finished": "Ancora nessuna partita finita.",
+      "open": "Al momento nessuna partita pubblica cerca giocatori. Attiva Partita pubblica qui sopra per ospitarne una."
     },
     "stats": {
       "label": "Il tuo bilancio",
@@ -110,7 +112,8 @@
     "waitingForOthers": "in attesa di altri giocatori",
     "yourMove": "Tocca a te",
     "due": "scade {{when}}",
-    "deadlinePassed": "tempo scaduto"
+    "deadlinePassed": "tempo scaduto",
+    "join": "Entra ▸"
   },
   "connection": {
     "connecting": "Connessione…",
@@ -137,6 +140,12 @@
     "copy": "Copia link",
     "copied": "Copiato!",
     "copiedCheck": "Copiato! ✓"
+  },
+  "visibility": {
+    "label": "Partita pubblica",
+    "private": "Solo su invito: per entrare serve il codice.",
+    "public": "Elencata in Pubbliche nella home di tutti: chiunque può entrare. Viene tolta dopo un giorno senza nuovi giocatori.",
+    "failed": "Impossibile cambiare chi può entrare."
   },
   "lobby": {
     "players": "Giocatori",
