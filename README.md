@@ -8,8 +8,9 @@ _is_ the account — sign in with the same one on another device and your matche
 with you — a dashboard that buckets your matches into "your turn" / "waiting on others" /
 "finished", five games (Battleship, Checkers, Connect 4, Tic-tac-toe and Trivia) playable over a
 live WebSocket (with an HTTP fallback for every action) with a plain-language move history,
-Slack nudges for players who are newly up and not currently connected, and the whole UI in
-English or Italian (picked from the browser's languages, switchable from the header). See
+Slack nudges for players who are newly up and not currently connected, the whole UI in
+English or Italian (picked from the browser's languages, switchable from the header), and an
+installable PWA build so the app can live on a phone's home screen like any other game. See
 [`games/README.md`](./games/README.md) for how to add another game.
 
 ## Prerequisites
@@ -55,8 +56,12 @@ Other useful scripts:
   <http://localhost:5199>. It is `npm run dev` with its own D1/DO state in `.wrangler/e2e` (so it
   can run alongside `npm run dev`), and it reads only `SESSION_SECRET`, so it never sends Slack
   nudges. Open it in two browser profiles to play a match against yourself.
-- `npm run build` — builds the client (`dist/client`) and the Worker bundle.
-- `npm run preview` — serves the production build locally.
+- `npm run build` — builds the client (`dist/client`) and the Worker bundle, including the
+  service worker that makes the app installable.
+- `npm run preview` — serves the production build locally. This is the only way to exercise the
+  service worker: no dev server registers one. Note that the preview server reads its asset
+  ETags once at startup, so rebuilding underneath it will not be picked up as an update — restart
+  it to test the update prompt.
 
 `.github/workflows/ci.yml` runs `lint`, `format:check`, `typecheck`, `test` and `build` on every
 pull request, and the Playwright suite in a separate `e2e` job. When that job fails, its

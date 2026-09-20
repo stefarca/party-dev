@@ -10,6 +10,7 @@ import { LanguagePicker } from "./components/LanguagePicker";
 import { PlayerAvatar } from "./components/PlayerAvatar";
 import { Spinner } from "./components/states";
 import { ThemeToggle } from "./components/ThemeToggle";
+import { UpdatePrompt } from "./components/UpdatePrompt";
 import { WordMark } from "./components/WordMark";
 import { errorText } from "./errors";
 import { useLanguage } from "./i18n";
@@ -199,6 +200,8 @@ export function App() {
           {t("app.skipToContent")}
         </a>
         <AppShell />
+        {/* Outside AppShell: a waiting build should be offered on the nickname gate too. */}
+        <UpdatePrompt />
       </SessionProvider>
     </I18nProvider>
   );

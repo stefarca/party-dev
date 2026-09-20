@@ -172,6 +172,28 @@ registered under its own nickname if that is free, and dropped if it is not.
 `wrangler.jsonc`'s `run_worker_first` limits the Worker to `/api/*` and `/ws/*`; every other path,
 including deep-linked SPA routes like `/m/ABCDEF`, is served by Static Assets with SPA fallback.
 
+**The app is installable.** `vite build` generates a Workbox service worker (`vite-plugin-pwa`)
+into the client output, and only `vite build` does: no dev server registers one, so `npm run dev`,
+`npm run e2e:serve` and the Playwright suite behave as if none of this existed. Use
+`npm run build && npm run preview` to exercise it. Two rules hold in `vite.config.ts`. Nothing
+under `/api` or `/ws` is ever cached — match truth is the DO's, so a cached snapshot is a wrong
+board; no runtime-caching rule matches them, and the navigation fallback carries a denylist so an
+`/api` URL typed into the address bar is not answered with `index.html`. And a new worker never
+activates on its own: `web/components/UpdatePrompt.tsx` registers the worker and offers the
+waiting build, because applying one means a reload, and an unasked-for reload lands mid-move. A
+player therefore keeps running the build they loaded until they accept that prompt, which matters
+because every push to `main` deploys.
+
+The web app manifest is _not_ generated: `public/manifest.webmanifest` is a static file linked
+from `index.html`, so it is byte-identical in dev and in production and `e2e/pwa.spec.ts` can
+assert it without a production build. It is English-only — a browser reads it once, at install
+time, and nothing in it is reachable through `useLanguage()`. Its `theme_color`/`background_color`
+and the two `theme-color` metas repeat the dark and light `--surface-void` from `web/styles.css`
+as literals, the same duplication the theme bootstrap makes with its storage key; that spec fails
+when they drift. The icons are in `public/`: `icon-192.png` and `icon-512.png` are rendered from
+`favicon.svg`, and `icon-maskable-512.png` and `apple-touch-icon.png` from `icon.svg`, the
+full-bleed variant whose tiles sit inside the maskable safe zone.
+
 ## Conventions
 
 - Four TS project references: `tsconfig.worker.json` (worker + shared + games, no DOM),

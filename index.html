@@ -8,6 +8,27 @@
     <link rel="icon" href="/favicon.svg" />
     <meta name="color-scheme" content="dark light" />
     <!--
+      Installable-app metadata. The manifest is a static file in public/
+      rather than something the build generates, so it is byte-identical in
+      dev, in the e2e server and in production. The two theme-color values
+      are the light and dark `--surface-void` from web/styles.css, repeated
+      here as literals for the same reason the theme bootstrap below repeats
+      its storage key: this is plain HTML and cannot read a CSS custom
+      property. Keep them in step with that token. The dark one comes second
+      so it also answers a browser that ignores the media attribute, matching
+      the dark default the bootstrap picks.
+    -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f8f3fc" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#11091a" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Party" />
+    <!-- Opaque, so iOS keeps the web view below the status bar and no layout
+         needs safe-area insets. `black-translucent` would need them. -->
+    <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+    <!--
       Flash-free theme bootstrap: runs before the stylesheet loads so
       `data-theme` (and the matching class HeroUI also checks for) is already
       correct for the first paint. Must stay a blocking, non-module script

@@ -11,6 +11,12 @@
     "body": "That link does not point at a match.",
     "back": "Back to the hub"
   },
+  "update": {
+    "title": "Update available",
+    "body": "Reload to pick up the newest version. Your matches are safe.",
+    "reload": "Reload",
+    "later": "Later"
+  },
   "language": {
     "label": "Language",
     "current": "Language: {{language}}"
