@@ -11,6 +11,12 @@
     "body": "Questo link non porta a nessuna partita.",
     "back": "Torna alla home"
   },
+  "update": {
+    "title": "Aggiornamento disponibile",
+    "body": "Ricarica per passare all'ultima versione. Le tue partite restano al sicuro.",
+    "reload": "Ricarica",
+    "later": "Più tardi"
+  },
   "language": {
     "label": "Lingua",
     "current": "Lingua: {{language}}"
