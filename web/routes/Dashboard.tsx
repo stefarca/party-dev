@@ -20,7 +20,7 @@ import { useGameName, useLanguage } from "../i18n";
 import { navigate } from "../router";
 import { useSession } from "../session";
 
-const POLL_MS = 30_000;
+const POLL_MS = 8_000;
 
 // Caps the stagger so a long list never ends up with a card that visibly
 // waits a second before appearing.
@@ -409,10 +409,14 @@ export function Dashboard() {
     refresh();
   }, [refresh]);
 
-  // Refresh on tab focus and on a 30s poll while the tab is visible. This is
-  // browser-side setInterval, not a Durable Object timer — the ban on
-  // setInterval is scoped to DOs (they must use ctx.storage.setAlarm()
-  // instead); a plain browser tab has no such constraint.
+  // Refresh on tab focus, on the tab becoming visible again, and on a poll
+  // while the tab is visible. This is browser-side setInterval, not a
+  // Durable Object timer — the ban on setInterval is scoped to DOs (they
+  // must use ctx.storage.setAlarm() instead); a plain browser tab has no
+  // such constraint. There is no push from the server for the hub (unlike a
+  // match's own WebSocket), so a lobby someone else just made public only
+  // shows up here on the next poll or the next time this tab regains
+  // visibility.
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     function scheduleNext() {
@@ -425,9 +429,14 @@ export function Dashboard() {
     function onFocus() {
       refresh();
     }
+    function onVisibilityChange() {
+      if (!document.hidden) refresh();
+    }
     window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVisibilityChange);
     return () => {
       window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
       if (timerRef.current) clearTimeout(timerRef.current);
     };
   }, [refresh]);
