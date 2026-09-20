@@ -5,6 +5,8 @@ import type {
   MatchSnapshot,
   MatchSummary,
   MatchVisibility,
+  PushKeyResponse,
+  PushSubscriptionPayload,
 } from "../shared/protocol";
 
 // Thin typed client over worker/api.ts. Every call goes through request()
@@ -77,6 +79,32 @@ export function setIdentity(nickname: string): Promise<Me> {
 // signing in with the same nickname anywhere brings it all back.
 export function signOut(): Promise<void> {
   return request<void>("/api/identity/signout", { method: "POST", body: JSON.stringify({}) });
+}
+
+// The application server key a push subscription has to be created with, or
+// null where this deployment has no VAPID keys and can send no notifications
+// at all.
+export async function getPushKey(): Promise<string | null> {
+  return (await request<PushKeyResponse>("/api/push/key")).key;
+}
+
+// Registers this browser as one to notify, in `language`. Idempotent — it is
+// also how the language on an existing subscription is updated.
+export function subscribePush(
+  subscription: PushSubscriptionPayload,
+  language: string,
+): Promise<void> {
+  return request<void>("/api/push/subscribe", {
+    method: "POST",
+    body: JSON.stringify({ subscription, language }),
+  });
+}
+
+export function unsubscribePush(endpoint: string): Promise<void> {
+  return request<void>("/api/push/unsubscribe", {
+    method: "POST",
+    body: JSON.stringify({ endpoint }),
+  });
 }
 
 export function getGames(): Promise<GameMeta[]> {

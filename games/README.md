@@ -63,7 +63,8 @@ optionally, one in `games/icons.ts`) — nothing else. Checklist, in order:
    - **Strings:** every word the UI shows or announces — accessible names included — comes from
      `games/<id>/locales/<lng>.json`, one file per language in `web/locales/`, with `en.json` as
      the source. Include `name`, the game's display name, whose English value must equal
-     `meta.name`. Declare the namespace at the top of `ui.tsx` (copy the
+     `meta.name`; the Worker reads that same key when it composes a turn notification, so the name
+     a player is notified with is the one they see on the shelf. Declare the namespace at the top of `ui.tsx` (copy the
      `declare module "i18next"` block from another game) and read it with
      `useTranslation("<id>")`, never `common`: the Worker's type-check of your UI cannot see
      `web/`. Use `_one`/`_other` keys with a `count` for anything plural.

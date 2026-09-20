@@ -30,6 +30,12 @@ export default tseslint.config(
       ],
     },
   },
+  // The service worker's own source (public/push-sw.js) is served verbatim, never bundled, so it
+  // is plain browser JavaScript running in a worker global scope rather than a window.
+  {
+    files: ["public/*.js"],
+    languageOptions: { globals: globals.serviceworker },
+  },
   // eslint-plugin-react-hooks@7's flat recommended config pulls in React-Compiler-era rules
   // (set-state-in-effect, refs, static-components) that flag deliberate patterns in
   // web/useMatch.ts and friends. Refactoring those is a separate, non-tooling change, so only

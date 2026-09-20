@@ -7,10 +7,12 @@ import {
   CreateMatchRequestSchema,
   IdentityRequestSchema,
   JoinMatchRequestSchema,
+  PushSubscribeRequestSchema,
+  PushUnsubscribeRequestSchema,
   SetVisibilityRequestSchema,
   StartMatchRequestSchema,
 } from "../shared/protocol";
-import type { MatchSummary } from "../shared/protocol";
+import type { MatchSummary, PushKeyResponse } from "../shared/protocol";
 import type { Session, SessionBindings } from "./auth";
 import {
   MissingSecretError,
@@ -29,6 +31,7 @@ import {
   resetStats,
   signIn,
 } from "./players";
+import { forgetSubscription, pushPublicKey, saveSubscription } from "./push";
 
 export const api = new Hono<SessionBindings>();
 
@@ -170,6 +173,59 @@ api.post("/me/stats/reset", requireSession(), async (c) => {
     return c.json({ error: "no_identity" }, 401);
   }
   return c.json(await playerStats(c.env.DB, session.pid));
+});
+
+// Web push, which is a property of one browser rather than of an account:
+// a player who opts in on their phone has said nothing about their laptop.
+// The rows live in D1 (`push_subscriptions`) and are read from `MatchDO` on
+// the same turn boundary that posts to Slack.
+
+// The application server key every subscription has to be created with, or
+// null where this deployment has no VAPID keys and can send nothing. Public
+// by nature — it travels inside every subscription — so it is served like
+// the game catalog, without a session. The client asks for it before it
+// offers a player anything, so a deployment without keys shows no
+// notification control at all rather than one that cannot work.
+api.get("/push/key", (c) => c.json<PushKeyResponse>({ key: pushPublicKey(c.env) }));
+
+// Records this browser as a device to nudge. Idempotent: a browser keeps one
+// subscription per origin, and re-sending it is how the client refreshes the
+// language or hands over a rotated endpoint.
+api.post("/push/subscribe", requireSession(), async (c) => {
+  const body = await readJsonBody(c.req.raw);
+  const parsed = PushSubscribeRequestSchema.safeParse(body);
+  if (!parsed.success) {
+    return c.json({ error: "invalid_body" }, 400);
+  }
+
+  const session = c.get("session") as Session;
+  const { subscription, language, replaces } = parsed.data;
+  await saveSubscription(
+    c.env.DB,
+    session.pid,
+    {
+      endpoint: subscription.endpoint,
+      p256dh: subscription.keys.p256dh,
+      auth: subscription.keys.auth,
+    },
+    language ?? null,
+    replaces,
+  );
+  return c.json({ ok: true });
+});
+
+// Stops nudging this browser. Deleting a row that is not there is a success:
+// the caller's intent — "do not notify this device" — holds either way.
+api.post("/push/unsubscribe", requireSession(), async (c) => {
+  const body = await readJsonBody(c.req.raw);
+  const parsed = PushUnsubscribeRequestSchema.safeParse(body);
+  if (!parsed.success) {
+    return c.json({ error: "invalid_body" }, 400);
+  }
+
+  const session = c.get("session") as Session;
+  await forgetSubscription(c.env.DB, session.pid, parsed.data.endpoint);
+  return c.json({ ok: true });
 });
 
 api.post("/matches", requireSession(), async (c) => {
