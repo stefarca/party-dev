@@ -25,6 +25,8 @@
     "@heroui/styles": "^3.2.5",
     "hono": "^4.13.0",
     "i18next": "^26.4.2",
+    "naughty-words": "^1.2.0",
+    "obscenity": "^0.4.6",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "react-i18next": "^17.0.14",

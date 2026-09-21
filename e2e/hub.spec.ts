@@ -1,3 +1,5 @@
+import listedWords from "naughty-words/en.json" with { type: "json" };
+
 import { createMatch, expect, joinMatch, test, uniqueNickname } from "./fixtures";
 
 test("a new visitor picks a nickname and stays signed in", async ({ page }) => {
@@ -14,6 +16,20 @@ test("a new visitor picks a nickname and stays signed in", async ({ page }) => {
 
   await page.reload();
   await expect(page.getByRole("heading", { name: `Hey ${nickname} 👋` })).toBeVisible();
+});
+
+// The nickname filter runs only in the Worker, so the gate learns of a refusal from the error.
+test("a refused nickname keeps the gate up", async ({ page }) => {
+  // Taken from the filter's own word list. No uniqueNickname(): a refused nickname never becomes
+  // an account.
+  const refused = listedWords.find((word) => /^[a-z]{4,12}$/.test(word)) ?? "";
+  await page.goto("/");
+
+  await page.getByRole("textbox", { name: "Pick a nickname" }).fill(refused);
+  await page.getByRole("button", { name: "Let's play" }).click();
+
+  await expect(page.getByText("That nickname isn't one we can hand out.")).toBeVisible();
+  await expect(page.getByRole("textbox", { name: "Pick a nickname" })).toBeVisible();
 });
 
 // The nickname is the account: the same one in a second browser is the same player, with the

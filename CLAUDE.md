@@ -243,6 +243,15 @@ so a rename made elsewhere reaches this device. A cookie whose player has no reg
 pre-registry session that never played, or one minted by the old Worker during a deploy) is
 registered under its own nickname if that is free, and dropped if it is not.
 
+**A nickname is checked before it is claimed** (`worker/profanity.ts`), against obscenity's
+English dataset, which matches inside words, and against the `naughty-words` list for every
+language `web/locales/` ships that it covers, used as published and matched as whole words only.
+Both run over a few readings of the folded `nicknameKey()` that undo separators and digits. Local
+amendments go in `ALLOWED` and `REFUSED`, which start empty. The check runs only in the Worker, so
+the lists never reach the browser, and only on `POST /api/identity`, never on `GET /api/me`'s
+re-registration, so an existing nickname never locks its player out. A refusal is
+`400 nickname_rejected`.
+
 `wrangler.jsonc`'s `run_worker_first` limits the Worker to `/api/*` and `/ws/*`; every other path,
 including deep-linked SPA routes like `/m/ABCDEF` and `/daily/2048`, is served by Static Assets
 with SPA fallback.

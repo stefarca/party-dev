@@ -288,6 +288,7 @@
     "invalid_action": "That move isn't allowed.",
     "invalid_move": "That move isn't allowed.",
     "lobby_full": "This lobby is full.",
+    "nickname_rejected": "That nickname isn't one we can hand out. Pick another.",
     "nickname_taken": "That nickname belongs to someone else. Pick another, or sign out and use it to sign in.",
     "no_identity": "Your session expired — sign in again.",
     "no_run": "There's no run to play yet. Start today's first.",

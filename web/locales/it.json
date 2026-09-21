@@ -288,6 +288,7 @@
     "invalid_action": "Questa mossa non è consentita.",
     "invalid_move": "Questa mossa non è consentita.",
     "lobby_full": "Questa lobby è piena.",
+    "nickname_rejected": "Non possiamo assegnare quel nickname. Scegline un altro.",
     "nickname_taken": "Quel nickname è di qualcun altro. Scegline un altro, oppure esci e usalo per accedere.",
     "no_identity": "La sessione è scaduta, accedi di nuovo.",
     "no_run": "Non c'è ancora una partita da giocare. Inizia prima quella di oggi.",

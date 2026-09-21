@@ -14,6 +14,7 @@ const DESCRIBED_CODES = [
   "invalid_action",
   "invalid_move",
   "lobby_full",
+  "nickname_rejected",
   "nickname_taken",
   "no_identity",
   "no_run",

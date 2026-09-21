@@ -44,6 +44,7 @@ import {
   resetStats,
   signIn,
 } from "./players";
+import { isProfaneNickname } from "./profanity";
 import { forgetSubscription, pushPublicKey, saveSubscription } from "./push";
 
 export const api = new Hono<SessionBindings>();
@@ -116,6 +117,12 @@ api.post("/identity", async (c) => {
   const parsed = IdentityRequestSchema.safeParse(body);
   if (!parsed.success) {
     return c.json({ error: "invalid_body" }, 400);
+  }
+
+  // Only a nickname the player types is judged. `GET /me` below re-registers
+  // the one a session already carries, and must not lock its player out.
+  if (isProfaneNickname(parsed.data.nickname)) {
+    return c.json({ error: "nickname_rejected" }, 400);
   }
 
   const existing = c.get("session");

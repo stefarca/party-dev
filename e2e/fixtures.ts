@@ -10,8 +10,17 @@ import type { BrowserContext, BrowserContextOptions, Locator, Page } from "@play
 // and racing each other's renames. Every spec gets its own nickname instead: the base name it
 // asked for, so a failure still reads like the spec, plus enough randomness to be unique across
 // parallel workers and across runs. Assertions must use `player.nickname`, never the base.
+//
+// The random half uses only these consonants: a random tail with vowels or digits spells
+// something the nickname filter refuses often enough to fail a run.
+const NICKNAME_SUFFIX_LETTERS = "bdmnpqtvz";
+
 export function uniqueNickname(name: string): string {
-  return `${name}-${Math.random().toString(36).slice(2, 8)}`;
+  const suffix = Array.from(
+    { length: 8 },
+    () => NICKNAME_SUFFIX_LETTERS[Math.floor(Math.random() * NICKNAME_SUFFIX_LETTERS.length)],
+  ).join("");
+  return `${name}-${suffix}`;
 }
 
 // One player is one browser context, with a session cookie of its own: the same isolation two
