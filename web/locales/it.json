@@ -17,6 +17,14 @@
     "reload": "Ricarica",
     "later": "Più tardi"
   },
+  "install": {
+    "title": "Installa Pimpom",
+    "body": "Aprila come qualsiasi altra app, senza cercare la scheda.",
+    "bodyNotify": "Ricevi una notifica quando tocca a te, e aprila come qualsiasi altra app.",
+    "iosSteps": "Tocca Condividi, poi Aggiungi alla schermata Home.",
+    "action": "Installa",
+    "dismiss": "Non ora"
+  },
   "language": {
     "label": "Lingua",
     "current": "Lingua: {{language}}"

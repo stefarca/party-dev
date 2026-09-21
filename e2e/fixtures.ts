@@ -1,5 +1,5 @@
 import { test as base, expect } from "@playwright/test";
-import type { BrowserContext, Locator, Page } from "@playwright/test";
+import type { BrowserContext, BrowserContextOptions, Locator, Page } from "@playwright/test";
 
 // The harness every spec imports `test` and `expect` from. Specs drive the app the way players
 // do, through the rendered UI and its accessible names, and never import app code: a spec
@@ -63,8 +63,9 @@ export async function joinMatch(guest: Player, code: string): Promise<void> {
 interface Fixtures {
   // Signs in a new player in a fresh browser context and leaves its page blank. `name` names
   // the player for readability only — the nickname actually claimed is `uniqueNickname(name)`,
-  // and `player.nickname` is the one to assert against.
-  newPlayer: (name: string) => Promise<Player>;
+  // and `player.nickname` is the one to assert against. `options` go to that context on top of
+  // the config's, e.g. a device from `devices` to play from a phone.
+  newPlayer: (name: string, options?: BrowserContextOptions) => Promise<Player>;
   // Signs in one player per nickname. The first creates a `gameId` match, the rest join it in
   // order, and the first starts it. Then it opens the match for everyone and waits until each
   // page is live. Setup goes through the HTTP API, so a game's spec starts at its first move.
@@ -75,9 +76,9 @@ interface Fixtures {
 export const test = base.extend<Fixtures>({
   newPlayer: async ({ browser }, use) => {
     const contexts: BrowserContext[] = [];
-    await use(async (name) => {
+    await use(async (name, options) => {
       // Picks up `use` from playwright.config.ts (baseURL, device, tracing) like `page` does.
-      const context = await browser.newContext();
+      const context = await browser.newContext(options);
       contexts.push(context);
       const nickname = uniqueNickname(name);
       const res = await context.request.post("/api/identity", { data: { nickname } });

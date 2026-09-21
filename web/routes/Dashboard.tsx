@@ -11,6 +11,7 @@ import { ApiError, createMatch, getGames, joinMatch, listMatches, resetStats } f
 import type { MatchBuckets, PlayerStats } from "../api";
 import { setDashboardYourTurn } from "../badge";
 import { GameGlyph } from "../components/GameGlyph";
+import { InstallPrompt } from "../components/InstallPrompt";
 import { MatchCard } from "../components/MatchCard";
 import { EmptyState, Notice, Skeleton } from "../components/states";
 import { VisibilitySwitch } from "../components/VisibilitySwitch";
@@ -524,6 +525,8 @@ export function Dashboard() {
     stats: { played: 0, finished: 0, won: 0, since: null },
   };
   const turnCount = data.yourTurn.length;
+  // Someone who has not played anything yet has no reason to come back, so is not asked to install.
+  const hasOwnMatches = data.yourTurn.length + data.waiting.length + data.finished.length > 0;
   // Coming-soon games go at the very end, after the join tile, so every
   // tile that does something sits together at the front of the shelf.
   const playable = games.filter((g) => !g.comingSoon);
@@ -542,6 +545,7 @@ export function Dashboard() {
         {(data.stats.played > 0 || data.stats.since !== null) && (
           <StatsStrip stats={data.stats} onReset={handleResetStats} />
         )}
+        {hasOwnMatches && <InstallPrompt className="mt-5" />}
       </section>
 
       <section className="mb-10">

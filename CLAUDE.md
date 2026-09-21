@@ -235,6 +235,19 @@ waiting build, because applying one means a reload, and an unasked-for reload la
 player therefore keeps running the build they loaded until they accept that prompt, which matters
 because every push to `main` deploys.
 
+The hub offers the install itself (`web/components/InstallPrompt.tsx`, `web/install.ts`), but
+only to a player who has a match, and only where installing can actually happen. Chromium
+announces an installable page with `beforeinstallprompt`, once per load and usually before the hub
+mounts, so `listenForInstallPrompt()` catches it at boot — its `preventDefault()` also holds back
+Chrome's own install bar — and the card's button replays it. iOS has no such event and no API, so
+the card there says where to tap in the Share sheet. That is the case the card exists for: Safari
+only speaks web push inside a Home Screen app, so on an iPhone the bell is not there until the app
+is installed, and the card promises notifications only when `/api/push/key` says the deployment
+sends them. An app already running standalone is never offered, and "Not now" (or turning down the
+browser's dialog) holds for 30 days in `localStorage`. The test browser never sends a real
+`beforeinstallprompt`, so `e2e/install.spec.ts` plays the browser: an iPhone device for iOS, and a
+dispatched event for Chromium.
+
 The worker's push half is `public/push-sw.js`, pulled in by Workbox's `importScripts` rather than
 bundled: Workbox generates the worker's own source, so there is nowhere for app code to live
 inside it. That is why it is plain JavaScript with no imports and translates nothing — it renders
@@ -284,8 +297,9 @@ change to the mark has to be made in all three.
   name order. A new migration needs no change there.
 - Playwright specs drive the real app (Vite + workerd) through the UI and never import app code.
   `e2e/fixtures.ts` is the harness. `newPlayer(name)` gives each player a browser context of
-  their own, signed in over the API as `uniqueNickname(name)` — a nickname is an account and the e2e
-  database outlives a run, so two specs sharing a literal would share a player. Assert against
+  their own (with any context options it is passed, such as a `devices` entry), signed in over
+  the API as `uniqueNickname(name)` — a nickname is an account and the e2e database outlives a
+  run, so two specs sharing a literal would share a player. Assert against
   `player.nickname`, never the base name, and use `uniqueNickname()` for any nickname a spec types
   into the gate itself. `startMatch(gameId)` creates, joins and starts a match over
   HTTP, then opens it for every player and waits until each socket is live; its `players[0]` is

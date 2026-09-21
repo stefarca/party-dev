@@ -61,6 +61,13 @@ function serverKey(): Promise<string | null> {
   return keyRequest;
 }
 
+// Whether this deployment sends notifications at all, whatever this browser
+// can do. The install offer on iOS promises them only when it is true, since
+// there installing is what turns them on.
+export async function pushConfigured(): Promise<boolean> {
+  return (await serverKey()) !== null;
+}
+
 // Whether `subscription` was created against `key`. A subscription is bound
 // to the application server key it was made with, and a push service refuses
 // any message signed with a different one — so after a key rotation the only
