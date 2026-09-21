@@ -7,7 +7,9 @@ Cloudflare's free tier (Worker + Static Assets + Durable Objects + D1).
 _is_ the account — sign in with the same one on another device and your matches and record come
 with you — a dashboard that buckets your matches into "your turn" / "waiting on others" /
 "finished", five games (Battleship, Checkers, Connect 4, Tic-tac-toe and Trivia) playable over a
-live WebSocket (with an HTTP fallback for every action) with a plain-language move history,
+live WebSocket (with an HTTP fallback for every action) with a plain-language move history, a
+daily single-player challenge (2048) where everyone gets the same board each day, one run each,
+ranked on the day's chart,
 nudges for players who are newly up and not currently connected — to a Slack channel, and as a
 web push notification to whichever browsers a player has switched them on from — the whole UI in
 English or Italian (picked from the browser's languages, switchable from the header), and an
@@ -113,6 +115,18 @@ client UI) — nothing else.
 Two reference implementations of the phase types live under `games/`: Connect 4
 (`games/connect4`, sequential turns) and Trivia (`games/trivia`, simultaneous answers + deadline,
 with a reveal phase in between).
+
+### Daily games
+
+A daily game is a `DailyGameModule` (`shared/game.ts`): one player, one run a day, on the board
+every player gets that day. Each run is a `DailyDO` (`worker/daily.ts`) of its own, named by game,
+day and player, which is what limits a player to one run a day. A day is a UTC date. The board's
+seed is an HMAC of the game and the day under `SESSION_SECRET`: the same for everyone, and not
+something a player can work out from the date. A run ends by the game's own rules, when its player
+ends it, or at midnight UTC as it stands. Each run's `DailyDO` writes a row to D1's `daily_runs`
+when the run starts and again when it ends, and the chart is read from those rows. Each game
+chooses which way its scores rank (2048: most points first). See
+[`games/README.md`](./games/README.md) for adding one; `games/2048` is the reference.
 
 ## Deploying (operator, requires a Cloudflare account)
 

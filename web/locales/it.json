@@ -117,6 +117,63 @@
     "starting": "Si parte…",
     "play": "▸ Gioca"
   },
+  "daily": {
+    "section": "Sfida del giorno",
+    "sectionHint": "La stessa sfida per tutti, una partita a testa. Se ne apre una nuova ogni giorno a mezzanotte UTC.",
+    "chip": "Del giorno",
+    "newBoard": "Nuova sfida {{when}}",
+    "loadFailed": "Impossibile caricare la sfida di oggi.",
+    "tile": {
+      "label": "{{game}}, la sfida di oggi. {{status}}",
+      "play": "▸ Gioca la sfida di oggi",
+      "continue": "▸ Continua",
+      "seeChart": "▸ Vedi la classifica",
+      "fresh": "La stessa sfida per tutti. Una partita al giorno.",
+      "inProgress": "La tua partita è in corso.",
+      "scored": "Hai fatto {{score}}",
+      "placed": "{{rank}}º su {{count}}",
+      "leader": "In testa oggi: {{name}}, {{score}}",
+      "noScores": "Ancora nessun punteggio nella classifica di oggi."
+    },
+    "start": {
+      "title": "La sfida di oggi",
+      "body": "Oggi tutti giocano la stessa sfida, e hai una sola partita a disposizione. Quando la partita finisce, il suo punteggio entra nella classifica di oggi.",
+      "action": "Inizia la partita di oggi",
+      "starting": "Avvio…",
+      "failed": "Impossibile iniziare la partita."
+    },
+    "end": {
+      "trigger": "Termina partita",
+      "title": "Terminare la partita di oggi?",
+      "body": "Il punteggio fatto finora entra nella classifica di oggi, e non ci sarà un'altra partita fino a domani.",
+      "confirm": "Termina partita",
+      "cancel": "Continua a giocare",
+      "failed": "Impossibile terminare la partita."
+    },
+    "result": {
+      "title": "La partita di oggi è finita",
+      "score": "Hai fatto {{score}}.",
+      "rank": "Per ora sei {{rank}}º su {{count}} nella classifica di oggi.",
+      "unranked": "È finita senza un punteggio da mettere in classifica.",
+      "comeBack": "Nuova sfida {{when}}."
+    },
+    "dayOver": "La sfida di quel giorno è chiusa, e la tua partita è entrata nella sua classifica così com'era.",
+    "moveFailed": "Una mossa non è arrivata. La griglia mostra a che punto è davvero la tua partita.",
+    "chart": {
+      "title": "Classifica",
+      "label": "Classifica di {{day}}",
+      "previous": "Giorno precedente",
+      "next": "Giorno successivo",
+      "empty": "Nessuno ha ancora finito la partita di oggi.",
+      "emptyPast": "Nessuno ha giocato quel giorno.",
+      "playing_one": "{{count}} ancora in gioco.",
+      "playing_other": "{{count}} ancora in gioco.",
+      "you": "tu",
+      "rank": "{{rank}}º",
+      "unranked": "Nessun punteggio",
+      "loadFailed": "Impossibile caricare la classifica."
+    }
+  },
   "join": {
     "title": "Hai un codice?",
     "subtitle": "Unisciti alla partita di un collega",
@@ -226,18 +283,22 @@
   "errors": {
     "action_failed": "La tua mossa non è arrivata, riprova.",
     "already_started": "Questa partita è già iniziata.",
+    "day_over": "La sfida di quel giorno è chiusa.",
     "game_unavailable": "Al momento non si può iniziare questo gioco.",
     "invalid_action": "Questa mossa non è consentita.",
     "invalid_move": "Questa mossa non è consentita.",
     "lobby_full": "Questa lobby è piena.",
     "nickname_taken": "Quel nickname è di qualcun altro. Scegline un altro, oppure esci e usalo per accedere.",
     "no_identity": "La sessione è scaduta, accedi di nuovo.",
+    "no_run": "Non c'è ancora una partita da giocare. Inizia prima quella di oggi.",
     "not_a_player": "Non sei tra i giocatori di questa partita.",
     "not_active": "Questa partita non è in corso.",
     "not_found": "Nessuna partita con questo codice.",
     "not_host": "Solo l'host può avviare la partita.",
     "not_joinable": "Questa partita è già iniziata.",
+    "not_today": "La sfida di quel giorno non è ancora aperta.",
     "not_your_turn": "Non è il tuo turno.",
+    "run_over": "Questa partita è già finita.",
     "snapshot_failed": "Impossibile caricare questa partita.",
     "start_failed": "Impossibile avviare la partita.",
     "unknown_game": "Questo gioco non esiste.",

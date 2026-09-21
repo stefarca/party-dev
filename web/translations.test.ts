@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 
-import { GAME_CATALOG } from "../games/catalog";
+import { DAILY_CATALOG, GAME_CATALOG } from "../games/catalog";
 import { FALLBACK_LANGUAGE, LANGUAGES, NAMESPACES, matchLanguage, resources } from "./translations";
 
 // i18next picks a plural form by suffix, and languages have different sets of them (Italian has a
@@ -52,9 +52,12 @@ describe.each(NAMESPACES)("namespace %s", (namespace) => {
   });
 });
 
-test.each(GAME_CATALOG)("$id's English name matches the one the server reports", (game) => {
-  expect(flatten(resources[FALLBACK_LANGUAGE][game.id] ?? {}).get("name")).toBe(game.name);
-});
+test.each([...GAME_CATALOG, ...DAILY_CATALOG])(
+  "$id's English name matches the one the server reports",
+  (game) => {
+    expect(flatten(resources[FALLBACK_LANGUAGE][game.id] ?? {}).get("name")).toBe(game.name);
+  },
+);
 
 test.each([
   [["it-IT", "en-US"], "it"],

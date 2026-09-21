@@ -1,5 +1,6 @@
 import type { ComponentType } from "react";
 
+import G2048Icon from "./2048/icon";
 import BattleshipIcon from "./battleship/icon";
 import CheckersIcon from "./checkers/icon";
 import Connect4Icon from "./connect4/icon";
@@ -14,6 +15,7 @@ import TriviaIcon from "./trivia/icon";
 // these are `.tsx` modules. Statically imported rather than lazy like `gameUi`, because the
 // dashboard shows every game's tile at once and each icon is a few SVG paths.
 export const gameIcons: Record<string, ComponentType> = {
+  "2048": G2048Icon,
   battleship: BattleshipIcon,
   checkers: CheckersIcon,
   connect4: Connect4Icon,

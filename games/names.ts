@@ -2,7 +2,7 @@
 // Only Vite's `import.meta` types, for the glob below — the same narrow
 // reference web/translations.ts uses, and for the same reason.
 
-import { getGameMeta } from "./catalog";
+import { getDailyMeta, getGameMeta } from "./catalog";
 
 // A game's display name in one language, for the Worker.
 //
@@ -37,6 +37,7 @@ export function gameName(gameId: string, language: string): string {
     names.get(`${gameId}:${language}`) ??
     names.get(`${gameId}:en`) ??
     getGameMeta(gameId)?.name ??
+    getDailyMeta(gameId)?.name ??
     gameId
   );
 }

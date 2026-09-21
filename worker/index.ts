@@ -2,10 +2,11 @@ import { Hono } from "hono";
 
 import { api } from "./api";
 import { sessionMiddleware, type SessionBindings } from "./auth";
+import { DailyDO } from "./daily";
 import { MatchDO } from "./match";
 import { MATCH_CODE_RE, normalizeMatchCode } from "../shared/ids";
 
-export { MatchDO };
+export { DailyDO, MatchDO };
 
 const app = new Hono<SessionBindings>();
 

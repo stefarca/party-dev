@@ -1,0 +1,28 @@
+{
+  "name": "2048",
+  "loading": "Loading the board…",
+  "board": "Board",
+  "empty": "empty",
+  "stats": {
+    "label": "Your run",
+    "score": "Score",
+    "best": "Best tile",
+    "moves": "Moves"
+  },
+  "controls": "Slide the tiles",
+  "move": {
+    "up": "Slide up",
+    "down": "Slide down",
+    "left": "Slide left",
+    "right": "Slide right"
+  },
+  "hint": "Swipe the board, or use the arrow keys, to slide every tile at once. Two equal tiles that meet merge into one, and their sum goes on your score.",
+  "over": "No moves left: the board is full.",
+  "ended": "This run is over.",
+  "goal": "2048! Keep going, your score still counts.",
+  "announce": "Score {{score}}, best tile {{best}}",
+  "chart": {
+    "detail_one": "Best tile {{tile}} · {{count}} move",
+    "detail_other": "Best tile {{tile}} · {{count}} moves"
+  }
+}

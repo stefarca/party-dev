@@ -79,9 +79,12 @@
  *   board-hull on board-well (grid coordinates, as text)     6.02    6.02   >= 4.5
  *   board-peg on board-hole (a miss in the water)           16.15   16.15   >= 3.0
  *   seat-1-contrast on board-hull (ring of a hit on a ship)  6.86    6.86   >= 3.0
+ *   tile-ink on tile-1024 (a tile's number, tightest tile)   6.85    6.85   >= 4.5
+ *   tile-512 on board-well (a tile on the board, tightest)   5.65    5.65   >= 3.0
  *
- * The seat ramp and the board colours do not change between themes (see the
- * note on `--board-well` below), so both columns are identical for those.
+ * The seat ramp, the tile ramp and the board colours do not change between
+ * themes (see the note on `--board-well` below), so both columns are
+ * identical for those.
  */
 :root {
   color-scheme: dark;
@@ -176,6 +179,26 @@
      out alone, so a hit is ringed in `--seat-1-contrast` as well. */
   --board-hull: hsl(210, 14%, 64%);
   --board-peg: hsl(210, 40%, 92%);
+
+  /* 2048's tiles, one step of the party palette per doubling: cool and soft
+     at the bottom, hot by 512, with 2048 itself and everything past it in
+     the brand's own violets. Pieces on a board like the seat ramp, so the
+     same in both themes, and every one of them carries its number in the one
+     dark `--tile-ink` — the number, not the colour, is what says what a tile
+     is worth. */
+  --tile-ink: hsl(268, 60%, 10%);
+  --tile-2: hsl(268, 36%, 86%);
+  --tile-4: hsl(248, 62%, 82%);
+  --tile-8: hsl(202, 92%, 68%);
+  --tile-16: hsl(176, 70%, 52%);
+  --tile-32: hsl(152, 72%, 52%);
+  --tile-64: hsl(88, 68%, 54%);
+  --tile-128: hsl(48, 96%, 60%);
+  --tile-256: hsl(32, 96%, 60%);
+  --tile-512: hsl(14, 92%, 64%);
+  --tile-1024: hsl(342, 88%, 70%);
+  --tile-2048: hsl(300, 78%, 72%);
+  --tile-super: hsl(268, 95%, 76%);
 
   /* Seat colours: a game-agnostic ramp any game can assign to up to 4
      players. Colour is never the only signal — games pair these with a glyph
@@ -538,6 +561,33 @@ body {
   100% {
     transform: scale(0.7);
     opacity: 0.2;
+  }
+}
+
+/* A 2048 tile landing on an empty cell: it grows out of nothing, once the
+   slide that made room for it has had time to finish. */
+@keyframes party-tile-spawn {
+  0% {
+    transform: scale(0);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* Two 2048 tiles merging: the one that stays swells for a moment as it
+   takes the other in. */
+@keyframes party-tile-merge {
+  0% {
+    transform: scale(1);
+  }
+  45% {
+    transform: scale(1.16);
+  }
+  100% {
+    transform: scale(1);
   }
 }
 

@@ -5,15 +5,22 @@ import { useSyncExternalStore } from "react";
 // without touching every component that navigates.
 //
 // Routes:
-//   /            -> dashboard
-//   /m/:code     -> match/lobby page
+//   /                -> dashboard
+//   /m/:code         -> match/lobby page
+//   /daily/:gameId   -> today's run at a daily game, and its chart
 
-export type Route = { name: "dashboard" } | { name: "match"; code: string } | { name: "not-found" };
+export type Route =
+  | { name: "dashboard" }
+  | { name: "match"; code: string }
+  | { name: "daily"; gameId: string }
+  | { name: "not-found" };
 
 function parseRoute(pathname: string): Route {
   if (pathname === "/") return { name: "dashboard" };
   const match = pathname.match(/^\/m\/([^/]+)\/?$/);
   if (match) return { name: "match", code: match[1] };
+  const daily = pathname.match(/^\/daily\/([^/]+)\/?$/);
+  if (daily) return { name: "daily", gameId: decodeURIComponent(daily[1]) };
   return { name: "not-found" };
 }
 

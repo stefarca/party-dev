@@ -1,5 +1,5 @@
 import { Button } from "@heroui/react";
-import { Component, Suspense, lazy, useCallback, useEffect, useRef, useState } from "react";
+import { Suspense, lazy, useCallback, useEffect, useRef, useState } from "react";
 import type { ComponentType, LazyExoticComponent, ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -19,6 +19,7 @@ import { clearMatchWaiting, setMatchWaiting } from "../badge";
 import { ConnectionBadge } from "../components/ConnectionBadge";
 import { Confetti } from "../components/Confetti";
 import { DebugGameView } from "../components/DebugGameView";
+import { GameErrorBoundary } from "../components/GameErrorBoundary";
 import { GameGlyph } from "../components/GameGlyph";
 import { GameSurface } from "../components/GameSurface";
 import { HistoryPanel } from "../components/HistoryPanel";
@@ -333,29 +334,6 @@ function getLazyUi(gameId: string): LazyExoticComponent<ComponentType<GameUiProp
     lazyUiCache.set(gameId, cached);
   }
   return cached;
-}
-
-// Catches a throw from a broken game module's render so it degrades to
-// `fallback` instead of white-screening the whole app. `key`d by match code
-// from the caller so navigating to a different match always starts with a
-// clean (non-tripped) boundary.
-class GameErrorBoundary extends Component<
-  { children: ReactNode; fallback: ReactNode },
-  { hasError: boolean }
-> {
-  state = { hasError: false };
-
-  static getDerivedStateFromError() {
-    return { hasError: true };
-  }
-
-  componentDidCatch(error: unknown, info: unknown) {
-    console.error("game UI crashed", error, info);
-  }
-
-  render() {
-    return this.state.hasError ? this.props.fallback : this.props.children;
-  }
 }
 
 function GameUiHost({

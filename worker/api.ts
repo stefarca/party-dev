@@ -1,10 +1,15 @@
 import { Hono } from "hono";
+import type { Context } from "hono";
+import type { ContentfulStatusCode } from "hono/utils/http-status";
 
-import { GAME_CATALOG, getGameMeta } from "../games/catalog";
+import { GAME_CATALOG, getDailyMeta, getGameMeta } from "../games/catalog";
+import { dayEnd, dayOf, isDay } from "../shared/daily";
 import { MATCH_CODE_RE, generateMatchCode, normalizeMatchCode } from "../shared/ids";
 import {
   ActionRequestSchema,
   CreateMatchRequestSchema,
+  DailyFinishRequestSchema,
+  DailyStartRequestSchema,
   IdentityRequestSchema,
   JoinMatchRequestSchema,
   PushSubscribeRequestSchema,
@@ -12,7 +17,13 @@ import {
   SetVisibilityRequestSchema,
   StartMatchRequestSchema,
 } from "../shared/protocol";
-import type { MatchSummary, PushKeyResponse } from "../shared/protocol";
+import type {
+  DailyHub,
+  DailyRunSnapshot,
+  DailyToday,
+  MatchSummary,
+  PushKeyResponse,
+} from "../shared/protocol";
 import type { Session, SessionBindings } from "./auth";
 import {
   MissingSecretError,
@@ -21,6 +32,8 @@ import {
   sessionMiddleware,
   writeSession,
 } from "./auth";
+import { dailyChart, dailySummaries } from "./chart";
+import { runName } from "./daily";
 import { HUB_LIST_LIMIT, openMatches, summarize } from "./hub";
 import type { MatchIndexRow } from "./hub";
 import {
@@ -544,6 +557,124 @@ api.get("/matches", requireSession(), async (c) => {
   }
 
   return c.json({ yourTurn, waiting, finished, open, stats });
+});
+
+// ---------------------------------------------------------------------------
+// Daily games. Each run is its own DailyDO, named by game, day and player, so
+// these routes hold no run state and never need to look one up: the session
+// says who, the path says which game, and the server's clock (or the path,
+// for a run already under way) says which day. A run's day is never taken
+// from anything but the path it was started on, and start always means today.
+// ---------------------------------------------------------------------------
+
+function dailyRun(env: Env, gameId: string, day: string, playerId: string) {
+  return env.DAILY.get(env.DAILY.idFromName(runName(gameId, day, playerId)));
+}
+
+// A DailyDO's reply, passed through: its error codes are the ones the client
+// has words for. Only a failure it did not explain becomes `fallback`.
+async function relayDaily(
+  c: Context<SessionBindings>,
+  res: Response,
+  fallback: string,
+): Promise<Response> {
+  if (res.ok || (res.status >= 400 && res.status < 500)) {
+    return c.json(await res.json(), res.status as ContentfulStatusCode);
+  }
+  return c.json({ error: fallback }, 500);
+}
+
+// Today's daily games, as the hub shows them.
+api.get("/daily", requireSession(), async (c) => {
+  const session = c.get("session") as Session;
+  const day = dayOf(Date.now());
+  const games = await dailySummaries(c.env.DB, day, session.pid);
+  return c.json<DailyHub>({ day, endsAt: dayEnd(day), games });
+});
+
+// The caller's run at `gameId` today, or null if they have not started one.
+api.get("/daily/:gameId", requireSession(), async (c) => {
+  const session = c.get("session") as Session;
+  const gameId = c.req.param("gameId");
+  if (!getDailyMeta(gameId)) return c.json({ error: "unknown_game" }, 404);
+
+  const day = dayOf(Date.now());
+  const res = await dailyRun(c.env, gameId, day, session.pid).fetch(
+    `http://do/run?playerId=${encodeURIComponent(session.pid)}`,
+  );
+  if (!res.ok) return relayDaily(c, res, "run_failed");
+  const { run } = (await res.json()) as { run: DailyRunSnapshot | null };
+  return c.json<DailyToday>({ day, endsAt: dayEnd(day), run });
+});
+
+// Starts the caller's run at `gameId` today. Idempotent: a player who already
+// has one gets it back as it stands, which is what keeps it to one a day.
+api.post("/daily/:gameId/start", requireSession(), async (c) => {
+  const session = c.get("session") as Session;
+  const gameId = c.req.param("gameId");
+  if (!getDailyMeta(gameId)) return c.json({ error: "unknown_game" }, 404);
+  const parsed = DailyStartRequestSchema.safeParse(await readJsonBody(c.req.raw));
+  if (!parsed.success) return c.json({ error: "invalid_body" }, 400);
+
+  const day = dayOf(Date.now());
+  const res = await dailyRun(c.env, gameId, day, session.pid).fetch("http://do/start", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ gameId, day, playerId: session.pid }),
+  });
+  if (!res.ok) return relayDaily(c, res, "start_failed");
+  const run = (await res.json()) as DailyRunSnapshot;
+  return c.json<DailyToday>({ day, endsAt: dayEnd(day), run });
+});
+
+// One action on the caller's run of `day`. The day is the run's own, from
+// the path, so a move made just after midnight reaches the run it was meant
+// for and is refused there as `day_over`, rather than landing on a run of
+// today's that was never started.
+api.post("/daily/:gameId/:day/actions", requireSession(), async (c) => {
+  const session = c.get("session") as Session;
+  const gameId = c.req.param("gameId");
+  const day = c.req.param("day");
+  if (!getDailyMeta(gameId)) return c.json({ error: "unknown_game" }, 404);
+  if (!isDay(day)) return c.json({ error: "not_found" }, 404);
+  const parsed = ActionRequestSchema.safeParse(await readJsonBody(c.req.raw));
+  if (!parsed.success) return c.json({ error: "invalid_body" }, 400);
+
+  const res = await dailyRun(c.env, gameId, day, session.pid).fetch("http://do/action", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ playerId: session.pid, action: parsed.data.action }),
+  });
+  return relayDaily(c, res, "action_failed");
+});
+
+// Ends the caller's run of `day` now, as it stands, and puts it on the chart.
+api.post("/daily/:gameId/:day/finish", requireSession(), async (c) => {
+  const session = c.get("session") as Session;
+  const gameId = c.req.param("gameId");
+  const day = c.req.param("day");
+  if (!getDailyMeta(gameId)) return c.json({ error: "unknown_game" }, 404);
+  if (!isDay(day)) return c.json({ error: "not_found" }, 404);
+  const parsed = DailyFinishRequestSchema.safeParse(await readJsonBody(c.req.raw));
+  if (!parsed.success) return c.json({ error: "invalid_body" }, 400);
+
+  const res = await dailyRun(c.env, gameId, day, session.pid).fetch("http://do/finish", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ playerId: session.pid }),
+  });
+  return relayDaily(c, res, "finish_failed");
+});
+
+// `gameId`'s chart for `day`, today or any day before it. A day that has not
+// begun has no chart, rather than an empty one that says nobody played.
+api.get("/daily/:gameId/:day/chart", requireSession(), async (c) => {
+  const session = c.get("session") as Session;
+  const meta = getDailyMeta(c.req.param("gameId"));
+  const day = c.req.param("day");
+  if (!meta) return c.json({ error: "unknown_game" }, 404);
+  if (!isDay(day) || day > dayOf(Date.now())) return c.json({ error: "not_found" }, 404);
+  return c.json(await dailyChart(c.env.DB, meta, day, session.pid));
 });
 
 api.notFound((c) => c.json({ ok: false, error: "not found" }, 404));

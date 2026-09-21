@@ -1,5 +1,9 @@
 import type { GameMeta } from "../games/catalog";
 import type {
+  DailyChart,
+  DailyHub,
+  DailyRunSnapshot,
+  DailyToday,
   EventsResponse,
   MatchEvent,
   MatchSnapshot,
@@ -201,4 +205,52 @@ export function postMatchStart(id: string): Promise<MatchSnapshot> {
     method: "POST",
     body: JSON.stringify({}),
   });
+}
+
+// ---------------------------------------------------------------------------
+// Daily games. The server's clock says what today is, so the client never
+// works it out: it reads `day` from the replies below and hands it back when
+// it acts on that day's run.
+// ---------------------------------------------------------------------------
+
+export function getDailyHub(): Promise<DailyHub> {
+  return request<DailyHub>("/api/daily");
+}
+
+// Today, and the player's run at `gameId` on it (null until they start one).
+export function getDailyToday(gameId: string): Promise<DailyToday> {
+  return request<DailyToday>(`/api/daily/${encodeURIComponent(gameId)}`);
+}
+
+// Starts today's run, or hands back the one already started.
+export function startDailyRun(gameId: string): Promise<DailyToday> {
+  return request<DailyToday>(`/api/daily/${encodeURIComponent(gameId)}/start`, {
+    method: "POST",
+    body: JSON.stringify({}),
+  });
+}
+
+export function postDailyAction(
+  gameId: string,
+  day: string,
+  action: unknown,
+): Promise<DailyRunSnapshot> {
+  return request<DailyRunSnapshot>(
+    `/api/daily/${encodeURIComponent(gameId)}/${encodeURIComponent(day)}/actions`,
+    { method: "POST", body: JSON.stringify({ action }) },
+  );
+}
+
+// Ends the run now, as it stands.
+export function finishDailyRun(gameId: string, day: string): Promise<DailyRunSnapshot> {
+  return request<DailyRunSnapshot>(
+    `/api/daily/${encodeURIComponent(gameId)}/${encodeURIComponent(day)}/finish`,
+    { method: "POST", body: JSON.stringify({}) },
+  );
+}
+
+export function getDailyChart(gameId: string, day: string): Promise<DailyChart> {
+  return request<DailyChart>(
+    `/api/daily/${encodeURIComponent(gameId)}/${encodeURIComponent(day)}/chart`,
+  );
 }

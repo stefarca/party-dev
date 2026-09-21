@@ -1,0 +1,28 @@
+{
+  "name": "2048",
+  "loading": "Caricamento della griglia…",
+  "board": "Griglia",
+  "empty": "vuota",
+  "stats": {
+    "label": "La tua partita",
+    "score": "Punti",
+    "best": "Tessera migliore",
+    "moves": "Mosse"
+  },
+  "controls": "Fai scorrere le tessere",
+  "move": {
+    "up": "Scorri in su",
+    "down": "Scorri in giù",
+    "left": "Scorri a sinistra",
+    "right": "Scorri a destra"
+  },
+  "hint": "Scorri sulla griglia, o usa le frecce, per far scivolare tutte le tessere insieme. Due tessere uguali che si incontrano diventano una sola, e la loro somma va nel punteggio.",
+  "over": "Nessuna mossa rimasta: la griglia è piena.",
+  "ended": "Questa partita è finita.",
+  "goal": "2048! Continua, il punteggio conta ancora.",
+  "announce": "Punti {{score}}, tessera migliore {{best}}",
+  "chart": {
+    "detail_one": "Tessera migliore {{tile}} · {{count}} mossa",
+    "detail_other": "Tessera migliore {{tile}} · {{count}} mosse"
+  }
+}

@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { decodeBase64Url } from "./base64url";
-import type { ActionDescription, Result } from "./game";
+import type { ActionDescription, DailyScore, Result } from "./game";
 import { NICKNAME_MAX_LENGTH } from "./nickname";
 
 // The single home for cross-boundary types and zod schemas.
@@ -266,6 +266,102 @@ export interface PongMessage {
 }
 
 export type ServerMessage = SnapshotMessage | EventsMessage | ErrorMessage | PongMessage;
+
+// ---------------------------------------------------------------------------
+// Daily games: one run per player per day, on the board everyone gets that
+// day, ranked on the day's chart. `DailyDO` (worker/daily.ts) holds each run;
+// the chart is read from the `daily_runs` index (worker/chart.ts). Plain
+// HTTP only — a run has a single player, so there is nobody else's move to
+// push to it.
+// ---------------------------------------------------------------------------
+
+export type DailyRunStatus = "active" | "done";
+
+// A player's run as they see it. Shared by every daily route that returns a
+// run, the way `MatchSnapshot` is by the match routes: `view` is the game's
+// own `view()`, never raw state.
+export interface DailyRunSnapshot {
+  gameId: string;
+  day: string;
+  status: DailyRunStatus;
+  view: unknown;
+  // What the run scores as it stands; final once `status` is "done".
+  score: DailyScore;
+  startedAt: number;
+  finishedAt: number | null;
+  // When the day ends, and a run still going with it.
+  endsAt: number;
+}
+
+// Reply to GET /api/daily/:gameId and POST /api/daily/:gameId/start: today,
+// by the server's clock, and the caller's run on it, if they have one.
+export interface DailyToday {
+  day: string;
+  endsAt: number;
+  run: DailyRunSnapshot | null;
+}
+
+// One finished run on a day's chart. Names come from the player registry
+// when the chart is read, like every roster.
+export interface DailyChartEntry {
+  playerId: PlayerId;
+  nickname: string;
+  status: DailyRunStatus;
+  // Equal scores share a rank. Null for a run with no rankable score, or one
+  // still going.
+  rank: number | null;
+  score: number | null;
+  detail: ActionDescription | null;
+  finishedAt: number | null;
+}
+
+// Reply to GET /api/daily/:gameId/:day/chart.
+export interface DailyChart {
+  gameId: string;
+  day: string;
+  // The finished runs, best first, at most a page of them.
+  entries: DailyChartEntry[];
+  // The caller's own run, wherever it placed, so it can be shown even when it
+  // is not in `entries`. Null if they have none that day.
+  mine: DailyChartEntry | null;
+  // How many runs are on the chart, and how many are still going.
+  finished: number;
+  playing: number;
+}
+
+// One daily game on the hub.
+export interface DailyGameSummary {
+  gameId: string;
+  // The caller's run today, or null until they start one.
+  mine: { status: DailyRunStatus; score: number | null; rank: number | null } | null;
+  finished: number;
+  // Whoever tops today's chart, or null before anyone has a ranked score.
+  leader: { playerId: PlayerId; nickname: string; score: number } | null;
+}
+
+// Reply to GET /api/daily.
+export interface DailyHub {
+  day: string;
+  endsAt: number;
+  games: DailyGameSummary[];
+}
+
+// Bodies of POST /api/daily/:gameId/start and /api/daily/:gameId/:day/finish.
+// Neither takes one; both still run the body through a schema, like the match
+// routes that take none, so an unexpected payload is a 400 rather than
+// ignored. A daily action's body is `ActionRequestSchema`, the same as a
+// match's.
+export const DailyStartRequestSchema = z.object({}).strict();
+export const DailyFinishRequestSchema = z.object({}).strict();
+
+// Consumed by `DailyPage` / lazily-loaded daily game UI components. The page
+// queues whatever `send` is given and posts it in order, so a game UI may
+// call it as fast as its player acts.
+export interface DailyUiProps {
+  view: unknown;
+  status: DailyRunStatus;
+  send: (action: unknown) => void;
+}
 
 // Consumed by `MatchPage` / lazily-loaded per-game UI components
 // (declared here rather than in games/registry.ts because it depends on

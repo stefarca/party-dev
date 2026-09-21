@@ -16,9 +16,17 @@
     "run_worker_first": ["/api/*", "/ws/*"]
   },
   "durable_objects": {
-    "bindings": [{ "name": "MATCH", "class_name": "MatchDO" }]
+    // MATCH holds one multiplayer match per object; DAILY one player's run at
+    // one daily game on one day (worker/daily.ts).
+    "bindings": [
+      { "name": "MATCH", "class_name": "MatchDO" },
+      { "name": "DAILY", "class_name": "DailyDO" }
+    ]
   },
-  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["MatchDO"] }],
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["MatchDO"] },
+    { "tag": "v2", "new_sqlite_classes": ["DailyDO"] }
+  ],
   "d1_databases": [
     {
       "binding": "DB",

@@ -15,6 +15,7 @@ import { ThemeToggle } from "./components/ThemeToggle";
 import { UpdatePrompt } from "./components/UpdatePrompt";
 import { errorText } from "./errors";
 import { useLanguage } from "./i18n";
+import { DailyPage } from "./routes/DailyPage";
 import { Dashboard } from "./routes/Dashboard";
 import { MatchPage } from "./routes/MatchPage";
 import { NicknameGate } from "./routes/NicknameGate";
@@ -188,6 +189,7 @@ function RouteContent() {
   const route = useRoute();
   if (route.name === "dashboard") return <Dashboard />;
   if (route.name === "match") return <MatchPage code={route.code} />;
+  if (route.name === "daily") return <DailyPage gameId={route.gameId} />;
   return (
     <main id="main-content" className="app-container">
       <div className="flex flex-col items-center gap-4 py-16 text-center">

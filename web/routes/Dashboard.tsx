@@ -4,12 +4,22 @@ import type { CSSProperties, FormEvent } from "react";
 import { AlertDialog, Button, FieldError, Form, Input, Tabs, TextField } from "@heroui/react";
 import { useTranslation } from "react-i18next";
 
+import { getDailyMeta } from "../../games/catalog";
 import type { GameMeta } from "../../games/catalog";
 import { normalizeMatchCode } from "../../shared/ids";
-import type { MatchSummary, MatchVisibility } from "../../shared/protocol";
-import { ApiError, createMatch, getGames, joinMatch, listMatches, resetStats } from "../api";
+import type { DailyHub, MatchSummary, MatchVisibility } from "../../shared/protocol";
+import {
+  ApiError,
+  createMatch,
+  getDailyHub,
+  getGames,
+  joinMatch,
+  listMatches,
+  resetStats,
+} from "../api";
 import type { MatchBuckets, PlayerStats } from "../api";
 import { setDashboardYourTurn } from "../badge";
+import { DailyTile } from "../components/DailyTile";
 import { GameGlyph } from "../components/GameGlyph";
 import { InstallPrompt } from "../components/InstallPrompt";
 import { MatchCard } from "../components/MatchCard";
@@ -339,6 +349,41 @@ function StatsStrip({ stats, onReset }: { stats: PlayerStats; onReset: () => Pro
   );
 }
 
+// The day's single-player games, above the shelf of matches to start. Hidden
+// until the first read of them lands, and kept as it was when a later poll
+// fails, so a hiccup never blanks it.
+function DailySection({ daily }: { daily: DailyHub }) {
+  const { t } = useTranslation();
+  const now = Date.now();
+  const games = daily.games.flatMap((summary) => {
+    const meta = getDailyMeta(summary.gameId);
+    return meta ? [{ meta, summary }] : [];
+  });
+  if (games.length === 0) return null;
+  return (
+    <section className="mb-10">
+      <div className="mb-3 flex flex-col gap-1">
+        <h2 className="m-0 font-display text-sm font-bold tracking-[0.15em] text-[var(--text-muted)] uppercase">
+          {t("daily.section")}
+        </h2>
+        <p className="m-0 text-sm text-[var(--text-muted)]">{t("daily.sectionHint")}</p>
+      </div>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {games.map(({ meta, summary }, i) => (
+          <DailyTile
+            key={meta.id}
+            meta={meta}
+            summary={summary}
+            endsAt={daily.endsAt}
+            now={now}
+            style={staggerStyle(i)}
+          />
+        ))}
+      </div>
+    </section>
+  );
+}
+
 type BucketKey = "yourTurn" | "waiting" | "finished" | "open";
 
 // The first three are the player's own matches; `open` is everyone's public
@@ -355,6 +400,7 @@ export function Dashboard() {
   const { player, notifyUnauthorized } = useSession();
   const [buckets, setBuckets] = useState<MatchBuckets | null>(null);
   const [games, setGames] = useState<GameMeta[]>([]);
+  const [daily, setDaily] = useState<DailyHub | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -376,9 +422,16 @@ export function Dashboard() {
 
   const refresh = useCallback(async () => {
     try {
-      const [nextBuckets, nextGames] = await Promise.all([listMatches(), getGames()]);
+      // The daily games are a section of their own, so failing to read them
+      // costs that section, never the hub.
+      const [nextBuckets, nextGames, nextDaily] = await Promise.all([
+        listMatches(),
+        getGames(),
+        getDailyHub().catch(() => null),
+      ]);
       setBuckets(nextBuckets);
       setGames(nextGames);
+      if (nextDaily) setDaily(nextDaily);
       setError(null);
       // The tab badge: the dashboard's "your turn" bucket is the full,
       // authoritative set of matches awaiting this player.
@@ -526,7 +579,9 @@ export function Dashboard() {
   };
   const turnCount = data.yourTurn.length;
   // Someone who has not played anything yet has no reason to come back, so is not asked to install.
-  const hasOwnMatches = data.yourTurn.length + data.waiting.length + data.finished.length > 0;
+  const hasOwnMatches =
+    data.yourTurn.length + data.waiting.length + data.finished.length > 0 ||
+    (daily?.games.some((game) => game.mine !== null) ?? false);
   // Coming-soon games go at the very end, after the join tile, so every
   // tile that does something sits together at the front of the shelf.
   const playable = games.filter((g) => !g.comingSoon);
@@ -547,6 +602,8 @@ export function Dashboard() {
         )}
         {hasOwnMatches && <InstallPrompt className="mt-5" />}
       </section>
+
+      {daily && <DailySection daily={daily} />}
 
       <section className="mb-10">
         <div className="mb-3 flex flex-wrap items-start justify-between gap-x-6 gap-y-2">
