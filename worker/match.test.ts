@@ -283,7 +283,7 @@ function createFakeCtx(
     getWebSocketAutoResponseTimestamp: (ws: FakeSocket) => ws.pingedAt,
     acceptWebSocket: () => {},
     setWebSocketAutoResponse: () => {},
-    // `nudgeHook` hands its name lookup and Slack call to the runtime;
+    // `sendNudges` hands its name lookup and Slack call to the runtime;
     // nothing here has a webhook configured, so running it inline is enough.
     waitUntil: (promise: Promise<unknown>) => void promise,
   } as unknown as DurableObjectState;
@@ -862,5 +862,32 @@ describe("MatchDO nudges", () => {
 
     const sent = await nudges();
     expect(sent.map((text) => text.split(" ")[0])).toEqual(["Alice", "Bob", "Alice"]);
+  });
+
+  // The counter seats up to four, so the lobby fills with the fourth player.
+  it("tells a host who has looked away once the last seat is taken, and only then", async () => {
+    const { matchDo, db } = await awayMatch(["alice", "bob"]);
+    db.registry.dave = "Dave";
+    await matchDo.fetch(jsonRequest("/lobby/join", { playerId: "carol" }));
+    expect(await nudges()).toEqual([]);
+
+    await matchDo.fetch(jsonRequest("/lobby/join", { playerId: "dave" }));
+    const ready = [expect.stringMatching(/^Alice can start \w+, the lobby is full/)];
+    expect(await nudges()).toEqual(ready);
+
+    // A lobby fills once: nothing else that happens to it while full says so again.
+    await matchDo.fetch(jsonRequest("/lobby/join", { playerId: "dave" }));
+    await matchDo.fetch(
+      jsonRequest("/lobby/visibility", { playerId: "alice", visibility: "public" }),
+    );
+    expect(await nudges()).toEqual(ready);
+  });
+
+  it("does not tell a host who is looking at the lobby that it is full", async () => {
+    const { matchDo, sockets, db } = await awayMatch(["alice", "bob", "carol"]);
+    db.registry.dave = "Dave";
+    sockets.alice.pingedAt = new Date();
+    await matchDo.fetch(jsonRequest("/lobby/join", { playerId: "dave" }));
+    expect(await nudges()).toEqual([]);
   });
 });

@@ -96,7 +96,7 @@ the verified session and never from a client payload.
 and `alarm()`.
 Its seven stages run in a binding order: persist → append events → recompute
 `waitingOn`/`deadline` → reconcile the DO alarm → broadcast a per-player snapshot → sync the D1
-index → nudge newly-waited-on disconnected players. Two rules hold inside it:
+index → nudge newly-waited-on disconnected players (and the host of a lobby that commit filled). Two rules hold inside it:
 
 - Stages 1–2 are synchronous and protected by the DO input gate. Every stage after the first
   `await` must re-read `this.readMatch()` and recompute via `deriveWaitingAndDeadline()` before
@@ -114,7 +114,11 @@ waited-on, not watching, and past the rate limit (`shouldNudge` in `worker/nudge
 player per match per turn, plus a 10-minute floor under a nudge the player has not answered, with
 `nudgedAt` kept on the DO record). A move answers a nudge — `handleAction` drops the mover's
 `nudgedAt` entry — so a player who is actually playing hears about every turn, however quick; the
-floor only holds back a player whose `waitingOn` keeps flapping while they stay away. "Watching"
+floor only holds back a player whose `waitingOn` keeps flapping while they stay away. A lobby waits
+on nobody, so the one nudge `waitingOn` cannot produce has its own trigger: the join that takes a
+lobby's last seat (`maxPlayers`) nudges the host, if they are not watching, with kind `lobbyFull`
+instead of `turn` — no rate limit, since nobody leaves a lobby and it fills once. It is left out of
+`waitingOn` on purpose, since that also drives the hub's `waiting` flag and the app badge. "Watching"
 is `MatchDO.isWatching()`: a socket counts only while its page keeps up the heartbeat (below), and
 a hidden page closes its socket, so neither a sleeping laptop's leftover socket nor a background
 tab spares its player a nudge. Both channels then get that same list, and the roster's names,
@@ -136,8 +140,8 @@ every existing subscription, because a subscription is bound to the key it was c
 
 **A notification is the one player-facing string that cannot go through i18next.** It is composed
 in the Worker, in the language the device stored when it subscribed (`push_subscriptions.language`),
-from the `COPY` table in `worker/push.ts`; a language `web/locales/` ships and that table lacks is
-a test failure. The game's name comes from the same locale files the client reads, through
+from the `COPY` table in `worker/push.ts`, which has one set of strings per nudge kind; a language
+`web/locales/` ships and that table lacks is a test failure. The game's name comes from the same locale files the client reads, through
 `games/names.ts`. The client sends its language again on every load and every switch, so the row
 follows the app. The body names the reader's opponents, never the match code, which is not
 something a player reads. The payload carries a path, never `PUBLIC_BASE_URL`, so a misconfigured

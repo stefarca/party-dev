@@ -198,10 +198,27 @@ describe("wording", () => {
     expect(composeNudge("en", match).url).toBe("/m/ABCDEF");
   });
 
+  it("tells a host their lobby is full, naming who joined", () => {
+    const lobby = { ...match, kind: "lobbyFull" as const };
+    expect(composeNudge("en", lobby)).toMatchObject({
+      title: "Your Connect 4 lobby is full",
+      body: "Ada joined. Start the match when you're ready.",
+    });
+    expect(composeNudge("it", lobby)).toMatchObject({
+      title: "La tua lobby di Forza 4 è piena",
+      body: "Ada è entrato. Inizia la partita quando vuoi.",
+    });
+    expect(composeNudge("it", { ...lobby, opponents: ["Ada", "Bea"] }).body).toBe(
+      "Ada e Bea sono entrati. Inizia la partita quando vuoi.",
+    );
+  });
+
   it("tags on the match, so a second nudge replaces the first", () => {
     const first = composeNudge("en", match);
     const second = composeNudge("en", { ...match, gameId: "trivia", opponents: ["Bea"] });
     expect(second.tag).toBe(first.tag);
+    // The first turn replaces the lobby's "ready to start" the same way.
+    expect(composeNudge("en", { ...match, kind: "lobbyFull" }).tag).toBe(first.tag);
   });
 });
 

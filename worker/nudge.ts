@@ -4,7 +4,7 @@ import type { PlayerId } from "../shared/protocol";
 // one `fetch()` to a secret URL with Slack's plain `text` payload — no Block
 // Kit, no retries. A nudge is always best-effort: nothing in this file may
 // ever throw out of `sendSlackNudge`, because it is fired from
-// `MatchDO.nudgeHook()` via `ctx.waitUntil()`, and a throw reaching `alarm()`
+// `MatchDO.sendNudges()` via `ctx.waitUntil()`, and a throw reaching `alarm()`
 // would be retried up to 6 times.
 
 // The floor under a nudge nobody answered (see `shouldNudge` below), on top
@@ -16,18 +16,25 @@ export interface NudgePlayer {
   nickname: string;
 }
 
+// What a nudge is about. "turn": the game is waiting on these players.
+// "lobbyFull": their lobby has filled every seat, and only the host (who is
+// the one player it is ever sent to) can start the match.
+export type NudgeKind = "turn" | "lobbyFull";
+
 export interface NudgeParams {
   matchId: string;
   gameName: string;
   players: NudgePlayer[];
   url: string;
+  kind?: NudgeKind; // "turn" when absent
 }
 
 // One message regardless of how many players just became waited-on at once
 // (a trivia round start must be a single Slack message, never N) — the
 // caller is responsible for batching every eligible player into one call.
-function composeMessage({ gameName, players, url }: NudgeParams): string {
+function composeMessage({ gameName, players, url, kind = "turn" }: NudgeParams): string {
   const names = players.map((p) => p.nickname).join(", ");
+  if (kind === "lobbyFull") return `${names} can start ${gameName}, the lobby is full: ${url}`;
   const verb = players.length === 1 ? "is" : "are";
   return `${names} ${verb} up in ${gameName}: ${url}`;
 }

@@ -46,6 +46,24 @@ describe("sendSlackNudge", () => {
     fetchSpy.mockRestore();
   });
 
+  it("tells a host their lobby is full instead of saying they are up", async () => {
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(new Response(null, { status: 200 }));
+    await sendSlackNudge(fakeEnv("http://example.test/hook"), {
+      matchId: "m1",
+      gameName: "Connect 4",
+      players: [{ id: "ada", nickname: "Ada" }],
+      url: "http://localhost:5173/m/M1",
+      kind: "lobbyFull",
+    });
+    const [, init] = fetchSpy.mock.calls[0];
+    expect((JSON.parse(init?.body as string) as { text: string }).text).toBe(
+      "Ada can start Connect 4, the lobby is full: http://localhost:5173/m/M1",
+    );
+    fetchSpy.mockRestore();
+  });
+
   it("batches several players into exactly one POST, not one per player", async () => {
     const fetchSpy = vi
       .spyOn(globalThis, "fetch")

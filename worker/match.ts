@@ -20,6 +20,7 @@ import type {
   ServerMessage,
 } from "../shared/protocol";
 import { sendSlackNudge, shouldNudge } from "./nudge";
+import type { NudgeKind } from "./nudge";
 import { sendPushNudges } from "./push";
 
 // Durable Object gotchas that apply to every method added to this class:
@@ -108,6 +109,14 @@ function listingExpiry(record: MatchRecord): number | null {
   return record.status === "lobby" && record.visibility === "public"
     ? (record.publicUntil ?? null)
     : null;
+}
+
+// Whether `record` is a lobby with every seat taken, so all that is left is
+// for the host to start it. Every game's `maxPlayers` is at least its
+// `minPlayers`, so a full lobby can always be started.
+function lobbyIsFull(record: MatchRecord): boolean {
+  const maxPlayers = getGame(record.gameId)?.meta.maxPlayers ?? Infinity;
+  return record.status === "lobby" && record.players.length >= maxPlayers;
 }
 
 // Maps an internal error `code` (see ActionResult/MutationResult above) to
@@ -433,6 +442,7 @@ export class MatchDO extends DurableObject<Env> {
     const priorRecord = this.readMatch();
     const previousWaiting =
       module && priorRecord?.state != null ? module.waitingOn(priorRecord.state) : [];
+    const wasFull = priorRecord !== null && lobbyIsFull(priorRecord);
 
     // Auto-finalize: whenever the state a caller just assigned to
     // `record.state` has a non-null result(), the match is done —
@@ -537,7 +547,8 @@ export class MatchDO extends DurableObject<Env> {
     current = this.readMatch() ?? record;
     derived = this.deriveWaitingAndDeadline(module, current);
 
-    // 7. Nudge players newly waited-on who are not watching.
+    // 7. Nudge players newly waited-on who are not watching, and the host of
+    // a lobby this commit filled.
     // `newlyWaiting` is computed from `current`/`derived` above — the
     // freshest truth after every prior stage's await — and from
     // `previousWaiting` captured before this commit touched anything, so a
@@ -548,7 +559,19 @@ export class MatchDO extends DurableObject<Env> {
     // (see its own comment), so a round of new waiters created there nudges
     // exactly like a normal move would.
     const newlyWaiting = derived.waitingOn.filter((id) => !previousWaiting.includes(id));
+    // `priorRecord` is null only for the create itself, which seats the host
+    // alone and which the host is looking at.
+    if (priorRecord !== null && !wasFull && lobbyIsFull(current)) this.lobbyFullHook(current);
     await this.nudgeHook(current, newlyWaiting);
+  }
+
+  // Tells the host of a lobby that has just filled that it is ready to start,
+  // unless they are watching it. A lobby waits on nobody (`waitingOn` is the
+  // game's, and there is no game until Start), so `nudgeHook` never covers
+  // this. It needs no rate limit: nobody leaves a lobby, so it fills once.
+  private lobbyFullHook(record: MatchRecord): void {
+    if (this.isWatching(record.hostId, Date.now())) return;
+    this.sendNudges(record, [record.hostId], "lobbyFull");
   }
 
   // Nudge every player in `newlyWaiting` who is not watching the match,
@@ -589,7 +612,11 @@ export class MatchDO extends DurableObject<Env> {
 
     const playerIds = eligible.filter((id) => record.players.some((p) => p.id === id));
     if (playerIds.length === 0) return;
+    this.sendNudges(record, playerIds, "turn");
+  }
 
+  // Delivers one nudge decision to `playerIds` through both channels.
+  private sendNudges(record: MatchRecord, playerIds: PlayerId[], kind: NudgeKind): void {
     const meta = getGameMeta(record.gameId);
     const url = `${this.env.PUBLIC_BASE_URL}/m/${record.id}`;
 
@@ -612,10 +639,11 @@ export class MatchDO extends DurableObject<Env> {
             gameName: meta?.name ?? record.gameId,
             players: players.filter((p) => playerIds.includes(p.id)),
             url,
+            kind,
           }),
         )
         .catch((err) => {
-          console.error("nudgeHook: sendSlackNudge rejected unexpectedly", err);
+          console.error("sendNudges: sendSlackNudge rejected unexpectedly", err);
         }),
     );
 
@@ -627,10 +655,11 @@ export class MatchDO extends DurableObject<Env> {
             gameId: record.gameId,
             playerIds,
             players,
+            kind,
           }),
         )
         .catch((err) => {
-          console.error("nudgeHook: sendPushNudges rejected unexpectedly", err);
+          console.error("sendNudges: sendPushNudges rejected unexpectedly", err);
         }),
     );
   }

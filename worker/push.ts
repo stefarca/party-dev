@@ -1,6 +1,7 @@
 import { gameName } from "../games/names";
 import { decodeBase64Url, encodeBase64Url } from "../shared/base64url";
 import type { PlayerId, PlayerInfo } from "../shared/protocol";
+import type { NudgeKind } from "./nudge";
 
 // Web push nudges: the same "you are up" message worker/nudge.ts posts to
 // Slack, delivered instead to the browsers a player has opted in from.
@@ -18,7 +19,7 @@ import type { PlayerId, PlayerInfo } from "../shared/protocol";
 //     browser's own public key, salted with the subscription's auth secret.
 //
 // Like the Slack nudge, nothing here may throw at its callers: a send is
-// fired from `MatchDO.nudgeHook()` through `ctx.waitUntil()`, and a throw
+// fired from `MatchDO.sendNudges()` through `ctx.waitUntil()`, and a throw
 // reaching `alarm()` would be retried up to six times. Every failure below
 // is swallowed after a log line.
 
@@ -150,7 +151,7 @@ export async function forgetSubscription(
 }
 
 // Every device belonging to any of `playerIds`. One query for the whole
-// batch of newly-waiting players, since that is how `nudgeHook` asks.
+// batch of newly-waiting players, since that is how `sendNudges` asks.
 export async function subscriptionsFor(
   db: D1Database,
   playerIds: PlayerId[],
@@ -195,25 +196,45 @@ async function forgetDeadEndpoint(db: D1Database, endpoint: string): Promise<voi
 // so it can never go through i18next. The device says which language it
 // wants when it subscribes.
 //
+// One set per `NudgeKind`: "turn" when the game is waiting on the reader,
+// "lobbyFull" when the reader hosts a lobby whose last seat was just taken.
+//
 // The body names the reader's opponents rather than the match code: a code
 // is how the app addresses a match, not how a person remembers one, and
 // "who is waiting on me" is what tells two games of the same thing apart.
-// `waitingOne`/`waitingMany` are the one-opponent and several-opponent
-// forms, since the verb agrees with them in both languages.
+// `one`/`many` are the one-opponent and several-opponent forms, since the
+// verb agrees with them in Italian.
 //
 // Exported for worker/push.test.ts, which fails when a language exists in
 // web/locales/ and not here — the one thing that keeps adding a language
 // from silently leaving its speakers with English notifications.
-export const COPY: Record<string, { title: string; waitingOne: string; waitingMany: string }> = {
+export const COPY: Record<
+  string,
+  Record<NudgeKind, { title: string; one: string; many: string }>
+> = {
   en: {
-    title: "Your turn in {{game}}",
-    waitingOne: "{{names}} is waiting for your move.",
-    waitingMany: "{{names}} are waiting for your move.",
+    turn: {
+      title: "Your turn in {{game}}",
+      one: "{{names}} is waiting for your move.",
+      many: "{{names}} are waiting for your move.",
+    },
+    lobbyFull: {
+      title: "Your {{game}} lobby is full",
+      one: "{{names}} joined. Start the match when you're ready.",
+      many: "{{names}} joined. Start the match when you're ready.",
+    },
   },
   it: {
-    title: "Tocca a te in {{game}}",
-    waitingOne: "{{names}} aspetta la tua mossa.",
-    waitingMany: "{{names}} aspettano la tua mossa.",
+    turn: {
+      title: "Tocca a te in {{game}}",
+      one: "{{names}} aspetta la tua mossa.",
+      many: "{{names}} aspettano la tua mossa.",
+    },
+    lobbyFull: {
+      title: "La tua lobby di {{game}} è piena",
+      one: "{{names}} è entrato. Inizia la partita quando vuoi.",
+      many: "{{names}} sono entrati. Inizia la partita quando vuoi.",
+    },
   },
 };
 
@@ -225,11 +246,10 @@ function fill(template: string, values: Record<string, string>): string {
 // ("Ada, Bea and Cy" / "Ada, Bea e Cy"). Every game seats at least two, so
 // there is always someone to name; if there somehow is not, the title says
 // all there is to say.
-function waitingBody(lang: string, opponents: string[]): string {
+function body(copy: { one: string; many: string }, lang: string, opponents: string[]): string {
   if (opponents.length === 0) return "";
   const names = new Intl.ListFormat(lang, { type: "conjunction" }).format(opponents);
-  const template = opponents.length === 1 ? COPY[lang].waitingOne : COPY[lang].waitingMany;
-  return fill(template, { names });
+  return fill(opponents.length === 1 ? copy.one : copy.many, { names });
 }
 
 // The notification one player gets about one match. `language` is whatever
@@ -237,19 +257,21 @@ function waitingBody(lang: string, opponents: string[]): string {
 // the same way i18next does on the client.
 export function composeNudge(
   language: string | null,
-  match: { matchId: string; gameId: string; opponents: string[] },
+  match: { matchId: string; gameId: string; opponents: string[]; kind?: NudgeKind },
 ): PushMessage {
   const lang = language && language in COPY ? language : "en";
+  const copy = COPY[lang][match.kind ?? "turn"];
   return {
-    title: fill(COPY[lang].title, { game: gameName(match.gameId, lang) }),
-    body: waitingBody(lang, match.opponents),
+    title: fill(copy.title, { game: gameName(match.gameId, lang) }),
+    body: body(copy, lang, match.opponents),
     // A path, not `PUBLIC_BASE_URL`: the service worker resolves it against
     // its own origin, so a deployment whose base URL is wrong cannot send a
     // player to somebody else's host.
     url: `/m/${match.matchId}`,
     // Both the push service (as the Topic header) and the operating system
     // (as the notification tag) collapse on this, so a second nudge about a
-    // match replaces the first rather than stacking on it.
+    // match replaces the first rather than stacking on it — the first turn
+    // replaces the lobby's "ready to start" too.
     tag: `m-${match.matchId}`,
   };
 }
@@ -482,12 +504,18 @@ export async function sendPush(
 // Nudges every device belonging to `playerIds`, each in its own language,
 // and forgets the ones their push service says are gone. `players` is the
 // match's whole named roster, which each notification's opponents are taken
-// from. Never throws, and no-ops without a word when VAPID is not configured
-// — local dev and any contributor without the secrets must still be able
-// to play.
+// from. `kind` is what the nudge is about ("turn" when absent). Never throws,
+// and no-ops without a word when VAPID is not configured — local dev and any
+// contributor without the secrets must still be able to play.
 export async function sendPushNudges(
   env: Env,
-  match: { matchId: string; gameId: string; playerIds: PlayerId[]; players: PlayerInfo[] },
+  match: {
+    matchId: string;
+    gameId: string;
+    playerIds: PlayerId[];
+    players: PlayerInfo[];
+    kind?: NudgeKind;
+  },
 ): Promise<void> {
   const config = readConfig(env);
   if (!config || match.playerIds.length === 0) return;
