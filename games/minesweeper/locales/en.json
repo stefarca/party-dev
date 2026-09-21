@@ -1,0 +1,39 @@
+{
+  "name": "Minesweeper",
+  "loading": "Loading the minefield…",
+  "board": "Minefield",
+  "stats": {
+    "label": "Your run",
+    "time": "Time",
+    "mines": "Mines",
+    "moves": "Moves"
+  },
+  "cell": {
+    "label": "Row {{row}}, column {{col}}: {{content}}",
+    "hidden": "hidden",
+    "flag": "flagged",
+    "mine": "mine",
+    "clear": "clear",
+    "number_one": "{{count}} mine nearby",
+    "number_other": "{{count}} mines nearby"
+  },
+  "flag": {
+    "mode": "Flag",
+    "on": "On",
+    "off": "Off"
+  },
+  "hint": "Open every square that hides no mine. A number says how many of the squares around it do. Tap to open a square; long-press, right-click or switch on Flag to mark a mine. Tap a number whose mines are all flagged to open the rest around it. On a keyboard, move with the arrow keys, open with Space and flag with F.",
+  "cleared": "Cleared in {{time}}!",
+  "blast": "Boom! That was a mine, and this run is over.",
+  "ended": "This run is over.",
+  "announce_one": "{{count}} square left to open.",
+  "announce_other": "{{count}} squares left to open.",
+  "chart": {
+    "cleared_one": "Cleared in {{count}} move",
+    "cleared_other": "Cleared in {{count}} moves",
+    "blast_one": "Boom! {{cleared}} of {{count}} open",
+    "blast_other": "Boom! {{cleared}} of {{count}} open",
+    "unfinished_one": "{{cleared}} of {{count}} square open",
+    "unfinished_other": "{{cleared}} of {{count}} squares open"
+  }
+}
