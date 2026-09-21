@@ -119,7 +119,7 @@
   },
   "daily": {
     "section": "Daily challenge",
-    "sectionHint": "The same board for everyone, one run each. A new one every day at midnight UTC.",
+    "sectionHint": "The same board for everyone, one run each. A new one every day at midnight.",
     "chip": "Daily",
     "newBoard": "New board {{when}}",
     "loadFailed": "Failed to load today's daily challenge.",

@@ -119,7 +119,7 @@
   },
   "daily": {
     "section": "Sfida del giorno",
-    "sectionHint": "La stessa sfida per tutti, una partita a testa. Se ne apre una nuova ogni giorno a mezzanotte UTC.",
+    "sectionHint": "La stessa sfida per tutti, una partita a testa. Se ne apre una nuova ogni giorno a mezzanotte.",
     "chip": "Del giorno",
     "newBoard": "Nuova sfida {{when}}",
     "loadFailed": "Impossibile caricare la sfida di oggi.",
