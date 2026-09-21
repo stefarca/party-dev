@@ -3,7 +3,7 @@ import type { Player } from "./fixtures";
 
 // The daily games' shell: the hub's tile, starting a run, ending it, and the
 // chart. It is the same for every daily game, so it is driven here through
-// 2048, the one there is; games/2048/ui.spec.ts covers the board itself.
+// 2048 alone; each game's own ui.spec.ts covers its board.
 //
 // Every spec signs in players of its own, but the day and its chart are
 // shared by every run of the suite that day, so nothing here assumes who else

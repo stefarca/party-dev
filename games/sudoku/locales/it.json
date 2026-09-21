@@ -1,0 +1,41 @@
+{
+  "name": "Sudoku",
+  "loading": "Caricamento dello schema…",
+  "board": "Schema",
+  "stats": {
+    "label": "La tua partita",
+    "time": "Tempo",
+    "left": "Mancanti",
+    "moves": "Mosse"
+  },
+  "cell": {
+    "label": "Riga {{row}}, colonna {{col}}: {{content}}",
+    "empty": "vuota",
+    "notes": "vuota, appunti {{notes}}",
+    "given": "{{digit}}, fisso",
+    "entered": "{{digit}}",
+    "clash": "{{content}}, in conflitto con un altro {{digit}}"
+  },
+  "pad": {
+    "label": "Numeri",
+    "digit_one": "{{digit}}, ne manca {{count}}",
+    "digit_other": "{{digit}}, ne mancano {{count}}",
+    "notes": "Appunti",
+    "on": "Sì",
+    "off": "No",
+    "erase": "Cancella"
+  },
+  "hint": "Scegli una casella, poi un numero. Ogni riga, colonna e riquadro 3×3 deve contenere i numeri da 1 a 9 una volta sola. Da tastiera: digita la cifra, spostati con le frecce, cancella con Backspace e premi N per gli appunti.",
+  "full": "Tutte le caselle sono piene, ma alcuni numeri sono in conflitto.",
+  "solved": "Risolto in {{time}}!",
+  "ended": "Questa partita è finita.",
+  "announce_one": "Manca {{count}} casella.",
+  "announce_other": "Mancano {{count}} caselle.",
+  "announceClash": "Alcuni numeri sono in conflitto.",
+  "chart": {
+    "solved_one": "Risolto in {{count}} mossa",
+    "solved_other": "Risolto in {{count}} mosse",
+    "unsolved_one": "{{filled}} su {{count}} casella riempita",
+    "unsolved_other": "{{filled}} su {{count}} caselle riempite"
+  }
+}

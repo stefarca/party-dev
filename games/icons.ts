@@ -4,6 +4,7 @@ import G2048Icon from "./2048/icon";
 import BattleshipIcon from "./battleship/icon";
 import CheckersIcon from "./checkers/icon";
 import Connect4Icon from "./connect4/icon";
+import SudokuIcon from "./sudoku/icon";
 import TicTacToeIcon from "./tictactoe/icon";
 import TriviaIcon from "./trivia/icon";
 
@@ -19,6 +20,7 @@ export const gameIcons: Record<string, ComponentType> = {
   battleship: BattleshipIcon,
   checkers: CheckersIcon,
   connect4: Connect4Icon,
+  sudoku: SudokuIcon,
   tictactoe: TicTacToeIcon,
   trivia: TriviaIcon,
 };
