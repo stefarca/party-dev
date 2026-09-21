@@ -6,9 +6,9 @@ import type { TFunction } from "i18next";
 import { useTranslation } from "react-i18next";
 
 import { NICKNAME_MAX_LENGTH } from "../../shared/nickname";
+import { BrandName, Buddy } from "../components/Brand";
 import { LanguagePicker } from "../components/LanguagePicker";
 import { ThemeToggle } from "../components/ThemeToggle";
-import { WordMark } from "../components/WordMark";
 import { errorText } from "../errors";
 import { useSession } from "../session";
 
@@ -63,9 +63,9 @@ export function NicknameGate() {
     >
       <div className="party-pop flex w-full max-w-md flex-col items-center gap-7 rounded-[var(--radius-2xl)] border border-[var(--border-subtle)] bg-[var(--surface-1)]/85 p-8 text-center shadow-[var(--shadow-3),var(--edge-highlight)] backdrop-blur-xl">
         <div className="flex flex-col items-center gap-3">
-          <WordMark animated className="size-16 text-accent" />
-          <h1 className="m-0 font-display text-4xl font-bold tracking-tight text-[var(--text-primary)]">
-            party
+          <Buddy animated className="size-20 text-accent" />
+          <h1 className="m-0 text-4xl text-[var(--text-primary)]">
+            <BrandName />
           </h1>
           <p className="m-0 text-balance text-[var(--text-secondary)]">{t("gate.tagline")}</p>
         </div>

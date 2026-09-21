@@ -6,13 +6,13 @@ import { useTranslation } from "react-i18next";
 
 import { NICKNAME_MAX_LENGTH } from "../shared/nickname";
 import { AppBackground } from "./components/AppBackground";
+import { BrandName, Buddy } from "./components/Brand";
 import { LanguagePicker } from "./components/LanguagePicker";
 import { NotificationToggle } from "./components/NotificationToggle";
 import { PlayerAvatar } from "./components/PlayerAvatar";
 import { Spinner } from "./components/states";
 import { ThemeToggle } from "./components/ThemeToggle";
 import { UpdatePrompt } from "./components/UpdatePrompt";
-import { WordMark } from "./components/WordMark";
 import { errorText } from "./errors";
 import { useLanguage } from "./i18n";
 import { Dashboard } from "./routes/Dashboard";
@@ -119,17 +119,17 @@ function Header() {
       <div className="mx-auto flex w-full max-w-5xl items-center justify-between gap-3 px-4 py-3">
         <a
           href="/"
-          className="group inline-flex items-center gap-2 font-display text-lg font-bold text-[var(--text-primary)] no-underline"
+          className="group inline-flex items-center gap-2 text-lg text-[var(--text-primary)] no-underline"
           onClick={(e) => {
             e.preventDefault();
             navigate("/");
           }}
         >
-          <WordMark
+          <Buddy
             animated
             className="size-7 text-accent transition-transform duration-[var(--dur-base)] ease-[var(--ease-bounce)] group-hover:rotate-12 group-hover:scale-110"
           />
-          <span>party</span>
+          <BrandName />
         </a>
         {/* `min-w-0` lets the nickname button truncate instead of pushing the row past a
             phone's width. */}
@@ -152,7 +152,7 @@ function RouteContent() {
   return (
     <main id="main-content" className="app-container">
       <div className="flex flex-col items-center gap-4 py-16 text-center">
-        <WordMark animated className="size-14 text-accent opacity-60" />
+        <Buddy animated className="size-14 text-accent opacity-60" />
         <h1 className="m-0 font-display text-2xl font-bold">{t("notFound.title")}</h1>
         <p className="m-0 text-[var(--text-muted)]">{t("notFound.body")}</p>
         <Button onPress={() => navigate("/")}>{t("notFound.back")}</Button>
@@ -171,7 +171,7 @@ function AppShell() {
         id="main-content"
         className="flex min-h-dvh animate-in flex-col items-center justify-center gap-5 duration-500 fade-in"
       >
-        <WordMark animated className="size-14 text-accent" />
+        <Buddy animated className="size-14 text-accent" />
         <Spinner label={t("app.loading")} />
       </main>
     );
