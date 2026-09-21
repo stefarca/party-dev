@@ -161,30 +161,64 @@ describe("wording", () => {
     expect(Object.keys(COPY).sort()).toEqual(languages.sort());
   });
 
-  it("names the game the way the app does, in the device's language", () => {
-    const english = composeNudge("en", { matchId: "ABCDEF", gameId: "connect4" });
-    expect(english.title).toBe("Your turn in Connect 4");
-    expect(english.body).toContain("ABCDEF");
+  const match = { matchId: "ABCDEF", gameId: "connect4", opponents: ["Ada"] };
 
+  it("names the game the way the app does, in the device's language", () => {
+    expect(composeNudge("en", match).title).toBe("Your turn in Connect 4");
     // The same game, from the same locale files the client reads.
-    const italian = composeNudge("it", { matchId: "ABCDEF", gameId: "connect4" });
-    expect(italian.title).toBe("Tocca a te in Forza 4");
+    expect(composeNudge("it", match).title).toBe("Tocca a te in Forza 4");
+  });
+
+  // The code is how the app addresses a match, not something a player reads.
+  it("names who is waiting rather than the match code", () => {
+    const english = composeNudge("en", match);
+    expect(english.body).toBe("Ada is waiting for your move.");
+    expect(`${english.title} ${english.body}`).not.toContain("ABCDEF");
+
+    expect(composeNudge("it", match).body).toBe("Ada aspetta la tua mossa.");
+  });
+
+  it("joins several opponents the way the device's language joins a list", () => {
+    const opponents = ["Ada", "Bea", "Cy"];
+    expect(composeNudge("en", { ...match, opponents }).body).toBe(
+      "Ada, Bea, and Cy are waiting for your move.",
+    );
+    expect(composeNudge("it", { ...match, opponents }).body).toBe(
+      "Ada, Bea e Cy aspettano la tua mossa.",
+    );
   });
 
   it("falls back to English for a language it has no copy for, and for none at all", () => {
-    const english = composeNudge("en", { matchId: "ABCDEF", gameId: "connect4" });
-    expect(composeNudge("de", { matchId: "ABCDEF", gameId: "connect4" })).toEqual(english);
-    expect(composeNudge(null, { matchId: "ABCDEF", gameId: "connect4" })).toEqual(english);
+    const english = composeNudge("en", match);
+    expect(composeNudge("de", match)).toEqual(english);
+    expect(composeNudge(null, match)).toEqual(english);
   });
 
   it("links to a path, so a misconfigured base URL cannot redirect a player elsewhere", () => {
-    expect(composeNudge("en", { matchId: "ABCDEF", gameId: "connect4" }).url).toBe("/m/ABCDEF");
+    expect(composeNudge("en", match).url).toBe("/m/ABCDEF");
+  });
+
+  it("tells a host their lobby is full, naming who joined", () => {
+    const lobby = { ...match, kind: "lobbyFull" as const };
+    expect(composeNudge("en", lobby)).toMatchObject({
+      title: "Your Connect 4 lobby is full",
+      body: "Ada joined. Start the match when you're ready.",
+    });
+    expect(composeNudge("it", lobby)).toMatchObject({
+      title: "La tua lobby di Forza 4 è piena",
+      body: "Ada è entrato. Inizia la partita quando vuoi.",
+    });
+    expect(composeNudge("it", { ...lobby, opponents: ["Ada", "Bea"] }).body).toBe(
+      "Ada e Bea sono entrati. Inizia la partita quando vuoi.",
+    );
   });
 
   it("tags on the match, so a second nudge replaces the first", () => {
-    const first = composeNudge("en", { matchId: "ABCDEF", gameId: "connect4" });
-    const second = composeNudge("en", { matchId: "ABCDEF", gameId: "trivia" });
+    const first = composeNudge("en", match);
+    const second = composeNudge("en", { ...match, gameId: "trivia", opponents: ["Bea"] });
     expect(second.tag).toBe(first.tag);
+    // The first turn replaces the lobby's "ready to start" the same way.
+    expect(composeNudge("en", { ...match, kind: "lobbyFull" }).tag).toBe(first.tag);
   });
 });
 
@@ -293,7 +327,7 @@ describe("sendPush", () => {
       .spyOn(globalThis, "fetch")
       .mockResolvedValue(new Response(null, { status: 201 }));
 
-    const message = composeNudge("en", { matchId: "ABCDEF", gameId: "connect4" });
+    const message = composeNudge("en", { matchId: "ABCDEF", gameId: "connect4", opponents: [] });
     expect(await sendPush(config, subscription, message)).toBe("sent");
 
     const [url, init] = fetchSpy.mock.calls[0];
@@ -304,6 +338,7 @@ describe("sendPush", () => {
     expect(headers.get("authorization")).toMatch(/^vapid t=/);
     expect(Number(headers.get("ttl"))).toBeGreaterThan(0);
     expect(headers.get("topic")).toBe(message.tag);
+    expect(headers.get("urgency")).toBe("high");
 
     // The body is this exact notification, and only this device can read it.
     expect(JSON.parse(await decryptBody(subscription, init?.body as Uint8Array))).toEqual(message);
@@ -313,7 +348,7 @@ describe("sendPush", () => {
   it("reports a retired subscription as gone, and a bad day as failed", async () => {
     const config = await vapidConfig();
     const subscription = await fakeSubscription();
-    const message = composeNudge("en", { matchId: "ABCDEF", gameId: "connect4" });
+    const message = composeNudge("en", { matchId: "ABCDEF", gameId: "connect4", opponents: [] });
 
     for (const [status, outcome] of [
       [404, "gone"],
@@ -334,7 +369,11 @@ describe("sendPush", () => {
     const subscription = await fakeSubscription();
     const fetchSpy = vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("network down"));
     await expect(
-      sendPush(config, subscription, composeNudge("en", { matchId: "A", gameId: "connect4" })),
+      sendPush(
+        config,
+        subscription,
+        composeNudge("en", { matchId: "A", gameId: "connect4", opponents: [] }),
+      ),
     ).resolves.toBe("failed");
     fetchSpy.mockRestore();
   });
@@ -397,6 +436,11 @@ describe("the subscription registry", () => {
 });
 
 describe("sendPushNudges", () => {
+  const players = [
+    { id: "alice", nickname: "Alice" },
+    { id: "bob", nickname: "Bob" },
+  ];
+
   it("sends nothing, and reads nothing, without VAPID secrets", async () => {
     const db = createMigratedDb();
     await saveSubscription(db, "alice", await fakeSubscription(), "en");
@@ -407,6 +451,7 @@ describe("sendPushNudges", () => {
         matchId: "ABCDEF",
         gameId: "connect4",
         playerIds: ["alice"],
+        players,
       }),
     ).resolves.toBeUndefined();
     expect(fetchSpy).not.toHaveBeenCalled();
@@ -429,6 +474,7 @@ describe("sendPushNudges", () => {
       matchId: "ABCDEF",
       gameId: "connect4",
       playerIds: ["alice"],
+      players,
     });
 
     expect(fetchSpy).toHaveBeenCalledTimes(2);
@@ -437,12 +483,17 @@ describe("sendPushNudges", () => {
     );
     const onPhone = JSON.parse(await decryptBody(phone, byEndpoint.get(phone.endpoint)!)) as {
       title: string;
+      body: string;
     };
     const onLaptop = JSON.parse(await decryptBody(laptop, byEndpoint.get(laptop.endpoint)!)) as {
       title: string;
+      body: string;
     };
     expect(onPhone.title).toBe("Tocca a te in Forza 4");
     expect(onLaptop.title).toBe("Your turn in Connect 4");
+    // Each reader is told who is waiting on them: everyone but themselves.
+    expect(onPhone.body).toBe("Bob aspetta la tua mossa.");
+    expect(onLaptop.body).toBe("Bob is waiting for your move.");
     fetchSpy.mockRestore();
   });
 
@@ -463,6 +514,7 @@ describe("sendPushNudges", () => {
       matchId: "ABCDEF",
       gameId: "connect4",
       playerIds: ["alice"],
+      players,
     });
 
     const left = await subscriptionsFor(db, ["alice"]);
@@ -482,6 +534,7 @@ describe("sendPushNudges", () => {
         matchId: "ABCDEF",
         gameId: "connect4",
         playerIds: ["alice"],
+        players,
       }),
     ).resolves.toBeUndefined();
   });

@@ -2,6 +2,7 @@ import { DatabaseSync } from "node:sqlite";
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { vi } from "vitest";
+import type { MockInstance } from "vitest";
 
 import { UNKNOWN_NICKNAME } from "../shared/nickname";
 import type { MatchSnapshot, MatchSummary, PlayerInfo } from "../shared/protocol";
@@ -46,22 +47,31 @@ const { MatchDO } = await import("./match");
 // SQLite storage).
 // ---------------------------------------------------------------------
 
+// `connectedAt` is when the socket was accepted and `pingedAt` when its page
+// last sent the heartbeat the runtime answers on its own (what
+// `ctx.getWebSocketAutoResponseTimestamp` reports). A socket opened just now
+// counts as a player watching; setting both into the past is a page that
+// went to sleep without closing it.
 interface FakeSocket {
   playerId: string;
   sent: Record<string, unknown>[];
+  connectedAt: number;
+  pingedAt: Date | null;
   send(data: string): void;
-  deserializeAttachment(): { playerId: string };
+  deserializeAttachment(): { playerId: string; connectedAt: number };
 }
 
 function createFakeSocket(playerId: string): FakeSocket {
   return {
     playerId,
     sent: [],
+    connectedAt: Date.now(),
+    pingedAt: null,
     send(data: string) {
       this.sent.push(JSON.parse(data));
     },
     deserializeAttachment() {
-      return { playerId };
+      return { playerId, connectedAt: this.connectedAt };
     },
   };
 }
@@ -270,9 +280,10 @@ function createFakeCtx(
       deleteAlarm: () => alarmController.deleteAlarm(),
     },
     getWebSockets: () => sockets as unknown as WebSocket[],
+    getWebSocketAutoResponseTimestamp: (ws: FakeSocket) => ws.pingedAt,
     acceptWebSocket: () => {},
     setWebSocketAutoResponse: () => {},
-    // `nudgeHook` hands its name lookup and Slack call to the runtime;
+    // `sendNudges` hands its name lookup and Slack call to the runtime;
     // nothing here has a webhook configured, so running it inline is enough.
     waitUntil: (promise: Promise<unknown>) => void promise,
   } as unknown as DurableObjectState;
@@ -300,7 +311,9 @@ async function createMatch(
   const sockets = Object.fromEntries(players.map((id) => [id, createFakeSocket(id)]));
   const db = createFakeDB(pauses);
   const ctx = createFakeCtx(alarmController, Object.values(sockets));
-  const matchDo = new MatchDO(ctx, { DB: db } as unknown as Env);
+  // Nothing is configured to nudge through unless a test sets it.
+  const env: { DB: typeof db; SLACK_WEBHOOK_URL?: string } = { DB: db };
+  const matchDo = new MatchDO(ctx, env as unknown as Env);
 
   await matchDo.fetch(
     jsonRequest("/lobby/create", {
@@ -314,7 +327,7 @@ async function createMatch(
     await matchDo.fetch(jsonRequest("/lobby/join", { playerId: id }));
   }
   if (start) await matchDo.fetch(jsonRequest("/start", { playerId: players[0] }));
-  return { matchDo, pauses, alarmController, db, ctx, sockets };
+  return { matchDo, pauses, alarmController, db, ctx, sockets, env };
 }
 
 interface Move {
@@ -787,5 +800,94 @@ describe("MatchDO visibility", () => {
       const view = await matchDo.fetch(new Request("http://do/view?playerId=alice"));
       expect(((await view.json()) as MatchSnapshot).status).toBe("active");
     });
+  });
+});
+
+describe("MatchDO nudges", () => {
+  const HOOK = "http://slack.test/hook";
+  const LONG_AGO = Date.now() - 60 * 60 * 1000;
+  let fetchSpy: MockInstance<typeof fetch>;
+
+  beforeEach(() => {
+    serverGames.counter = counterGame;
+    fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(null));
+  });
+
+  afterEach(() => {
+    delete serverGames.counter;
+    fetchSpy.mockRestore();
+  });
+
+  // The Slack messages sent so far, once the `waitUntil()` chains that send
+  // them have run. Slack stands in for both channels: they share the
+  // decision of who to nudge, and only the delivery differs.
+  async function nudges(): Promise<string[]> {
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    return fetchSpy.mock.calls
+      .filter(([url]) => url === HOOK)
+      .map(([, init]) => (JSON.parse(String(init?.body)) as { text: string }).text);
+  }
+
+  // A lobby of `players` who have all looked away since they joined, with
+  // Slack configured; started by the caller.
+  async function awayMatch(players: string[]) {
+    const created = await createMatch(players, { start: false });
+    created.env.SLACK_WEBHOOK_URL = HOOK;
+    for (const socket of Object.values(created.sockets)) socket.connectedAt = LONG_AGO;
+    return created;
+  }
+
+  it("nudges a player whose socket is still open but whose page has gone quiet", async () => {
+    const { matchDo, sockets } = await awayMatch(["alice", "bob"]);
+    sockets.alice.pingedAt = new Date(LONG_AGO);
+    await matchDo.fetch(jsonRequest("/start", { playerId: "alice" }));
+    expect(await nudges()).toEqual([expect.stringMatching(/^Alice is up/)]);
+  });
+
+  it("does not nudge a player whose page is keeping up its heartbeat", async () => {
+    const { matchDo, sockets } = await awayMatch(["alice", "bob"]);
+    sockets.alice.pingedAt = new Date();
+    await matchDo.fetch(jsonRequest("/start", { playerId: "alice" }));
+    expect(await nudges()).toEqual([]);
+  });
+
+  // Each move answers the nudge that brought its player back, so a quick
+  // exchange nudges on every turn rather than waiting out the floor between
+  // two nudges to the same player.
+  it("nudges on every turn of a quick exchange between two players who keep looking away", async () => {
+    const { matchDo } = await awayMatch(["alice", "bob"]);
+    await matchDo.fetch(jsonRequest("/start", { playerId: "alice" }));
+    await play(matchDo, increment("alice"));
+    await play(matchDo, increment("bob"));
+
+    const sent = await nudges();
+    expect(sent.map((text) => text.split(" ")[0])).toEqual(["Alice", "Bob", "Alice"]);
+  });
+
+  // The counter seats up to four, so the lobby fills with the fourth player.
+  it("tells a host who has looked away once the last seat is taken, and only then", async () => {
+    const { matchDo, db } = await awayMatch(["alice", "bob"]);
+    db.registry.dave = "Dave";
+    await matchDo.fetch(jsonRequest("/lobby/join", { playerId: "carol" }));
+    expect(await nudges()).toEqual([]);
+
+    await matchDo.fetch(jsonRequest("/lobby/join", { playerId: "dave" }));
+    const ready = [expect.stringMatching(/^Alice can start \w+, the lobby is full/)];
+    expect(await nudges()).toEqual(ready);
+
+    // A lobby fills once: nothing else that happens to it while full says so again.
+    await matchDo.fetch(jsonRequest("/lobby/join", { playerId: "dave" }));
+    await matchDo.fetch(
+      jsonRequest("/lobby/visibility", { playerId: "alice", visibility: "public" }),
+    );
+    expect(await nudges()).toEqual(ready);
+  });
+
+  it("does not tell a host who is looking at the lobby that it is full", async () => {
+    const { matchDo, sockets, db } = await awayMatch(["alice", "bob", "carol"]);
+    db.registry.dave = "Dave";
+    sockets.alice.pingedAt = new Date();
+    await matchDo.fetch(jsonRequest("/lobby/join", { playerId: "dave" }));
+    expect(await nudges()).toEqual([]);
   });
 });

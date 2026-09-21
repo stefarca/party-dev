@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { ApiError, getMatchEvents, getMatchSnapshot, postMatchAction, postMatchStart } from "./api";
+import { HEARTBEAT_INTERVAL_MS } from "../shared/heartbeat";
 import { HISTORY_LIMIT } from "../shared/history";
 import type { MatchEvent, MatchSnapshot, ServerMessage } from "../shared/protocol";
 
@@ -129,8 +130,14 @@ export function useMatch(
       setConnection("offline");
     }
 
+    // A hidden page holds no socket — see onVisibilityChange below — so
+    // nothing reconnects while it is hidden, and coming back does it at once.
+    function hidden() {
+      return document.visibilityState === "hidden";
+    }
+
     function scheduleReconnect() {
-      if (cancelled || fatal || reconnectTimerRef.current) return;
+      if (cancelled || fatal || hidden() || reconnectTimerRef.current) return;
       const attempt = backoffAttemptRef.current;
       backoffAttemptRef.current = attempt + 1;
       const base = Math.min(BASE_BACKOFF_MS * 2 ** attempt, MAX_BACKOFF_MS);
@@ -143,7 +150,7 @@ export function useMatch(
     }
 
     function connect() {
-      if (cancelled || fatal) return;
+      if (cancelled || fatal || hidden()) return;
       // Guards against the mount-time flow and reconnectNow() (via
       // online/visibilitychange) racing each other: whichever caller reaches
       // connect() first wins, and the other is a no-op rather than opening a
@@ -163,6 +170,7 @@ export function useMatch(
       );
       socketRef.current = ws;
       let helloAcked = false;
+      let heartbeat: ReturnType<typeof setInterval> | undefined;
 
       ws.addEventListener("open", () => {
         if (cancelled) {
@@ -170,6 +178,13 @@ export function useMatch(
           return;
         }
         ws.send(JSON.stringify({ t: "hello", since: sinceRef.current }));
+        // The raw "ping" keepalive, which the runtime answers with "pong"
+        // (ignored below, as it is not JSON) without waking the Durable
+        // Object. The runtime also timestamps it, and that is how the server
+        // tells this page apart from a socket left behind by one that went
+        // to sleep or lost its network — and so whether this player is
+        // looking at the board or needs a nudge when their turn comes.
+        heartbeat = setInterval(() => ws.send("ping"), HEARTBEAT_INTERVAL_MS);
       });
 
       ws.addEventListener("message", (ev) => {
@@ -214,6 +229,7 @@ export function useMatch(
       });
 
       ws.addEventListener("close", () => {
+        clearInterval(heartbeat);
         if (socketRef.current === ws) socketRef.current = null;
         if (cancelled) return;
         setConnection("offline");
@@ -242,11 +258,22 @@ export function useMatch(
       connect();
     }
 
-    // Laptop-sleep/wake case: bypass the backoff timer entirely and
-    // reconnect immediately when the tab becomes visible again or the OS
-    // reports the network is back.
+    // A page that goes hidden drops its socket, because a socket is what
+    // tells the server this player is watching the match: a background tab or
+    // a backgrounded app that kept one would count as present and never be
+    // nudged about its turn. Coming back bypasses the backoff timer entirely
+    // (the laptop-sleep/wake case too), and `hello` catches up on whatever
+    // happened meanwhile. The OS reporting the network is back does the same.
     function onVisibilityChange() {
-      if (document.visibilityState === "visible") reconnectNow();
+      if (!hidden()) {
+        reconnectNow();
+        return;
+      }
+      if (reconnectTimerRef.current) {
+        clearTimeout(reconnectTimerRef.current);
+        reconnectTimerRef.current = null;
+      }
+      socketRef.current?.close();
     }
     function onOnline() {
       reconnectNow();

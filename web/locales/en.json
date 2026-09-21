@@ -17,6 +17,14 @@
     "reload": "Reload",
     "later": "Later"
   },
+  "install": {
+    "title": "Install Pimpom",
+    "body": "Open it like any other app, without hunting for the tab.",
+    "bodyNotify": "Get a notification when it's your turn, and open it like any other app.",
+    "iosSteps": "Tap Share, then Add to Home Screen.",
+    "action": "Install",
+    "dismiss": "Not now"
+  },
   "language": {
     "label": "Language",
     "current": "Language: {{language}}"
@@ -47,9 +55,11 @@
     "footnote": "No password. Your nickname is your account — type the same one on any device to find your matches waiting.",
     "failed": "Could not sign in — try again."
   },
+  "profile": {
+    "trigger": "Signed in as {{nickname}}. Profile and settings",
+    "dialog": "Profile and settings"
+  },
   "rename": {
-    "trigger": "Signed in as {{nickname}}. Change nickname",
-    "dialog": "Rename nickname",
     "label": "Nickname",
     "save": "Save",
     "cancel": "Cancel",

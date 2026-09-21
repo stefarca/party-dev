@@ -5,11 +5,11 @@ import { setLanguage, useLanguage } from "../i18n";
 import { LANGUAGES } from "../translations";
 
 // A menu rather than a segmented pill like ThemeToggle: it stays one small button however many
-// languages ship, which matters in a header that is already full at phone width. There it
-// shrinks to the globe alone; its accessible name still says which language is showing.
+// languages ship, which is what lets it sit in a row of the profile popup (and under the nickname
+// gate) at phone width.
 //
-// Each language is listed under its own name ("Italiano", never "Italian"), so a player the app
-// opened in a language they cannot read can still find theirs.
+// Each language is named in itself ("Italiano", never "Italian"), on the button as well as in the
+// list, so a player the app opened in a language they cannot read can still find theirs.
 export function LanguagePicker() {
   const { t, i18n } = useTranslation();
   const language = useLanguage();
@@ -33,7 +33,7 @@ export function LanguagePicker() {
           <circle cx="12" cy="12" r="9" />
           <path d="M3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9s-1.3 6.4-3.8 9c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z" />
         </svg>
-        <span className="hidden uppercase sm:inline">{language}</span>
+        <span lang={language}>{nameOf(language)}</span>
       </Button>
       {/* The focus ring is drawn 6px outside an item with --radius-xs corners. The menu's padding
           leaves it room to breathe, and the popover's radius is the item's plus that padding, so

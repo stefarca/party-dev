@@ -1,15 +1,25 @@
 import { expect, test, uniqueNickname } from "./fixtures";
 import type { Player } from "./fixtures";
 
-// The header's language menu. Its accessible name says which language is showing, in that
-// language.
+// The language menu, in the profile popup with the player's other settings. Its accessible name
+// says which language is showing, in that language.
 function languageMenu(player: Player) {
   return player.page.getByRole("button", { name: /^(Language|Lingua): / });
 }
 
+// Opens the profile popup, picks `to` there, and closes the popup again — the page behind an
+// open popup is hidden from assistive technology, and so from these specs' role queries.
 async function switchLanguage(player: Player, to: string) {
+  await player.page.getByRole("button", { name: /^(Signed in as|Sei entrato come) / }).click();
   await languageMenu(player).click();
   await player.page.getByRole("menuitemradio", { name: to }).click();
+  // The control names the new language in that language, and the popup stays open for it.
+  await expect(languageMenu(player)).toHaveAccessibleName(new RegExp(`: ${to}$`));
+  // Focus comes back to the button once the menu has finished closing. Until then the menu is
+  // still the topmost overlay, and an Escape would go to it rather than to the popup.
+  await expect(languageMenu(player)).toBeFocused();
+  await player.page.keyboard.press("Escape");
+  await expect(languageMenu(player)).toBeHidden();
 }
 
 test("a player can switch to Italian, and it sticks", async ({ newPlayer }) => {
@@ -21,7 +31,6 @@ test("a player can switch to Italian, and it sticks", async ({ newPlayer }) => {
 
   await switchLanguage(alice, "Italiano");
   await expect(alice.page.getByRole("heading", { name: ciao })).toBeVisible();
-  await expect(languageMenu(alice)).toHaveAccessibleName("Lingua: Italiano");
   await expect(alice.page.locator("html")).toHaveAttribute("lang", "it");
 
   await alice.page.reload();
@@ -39,7 +48,8 @@ test("switching language mid-match relabels the game in place", async ({ startMa
   await expect(x.page.getByText("Your turn — place your X.")).toBeVisible();
 
   await switchLanguage(x, "Italiano");
-  await expect(x.page.getByRole("heading", { name: "Tris" })).toBeVisible();
+  // The page's title; the game's panel carries the name again, as a smaller heading.
+  await expect(x.page.getByRole("heading", { name: "Tris", level: 1 })).toBeVisible();
   await expect(x.page.getByText("Tocca a te: metti la tua X.")).toBeVisible();
   await expect(
     x.page.getByRole("button", { name: "Riga 2, colonna 2, vuota: metti la tua X" }),

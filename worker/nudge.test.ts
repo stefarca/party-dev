@@ -3,11 +3,8 @@ import { describe, expect, it, vi } from "vitest";
 import { MIN_NUDGE_INTERVAL_MS, sendSlackNudge, shouldNudge } from "./nudge";
 
 // Pure parts only (worker/nudge.ts's own file comment): message composition
-// and the rate-limit predicate. `MatchDO.nudgeHook`'s wiring (connectivity
-// filtering, ctx.waitUntil, persisting `nudgedAt`) is exercised separately,
-// by hand in local dev — this repo has no
-// Durable Object integration test harness for that (see worker/match.test.ts's
-// own comment on why).
+// and the rate-limit predicate. `MatchDO.nudgeHook`'s wiring (who counts as
+// watching, and a move answering a nudge) is in worker/match.test.ts.
 
 function fakeEnv(webhookUrl: string | undefined): Env {
   return { SLACK_WEBHOOK_URL: webhookUrl } as unknown as Env;
@@ -46,6 +43,24 @@ describe("sendSlackNudge", () => {
     expect(body.text).toContain("Bob");
     expect(body.text).toContain("Connect 4");
     expect(body.text).toContain("http://localhost:5173/m/M1");
+    fetchSpy.mockRestore();
+  });
+
+  it("tells a host their lobby is full instead of saying they are up", async () => {
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(new Response(null, { status: 200 }));
+    await sendSlackNudge(fakeEnv("http://example.test/hook"), {
+      matchId: "m1",
+      gameName: "Connect 4",
+      players: [{ id: "ada", nickname: "Ada" }],
+      url: "http://localhost:5173/m/M1",
+      kind: "lobbyFull",
+    });
+    const [, init] = fetchSpy.mock.calls[0];
+    expect((JSON.parse(init?.body as string) as { text: string }).text).toBe(
+      "Ada can start Connect 4, the lobby is full: http://localhost:5173/m/M1",
+    );
     fetchSpy.mockRestore();
   });
 

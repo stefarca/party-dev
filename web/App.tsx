@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { FormEvent } from "react";
+import type { FormEvent, ReactNode } from "react";
 
 import { Button, Form, I18nProvider, Input, Label, Popover, TextField } from "@heroui/react";
 import { useTranslation } from "react-i18next";
@@ -21,12 +21,29 @@ import { NicknameGate } from "./routes/NicknameGate";
 import { navigate, useRoute } from "./router";
 import { SessionProvider, useSession } from "./session";
 
-// The nickname is the account, so this one control covers both things a
-// player can do with it: move their own player onto a different nickname
-// (keeping every match), or end the session so someone else can sign in on
-// this device. Renaming into a nickname somebody else holds is refused by
-// the server — signing out is the way to switch into it deliberately.
-function RenameControl() {
+// One setting in the profile popup: its name, and the control beside it. The
+// control carries the same name as its accessible label.
+function SettingRow({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <span className="text-xs font-bold text-[var(--text-muted)]">{label}</span>
+      {children}
+    </div>
+  );
+}
+
+// The player's own popup, behind their avatar. The nickname is the account,
+// so it covers both things a player can do with it: move their own player
+// onto a different nickname (keeping every match), or end the session so
+// someone else can sign in on this device. Renaming into a nickname somebody
+// else holds is refused by the server — signing out is the way to switch
+// into it deliberately. The theme and the language live here too, as the
+// player's settings, which keeps the header down to what fits on a phone.
+//
+// Nothing takes focus inside the popup when it opens (the dialog itself
+// does): focusing the nickname field would raise a phone's keyboard over the
+// settings every time someone came to change one.
+function ProfileControl() {
   const { t } = useTranslation();
   const { player, rename, signOut } = useSession();
   const [editing, setEditing] = useState(false);
@@ -68,20 +85,33 @@ function RenameControl() {
       <Button
         variant="ghost"
         size="sm"
-        aria-label={t("rename.trigger", { nickname })}
-        className="max-w-32 min-w-0 shrink gap-2 rounded-[var(--radius-pill)] border border-[var(--border-subtle)] bg-[var(--surface-2)] pr-3 pl-1 transition-transform duration-[var(--dur-fast)] ease-[var(--ease-spring)] hover:scale-105 sm:max-w-none"
+        aria-label={t("profile.trigger", { nickname })}
+        className="max-w-48 min-w-0 shrink gap-1.5 rounded-[var(--radius-pill)] border border-[var(--border-subtle)] bg-[var(--surface-2)] pr-2.5 pl-1 transition-transform duration-[var(--dur-fast)] ease-[var(--ease-spring)] hover:scale-105 sm:max-w-none"
       >
         <PlayerAvatar id={player.playerId} nickname={nickname} size="sm" />
         <span className="truncate text-sm font-bold">{nickname}</span>
+        {/* Says there is more behind the button than a name to edit. */}
+        <svg
+          viewBox="0 0 24 24"
+          className="size-3.5 flex-none text-[var(--text-muted)]"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={2.5}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
+          <path d="m6 9 6 6 6-6" />
+        </svg>
       </Button>
       <Popover.Content placement="bottom end">
-        <Popover.Dialog aria-label={t("rename.dialog")}>
-          <Form onSubmit={handleRename} className="flex w-60 flex-col gap-3 p-4">
+        <Popover.Dialog aria-label={t("profile.dialog")} className="flex w-64 flex-col gap-4 p-4">
+          <Form onSubmit={handleRename} className="flex flex-col gap-3">
             <TextField value={value} onChange={setValue} maxLength={NICKNAME_MAX_LENGTH}>
               <Label className="text-xs font-bold text-[var(--text-muted)]">
                 {t("rename.label")}
               </Label>
-              <Input autoFocus />
+              <Input />
             </TextField>
             <p className="m-0 text-xs text-[var(--text-muted)]">{t("rename.hint")}</p>
             {error && (
@@ -97,16 +127,27 @@ function RenameControl() {
                 {t("rename.cancel")}
               </Button>
             </div>
+          </Form>
+          <div className="flex flex-col gap-3 border-t border-[var(--border-subtle)] pt-4">
+            <SettingRow label={t("theme.label")}>
+              <ThemeToggle />
+            </SettingRow>
+            <SettingRow label={t("language.label")}>
+              <LanguagePicker />
+            </SettingRow>
+          </div>
+          <div className="border-t border-[var(--border-subtle)] pt-3">
             <Button
               type="button"
               variant="ghost"
               size="sm"
               onPress={handleSignOut}
-              className="mt-1 self-start border-t border-[var(--border-subtle)] text-[var(--text-muted)]"
+              // Pulled left by its own padding, so its label lines up with the ones above it.
+              className="-ml-3 text-[var(--text-muted)]"
             >
               {t("rename.signOut")}
             </Button>
-          </Form>
+          </div>
         </Popover.Dialog>
       </Popover.Content>
     </Popover>
@@ -132,12 +173,10 @@ function Header() {
           <BrandName />
         </a>
         {/* `min-w-0` lets the nickname button truncate instead of pushing the row past a
-            phone's width. */}
+            phone's width. The theme and the language are in the profile popup. */}
         <div className="flex min-w-0 items-center gap-2">
-          <RenameControl />
+          <ProfileControl />
           <NotificationToggle />
-          <LanguagePicker />
-          <ThemeToggle />
         </div>
       </div>
     </header>

@@ -4,6 +4,7 @@ import { z } from "zod";
 import { getGameMeta } from "../games/catalog";
 import { getGame } from "../games/registry";
 import type { GameModule, Result } from "../shared/game";
+import { PRESENCE_WINDOW_MS } from "../shared/heartbeat";
 import { HISTORY_LIMIT } from "../shared/history";
 import { UNKNOWN_NICKNAME } from "../shared/nickname";
 import { ClientMessageSchema, MatchVisibilitySchema } from "../shared/protocol";
@@ -19,6 +20,7 @@ import type {
   ServerMessage,
 } from "../shared/protocol";
 import { sendSlackNudge, shouldNudge } from "./nudge";
+import type { NudgeKind } from "./nudge";
 import { sendPushNudges } from "./push";
 
 // Durable Object gotchas that apply to every method added to this class:
@@ -61,11 +63,11 @@ interface MatchRecord {
   updatedAt: number;
   seed: number; // rolled once at create time, never re-rolled
   state: unknown | null;
-  // Slack nudge rate limit: the epoch ms each player was last
-  // actually nudged, keyed by playerId. Lives on the DO record rather than a
-  // D1 column — see the comment on `nudgeHook` below. Never
-  // cleared/deleted (see `shouldNudge` in worker/nudge.ts for why); absent
-  // entries simply mean "never nudged".
+  // Nudge rate limit: the epoch ms each player was last nudged and has not
+  // moved since, keyed by playerId. Lives on the DO record rather than a D1
+  // column — see the comment on `nudgeHook` below. A player's entry is
+  // dropped when they act (`handleAction`), which is what answers a nudge;
+  // an absent entry means there is no unanswered nudge to hold back for.
   nudgedAt: Record<PlayerId, number>;
 }
 
@@ -74,6 +76,9 @@ interface MatchRecord {
 // in-memory Map keyed by socket.
 interface ConnectionAttachment {
   playerId: string;
+  // When the socket was accepted: the page's first sign of life, standing in
+  // for a heartbeat until its first "ping" (see `isWatching()`).
+  connectedAt: number;
 }
 
 type ActionResult =
@@ -104,6 +109,14 @@ function listingExpiry(record: MatchRecord): number | null {
   return record.status === "lobby" && record.visibility === "public"
     ? (record.publicUntil ?? null)
     : null;
+}
+
+// Whether `record` is a lobby with every seat taken, so all that is left is
+// for the host to start it. Every game's `maxPlayers` is at least its
+// `minPlayers`, so a full lobby can always be started.
+function lobbyIsFull(record: MatchRecord): boolean {
+  const maxPlayers = getGame(record.gameId)?.meta.maxPlayers ?? Infinity;
+  return record.status === "lobby" && record.players.length >= maxPlayers;
 }
 
 // Maps an internal error `code` (see ActionResult/MutationResult above) to
@@ -381,11 +394,21 @@ export class MatchDO extends DurableObject<Env> {
     }
   }
 
-  // Used to decide who to nudge (only players who are not currently connected).
-  private isConnected(playerId: PlayerId): boolean {
+  // Whether `playerId` has this match in front of them right now, which is
+  // what spares them a nudge. An open socket alone does not say so: a laptop
+  // that went to sleep, or a phone that dropped off its network, leaves one
+  // behind that nobody closed, and the runtime can go on listing it long
+  // after the page is gone. So a socket counts only while it keeps up the
+  // page's heartbeat — the raw "ping" the runtime answers on its own and
+  // timestamps for us, without waking this object. A page that goes hidden
+  // closes its socket (web/useMatch.ts), so a background tab or a
+  // backgrounded app counts as away too.
+  private isWatching(playerId: PlayerId, now: number): boolean {
     for (const ws of this.ctx.getWebSockets()) {
       const attachment = ws.deserializeAttachment() as ConnectionAttachment | null;
-      if (attachment?.playerId === playerId) return true;
+      if (attachment?.playerId !== playerId) continue;
+      const lastPing = this.ctx.getWebSocketAutoResponseTimestamp(ws)?.getTime() ?? 0;
+      if (now - Math.max(lastPing, attachment.connectedAt) < PRESENCE_WINDOW_MS) return true;
     }
     return false;
   }
@@ -419,6 +442,7 @@ export class MatchDO extends DurableObject<Env> {
     const priorRecord = this.readMatch();
     const previousWaiting =
       module && priorRecord?.state != null ? module.waitingOn(priorRecord.state) : [];
+    const wasFull = priorRecord !== null && lobbyIsFull(priorRecord);
 
     // Auto-finalize: whenever the state a caller just assigned to
     // `record.state` has a non-null result(), the match is done —
@@ -523,7 +547,8 @@ export class MatchDO extends DurableObject<Env> {
     current = this.readMatch() ?? record;
     derived = this.deriveWaitingAndDeadline(module, current);
 
-    // 7. Nudge players newly waited-on who are not connected.
+    // 7. Nudge players newly waited-on who are not watching, and the host of
+    // a lobby this commit filled.
     // `newlyWaiting` is computed from `current`/`derived` above — the
     // freshest truth after every prior stage's await — and from
     // `previousWaiting` captured before this commit touched anything, so a
@@ -534,22 +559,32 @@ export class MatchDO extends DurableObject<Env> {
     // (see its own comment), so a round of new waiters created there nudges
     // exactly like a normal move would.
     const newlyWaiting = derived.waitingOn.filter((id) => !previousWaiting.includes(id));
+    // `priorRecord` is null only for the create itself, which seats the host
+    // alone and which the host is looking at.
+    if (priorRecord !== null && !wasFull && lobbyIsFull(current)) this.lobbyFullHook(current);
     await this.nudgeHook(current, newlyWaiting);
   }
 
-  // Nudge every player in `newlyWaiting` who is not currently connected,
-  // rate-limited to one nudge per player per match per turn plus a hard
-  // floor backstop — see `shouldNudge` in worker/nudge.ts for the exact
-  // rule. Several players becoming newly-waited-on in the same commit (e.g.
-  // a trivia round start) produce exactly one batched Slack message, never
-  // one per player.
+  // Tells the host of a lobby that has just filled that it is ready to start,
+  // unless they are watching it. A lobby waits on nobody (`waitingOn` is the
+  // game's, and there is no game until Start), so `nudgeHook` never covers
+  // this. It needs no rate limit: nobody leaves a lobby, so it fills once.
+  private lobbyFullHook(record: MatchRecord): void {
+    if (this.isWatching(record.hostId, Date.now())) return;
+    this.sendNudges(record, [record.hostId], "lobbyFull");
+  }
+
+  // Nudge every player in `newlyWaiting` who is not watching the match,
+  // rate-limited to one nudge per player per match per turn plus a floor for
+  // nudges nobody answered — see `shouldNudge` in worker/nudge.ts for the
+  // exact rule. Several players becoming newly-waited-on in the same commit
+  // (e.g. a trivia round start) produce exactly one batched Slack message,
+  // never one per player.
   //
   // Two channels, one decision: the Slack webhook (one message for the
   // whole batch, to a shared channel) and web push (one notification per
   // device that opted in, to that player alone). Both are driven by the same
-  // eligibility above, so turning one on does not double the other, and a
-  // player who reads a nudge on their phone is not nudged again next turn
-  // any sooner than they would have been.
+  // eligibility above, so turning one on does not double the other.
   //
   // `nudgedAt` lives on this DO's own record rather than in a D1 column,
   // because the DO is authoritative and this avoids
@@ -558,13 +593,13 @@ export class MatchDO extends DurableObject<Env> {
   private async nudgeHook(record: MatchRecord, newlyWaiting: PlayerId[]): Promise<void> {
     if (newlyWaiting.length === 0) return;
 
-    const disconnected = newlyWaiting.filter((id) => !this.isConnected(id));
-    if (disconnected.length === 0) return;
-
     // `newlyWaiting` members all transitioned into `waitingOn` in this very
     // commit, so "now" doubles as every one of their `becameWaitingAt`.
     const now = Date.now();
-    const eligible = disconnected.filter((id) => shouldNudge(record.nudgedAt[id], id, now, now));
+    const away = newlyWaiting.filter((id) => !this.isWatching(id, now));
+    if (away.length === 0) return;
+
+    const eligible = away.filter((id) => shouldNudge(record.nudgedAt[id], id, now, now));
     if (eligible.length === 0) return;
 
     // Persist the updated `nudgedAt` entries as part of this same,
@@ -577,45 +612,55 @@ export class MatchDO extends DurableObject<Env> {
 
     const playerIds = eligible.filter((id) => record.players.some((p) => p.id === id));
     if (playerIds.length === 0) return;
+    this.sendNudges(record, playerIds, "turn");
+  }
 
+  // Delivers one nudge decision to `playerIds` through both channels.
+  private sendNudges(record: MatchRecord, playerIds: PlayerId[], kind: NudgeKind): void {
     const meta = getGameMeta(record.gameId);
     const url = `${this.env.PUBLIC_BASE_URL}/m/${record.id}`;
 
-    // Fire-and-forget via ctx.waitUntil() so the move's own response is
-    // never blocked on the name lookup or on Slack, and never let a Slack
-    // outage escape this pipeline (lookupNames and sendSlackNudge never
-    // throw; the .catch here is belt-and-suspenders against a future
-    // regression there).
+    // Both channels name players — Slack the ones it is nudging, a push
+    // notification the reader's opponents — so the whole roster is looked up
+    // once and each channel chains off that one lookup in a `waitUntil()` of
+    // its own. The move's response is never blocked on either, and neither
+    // waits on the other's round-trips or is lost to the other's failure.
+    // `lookupNames`, `sendSlackNudge` and `sendPushNudges` never throw; the
+    // `.catch`es are belt-and-suspenders against a future regression there.
+    const roster = this.lookupNames(record.players.map((p) => p.id)).then((names) =>
+      this.rosterOf(record, names),
+    );
+
     this.ctx.waitUntil(
-      this.lookupNames(playerIds)
-        .then((names) =>
+      roster
+        .then((players) =>
           sendSlackNudge(this.env, {
             matchId: record.id,
             gameName: meta?.name ?? record.gameId,
-            players: playerIds.map((id) => ({
-              id,
-              nickname: names.get(id) ?? UNKNOWN_NICKNAME,
-            })),
+            players: players.filter((p) => playerIds.includes(p.id)),
             url,
+            kind,
           }),
         )
         .catch((err) => {
-          console.error("nudgeHook: sendSlackNudge rejected unexpectedly", err);
+          console.error("sendNudges: sendSlackNudge rejected unexpectedly", err);
         }),
     );
 
-    // Its own waitUntil rather than a link in the chain above: a push
-    // notification names nobody but its reader, so it needs no registry
-    // lookup, and neither channel should wait on the other's round-trips
-    // (or be lost to the other's failure).
     this.ctx.waitUntil(
-      sendPushNudges(this.env, {
-        matchId: record.id,
-        gameId: record.gameId,
-        playerIds,
-      }).catch((err) => {
-        console.error("nudgeHook: sendPushNudges rejected unexpectedly", err);
-      }),
+      roster
+        .then((players) =>
+          sendPushNudges(this.env, {
+            matchId: record.id,
+            gameId: record.gameId,
+            playerIds,
+            players,
+            kind,
+          }),
+        )
+        .catch((err) => {
+          console.error("sendNudges: sendPushNudges rejected unexpectedly", err);
+        }),
     );
   }
 
@@ -894,6 +939,10 @@ export class MatchDO extends DurableObject<Env> {
     }
 
     record.state = nextState;
+    // Moving answers whatever nudge brought this player here, so the next
+    // turn that comes back to them can nudge again straight away instead of
+    // waiting out the floor that holds back nudges nobody answered.
+    delete record.nudgedAt[playerId];
     await this.commit(record, [logged]);
     const snapshot = await this.namedSnapshotFor(playerId);
     if (!snapshot) return { ok: false, code: "not_found", message: "match not found" };
@@ -1063,7 +1112,10 @@ export class MatchDO extends DurableObject<Env> {
     const pair = new WebSocketPair();
     const [client, server] = Object.values(pair);
     this.ctx.acceptWebSocket(server);
-    server.serializeAttachment({ playerId } satisfies ConnectionAttachment);
+    server.serializeAttachment({
+      playerId,
+      connectedAt: Date.now(),
+    } satisfies ConnectionAttachment);
     return new Response(null, { status: 101, webSocket: client });
   }
 

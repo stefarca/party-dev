@@ -46,7 +46,7 @@ test("a nickname someone else holds is refused", async ({ newPlayer }) => {
   await bob.page.goto("/");
 
   await bob.page
-    .getByRole("button", { name: `Signed in as ${bob.nickname}. Change nickname` })
+    .getByRole("button", { name: `Signed in as ${bob.nickname}. Profile and settings` })
     .click();
   await bob.page.getByRole("textbox", { name: "Nickname" }).fill(alice.nickname);
   await bob.page.getByRole("button", { name: "Save" }).click();
@@ -61,7 +61,7 @@ test("signing out returns to the nickname gate", async ({ newPlayer }) => {
   await alice.page.goto("/");
 
   await alice.page
-    .getByRole("button", { name: `Signed in as ${alice.nickname}. Change nickname` })
+    .getByRole("button", { name: `Signed in as ${alice.nickname}. Profile and settings` })
     .click();
   await alice.page.getByRole("button", { name: "Sign out" }).click();
 
@@ -76,15 +76,34 @@ test("a player can change their nickname", async ({ newPlayer }) => {
   await alice.page.goto("/");
 
   await alice.page
-    .getByRole("button", { name: `Signed in as ${alice.nickname}. Change nickname` })
+    .getByRole("button", { name: `Signed in as ${alice.nickname}. Profile and settings` })
     .click();
   await alice.page.getByRole("textbox", { name: "Nickname" }).fill(renamed);
   await alice.page.getByRole("button", { name: "Save" }).click();
 
   await expect(alice.page.getByRole("heading", { name: `Hey ${renamed} 👋` })).toBeVisible();
   await expect(
-    alice.page.getByRole("button", { name: `Signed in as ${renamed}. Change nickname` }),
+    alice.page.getByRole("button", { name: `Signed in as ${renamed}. Profile and settings` }),
   ).toBeVisible();
+});
+
+// The theme is a player setting, so it lives in the profile popup rather than the header, which
+// has room for little else at phone width.
+test("a player picks the theme from their profile popup", async ({ newPlayer }) => {
+  const alice = await newPlayer("Alice");
+  await alice.page.goto("/");
+
+  await alice.page
+    .getByRole("button", { name: `Signed in as ${alice.nickname}. Profile and settings` })
+    .click();
+  const theme = alice.page.getByRole("dialog", { name: "Profile and settings" });
+  await theme.getByRole("radio", { name: "Light", exact: true }).click();
+  await expect(alice.page.locator("html")).toHaveClass(/\blight\b/);
+  await theme.getByRole("radio", { name: "Dark", exact: true }).click();
+  await expect(alice.page.locator("html")).toHaveClass(/\bdark\b/);
+
+  await alice.page.reload();
+  await expect(alice.page.locator("html")).toHaveClass(/\bdark\b/);
 });
 
 // A match refers to its players by id and names them from the registry whenever it is read, so a
@@ -99,7 +118,7 @@ test("a rename reaches the matches the player is already in", async ({ startMatc
 
   await first.page.goto("/");
   await first.page
-    .getByRole("button", { name: `Signed in as ${first.nickname}. Change nickname` })
+    .getByRole("button", { name: `Signed in as ${first.nickname}. Profile and settings` })
     .click();
   await first.page.getByRole("textbox", { name: "Nickname" }).fill(renamed);
   await first.page.getByRole("button", { name: "Save" }).click();

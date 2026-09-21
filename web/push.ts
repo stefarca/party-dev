@@ -1,6 +1,7 @@
 import { decodeBase64Url } from "../shared/base64url";
 import type { PushSubscriptionPayload } from "../shared/protocol";
 import { getPushKey, subscribePush, unsubscribePush } from "./api";
+import { navigate } from "./router";
 
 // Turning "nudge me when it is my turn" on and off for this browser.
 //
@@ -58,6 +59,13 @@ let keyRequest: Promise<string | null> | null = null;
 function serverKey(): Promise<string | null> {
   keyRequest ??= getPushKey().catch(() => null);
   return keyRequest;
+}
+
+// Whether this deployment sends notifications at all, whatever this browser
+// can do. The install offer on iOS promises them only when it is true, since
+// there installing is what turns them on.
+export async function pushConfigured(): Promise<boolean> {
+  return (await serverKey()) !== null;
 }
 
 // Whether `subscription` was created against `key`. A subscription is bound
@@ -171,4 +179,30 @@ export async function syncPushLanguage(language: string): Promise<void> {
   if (!payload) return;
   await subscribePush(payload, language);
   registeredLanguage = language;
+}
+
+// Takes a notification click to its match when this page is already open.
+// The service worker asks the page to route there itself rather than
+// navigating the window from outside, which some browsers cannot do and
+// others refuse for a window the worker does not control (see `askToOpen` in
+// public/push-sw.js). Replying is how the worker knows it need not try
+// anything else; a path that is not this origin's is ignored, unanswered.
+export function followNotificationClicks(): void {
+  if (!("serviceWorker" in navigator)) return;
+  navigator.serviceWorker.addEventListener("message", (event: MessageEvent) => {
+    const data: unknown = event.data;
+    if (typeof data !== "object" || data === null) return;
+    const { type, path } = data as { type?: unknown; path?: unknown };
+    if (type !== "open" || typeof path !== "string") return;
+    const target = new URL(path, window.location.origin);
+    if (target.origin !== window.location.origin) return;
+    const next = target.pathname + target.search + target.hash;
+    if (next !== window.location.pathname + window.location.search + window.location.hash) {
+      navigate(next);
+    }
+    event.ports[0]?.postMessage("opened");
+  });
+  // Messages from the worker wait in a queue until the page says it is
+  // listening, and a page woken by the click is listening from here on.
+  navigator.serviceWorker.startMessages();
 }
