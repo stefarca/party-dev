@@ -7,8 +7,8 @@ import type { PlayerId } from "../shared/protocol";
 // `MatchDO.nudgeHook()` via `ctx.waitUntil()`, and a throw reaching `alarm()`
 // would be retried up to 6 times.
 
-// The binding rate limit, as a hard floor backstop (see `shouldNudge`
-// below) on top of the primary per-turn rule enforced in `worker/match.ts`.
+// The floor under a nudge nobody answered (see `shouldNudge` below), on top
+// of the primary per-turn rule enforced in `worker/match.ts`.
 export const MIN_NUDGE_INTERVAL_MS = 10 * 60 * 1000;
 
 export interface NudgePlayer {
@@ -67,8 +67,9 @@ export async function sendSlackNudge(env: Env, params: NudgeParams): Promise<voi
 // unit-testable without a Durable Object (worker/nudge.test.ts).
 //
 // `nudgedAt` is this player's own entry from the persisted
-// `MatchRecord.nudgedAt` map — the epoch ms they were last actually nudged,
-// or `undefined` if never. `becameWaitingAt` is when they most recently
+// `MatchRecord.nudgedAt` map — the epoch ms they were last nudged, or
+// `undefined` if they never were or have moved since (`MatchDO` drops the
+// entry when a player acts). `becameWaitingAt` is when they most recently
 // transitioned into `waitingOn` — in practice this is always the same
 // instant as `now`, because `MatchDO.nudgeHook` only ever calls this for
 // players in that commit's own `newlyWaiting` list, but it is kept as its
@@ -78,14 +79,13 @@ export async function sendSlackNudge(env: Env, params: NudgeParams): Promise<voi
 // Two rules:
 // 1. One nudge per player per match per turn: eligible once `nudgedAt`
 //    predates `becameWaitingAt` — i.e. nothing has nudged them since this
-//    waiting spell began. `MatchDO` never deletes a fired `nudgedAt` entry
-//    (see the comment on `nudgeHook`), so "the following turn can nudge
-//    again" falls out of this comparison rather than out of clearing the
-//    entry.
-// 2. A hard floor, as a backstop against a pathological game whose
-//    `waitingOn` flaps a player in and out faster than a human turn cadence:
-//    even a genuine new spell does not requalify sooner than
-//    `MIN_NUDGE_INTERVAL_MS` after the previous nudge.
+//    waiting spell began.
+// 2. A floor for a nudge nobody answered: a player who has not moved since
+//    their last nudge is not nudged again sooner than `MIN_NUDGE_INTERVAL_MS`
+//    after it, however often `waitingOn` takes them in and out meanwhile
+//    (a simultaneous game's rounds going by without them, say). A player who
+//    is actually playing never meets it — their move cleared the entry — so
+//    they hear about every turn, however quickly it comes back to them.
 export function shouldNudge(
   nudgedAt: number | undefined,
   _playerId: PlayerId,

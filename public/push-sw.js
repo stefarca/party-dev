@@ -19,11 +19,17 @@
 //     is the only warning, and it fires with no page open to react to it.
 
 const FALLBACK = {
-  title: "party",
+  title: "Pimpom",
   body: "A match is waiting on you.",
   url: "/",
-  tag: "party",
+  tag: "pimpom",
 };
+
+// How long a click waits for an open page to say it has gone to the match
+// before steering the window some other way. A page frozen in the background
+// needs a moment to wake up and answer; a page from a build that predates the
+// message never will.
+const OPEN_REPLY_TIMEOUT_MS = 1500;
 
 function readMessage(data) {
   if (!data) return FALLBACK;
@@ -70,29 +76,55 @@ self.addEventListener("push", (event) => {
   );
 });
 
+// Asks an open page to show `url` itself, through the app's own router (see
+// `followNotificationClicks` in web/push.ts), and resolves to whether it said
+// it did. This is the one way of moving a window that works everywhere:
+// `WindowClient.navigate()` refuses any window this worker does not control
+// (a page opened before it activated, or one force-reloaded past it), and not
+// every browser has it at all — which is how a click used to bring the app
+// forward still showing the hub.
+function askToOpen(client, url) {
+  return new Promise((resolve) => {
+    const channel = new MessageChannel();
+    const timer = setTimeout(() => resolve(false), OPEN_REPLY_TIMEOUT_MS);
+    channel.port1.onmessage = () => {
+      clearTimeout(timer);
+      resolve(true);
+    };
+    client.postMessage({ type: "open", path: url.pathname + url.search + url.hash }, [
+      channel.port2,
+    ]);
+  });
+}
+
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
   const url = sameOriginUrl(event.notification.data && event.notification.data.url);
   event.waitUntil(
     (async () => {
       const windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
-      // Already looking at that match: just bring it forward. Opening a
-      // second tab on the same match would leave two live sockets.
-      for (const client of windows) {
-        if (new URL(client.url).pathname === url.pathname) {
-          await client.focus();
-          return;
-        }
-      }
-      // Otherwise steer a window that is already open, rather than piling up
-      // one tab per notification.
-      const open = windows[0];
-      if (open && "navigate" in open) {
-        await open.focus();
-        await open.navigate(url.href);
+      if (windows.length === 0) {
+        await self.clients.openWindow(url.href);
         return;
       }
-      await self.clients.openWindow(url.href);
+      // A window already on that match if there is one, so a second tab never
+      // opens a second live socket on it; otherwise the most recently focused
+      // one, which is the order `matchAll` returns windows in. Steering a
+      // window that is already open, rather than opening one per click, is
+      // what keeps an installed app from piling up windows.
+      const onMatch = windows.find((client) => new URL(client.url).pathname === url.pathname);
+      const target = onMatch || windows[0];
+      // Focusing spends the click's permission to raise a window, so it comes
+      // first and is not retried; a browser that refuses it still gets the
+      // page moved.
+      await target.focus().catch(() => {});
+      if (onMatch) return;
+      if (await askToOpen(target, url)) return;
+      try {
+        await target.navigate(url.href);
+      } catch {
+        await self.clients.openWindow(url.href).catch(() => {});
+      }
     })(),
   );
 });

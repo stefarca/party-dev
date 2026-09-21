@@ -110,10 +110,15 @@ index → nudge newly-waited-on disconnected players. Two rules hold inside it:
 and appends `match_finished`. Callers only assign `record.state` and call `commit()`.
 
 **Nudges are one decision and two channels.** `commit()`'s last stage decides _who_ is newly
-waited-on, not connected, and past the rate limit (`shouldNudge` in `worker/nudge.ts`: one per
-player per match per turn, plus a 10-minute floor as a backstop, with `nudgedAt` kept on the DO
-record). Both channels then get that same list, each through its own `ctx.waitUntil()` so neither
-waits on nor is lost to the other. Slack (`worker/nudge.ts`) is one message for the whole batch,
+waited-on, not watching, and past the rate limit (`shouldNudge` in `worker/nudge.ts`: one per
+player per match per turn, plus a 10-minute floor under a nudge the player has not answered, with
+`nudgedAt` kept on the DO record). A move answers a nudge — `handleAction` drops the mover's
+`nudgedAt` entry — so a player who is actually playing hears about every turn, however quick; the
+floor only holds back a player whose `waitingOn` keeps flapping while they stay away. "Watching"
+is `MatchDO.isWatching()`: a socket counts only while its page keeps up the heartbeat (below), and
+a hidden page closes its socket, so neither a sleeping laptop's leftover socket nor a background
+tab spares its player a nudge. Both channels then get that same list, and the roster's names,
+each through its own `ctx.waitUntil()` so neither waits on nor is lost to the other. Slack (`worker/nudge.ts`) is one message for the whole batch,
 to a shared channel. Web push (`worker/push.ts`) is one encrypted notification per subscribed
 device, addressed to that player alone. Neither may throw: they are fired from a path `alarm()`
 reaches, and a throw there is retried up to six times.
@@ -134,8 +139,10 @@ in the Worker, in the language the device stored when it subscribed (`push_subsc
 from the `COPY` table in `worker/push.ts`; a language `web/locales/` ships and that table lacks is
 a test failure. The game's name comes from the same locale files the client reads, through
 `games/names.ts`. The client sends its language again on every load and every switch, so the row
-follows the app. The payload carries a path, never `PUBLIC_BASE_URL`, so a misconfigured base URL
-cannot send a player to another host.
+follows the app. The body names the reader's opponents, never the match code, which is not
+something a player reads. The payload carries a path, never `PUBLIC_BASE_URL`, so a misconfigured
+base URL cannot send a player to another host. It goes out at `Urgency: high`, since at `normal`
+an Android push service may hold it until a dozing phone next wakes on its own.
 
 **Game modules** implement `GameModule<S, A>` (`shared/game.ts`). The four binding rules — server
 authority, mandatory per-player `view()`, seeded PRNG from `shared/prng.ts` threaded through state,
@@ -171,7 +178,9 @@ falls back to a hash-picked motif.
 `POST /api/matches/:id/start`) speak `MatchSnapshot`/`MatchEvent` from `shared/protocol.ts`. WS is
 an optimization, never the only path — anything reachable over the socket needs an HTTP equivalent.
 `web/useMatch.ts` fetches the HTTP snapshot first, _then_ the event log, then attaches the socket as
-an add-on with backoff, and falls back to HTTP for sends. That order is load-bearing: applying a
+an add-on with backoff, and falls back to HTTP for sends. It holds no socket while the page is
+hidden — that is how the server knows a player has looked away — and reconnects the moment it is
+shown, with `hello` catching up on what it missed. That order is load-bearing: applying a
 snapshot moves `since` to the latest seq, so without the events fetch a reloaded page would ask the
 socket only for events newer than ones it never had, and show an empty history until the next move.
 `HISTORY_LIMIT` bounds both the server's reply and the client's buffer. Snapshots carry the
@@ -186,7 +195,10 @@ lives on `ws.serializeAttachment()`, never an in-memory map; no `setInterval` �
 (throws are retried up to 6 times and can double-resolve a round), and `webSocketMessage()` must
 never throw (it kills the socket) — both convert failures into a logged error or a `{t:"error"}`
 message. For WebSocket heartbeats, send a raw `"ping"` text frame. The runtime answers it with
-`"pong"` through `setWebSocketAutoResponse` without waking the DO. The app-level `{t:"ping"}`
+`"pong"` through `setWebSocketAutoResponse` without waking the DO, and timestamps it
+(`ctx.getWebSocketAutoResponseTimestamp()`). The client sends one every `HEARTBEAT_INTERVAL_MS`,
+and a socket whose last one (or whose `connectedAt`, before the first) is older than
+`PRESENCE_WINDOW_MS` (both in `shared/heartbeat.ts`) no longer counts as its player watching. The app-level `{t:"ping"}`
 message exists only to answer non-conforming clients and must not be used for keepalives.
 
 **Identity** is a nickname plus an HMAC-signed cookie (`worker/auth.ts`, Web Crypto, key in
@@ -226,7 +238,12 @@ the title and body the Worker composed. It must always show a notification (the 
 `userVisibleOnly`, so a `push` handler that shows none gets the browser's own "site updated in
 the background" instead), and it handles `pushsubscriptionchange` by re-subscribing and POSTing
 the new endpoint with the one it replaces, since a push service can retire an endpoint with no
-page open to notice.
+page open to notice. A notification click on an app that is already open does not navigate the
+window from the worker: `WindowClient.navigate()` refuses any window the worker does not control
+(one force-reloaded past it, say) and is missing in some browsers. The worker posts
+`{type: "open", path}` to the page instead, and `followNotificationClicks()` in `web/push.ts`
+routes there and replies; `navigate()` and then `openWindow()` are the fallbacks for a page that
+does not answer.
 
 The web app manifest is _not_ generated: `public/manifest.webmanifest` is a static file linked
 from `index.html`, so it is byte-identical in dev and in production and `e2e/pwa.spec.ts` can
@@ -236,7 +253,9 @@ and the two `theme-color` metas repeat the dark and light `--surface-void` from 
 as literals, the same duplication the theme bootstrap makes with its storage key; that spec fails
 when they drift. The icons are in `public/`: `icon-192.png` and `icon-512.png` are rendered from
 `favicon.svg`, and `icon-maskable-512.png` and `apple-touch-icon.png` from `icon.svg`, the
-full-bleed variant whose buddy sits inside the maskable safe zone. Both SVGs draw the same buddy
+full-bleed variant whose buddy spans about half the canvas — an Android launcher shows only the
+middle two thirds of a maskable icon, so a buddy sized just to the 80% safe zone looks zoomed in.
+Render them with `sharp` at the target size (`density: 72 * size / 32`), not by upscaling. Both SVGs draw the same buddy
 as `web/components/Brand.tsx`, as literals — a plain file cannot import the component — so a
 change to the mark has to be made in all three.
 

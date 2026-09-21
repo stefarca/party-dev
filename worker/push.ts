@@ -1,6 +1,6 @@
 import { gameName } from "../games/names";
 import { decodeBase64Url, encodeBase64Url } from "../shared/base64url";
-import type { PlayerId } from "../shared/protocol";
+import type { PlayerId, PlayerInfo } from "../shared/protocol";
 
 // Web push nudges: the same "you are up" message worker/nudge.ts posts to
 // Slack, delivered instead to the browsers a player has opted in from.
@@ -195,17 +195,25 @@ async function forgetDeadEndpoint(db: D1Database, endpoint: string): Promise<voi
 // so it can never go through i18next. The device says which language it
 // wants when it subscribes.
 //
+// The body names the reader's opponents rather than the match code: a code
+// is how the app addresses a match, not how a person remembers one, and
+// "who is waiting on me" is what tells two games of the same thing apart.
+// `waitingOne`/`waitingMany` are the one-opponent and several-opponent
+// forms, since the verb agrees with them in both languages.
+//
 // Exported for worker/push.test.ts, which fails when a language exists in
 // web/locales/ and not here — the one thing that keeps adding a language
 // from silently leaving its speakers with English notifications.
-export const COPY: Record<string, { title: string; body: string }> = {
+export const COPY: Record<string, { title: string; waitingOne: string; waitingMany: string }> = {
   en: {
     title: "Your turn in {{game}}",
-    body: "Match {{code}} is waiting on you.",
+    waitingOne: "{{names}} is waiting for your move.",
+    waitingMany: "{{names}} are waiting for your move.",
   },
   it: {
     title: "Tocca a te in {{game}}",
-    body: "La partita {{code}} aspetta la tua mossa.",
+    waitingOne: "{{names}} aspetta la tua mossa.",
+    waitingMany: "{{names}} aspettano la tua mossa.",
   },
 };
 
@@ -213,18 +221,28 @@ function fill(template: string, values: Record<string, string>): string {
   return template.replace(/\{\{(\w+)\}\}/g, (_, key: string) => values[key] ?? "");
 }
 
+// The body for `opponents`, their names joined the way `lang` joins a list
+// ("Ada, Bea and Cy" / "Ada, Bea e Cy"). Every game seats at least two, so
+// there is always someone to name; if there somehow is not, the title says
+// all there is to say.
+function waitingBody(lang: string, opponents: string[]): string {
+  if (opponents.length === 0) return "";
+  const names = new Intl.ListFormat(lang, { type: "conjunction" }).format(opponents);
+  const template = opponents.length === 1 ? COPY[lang].waitingOne : COPY[lang].waitingMany;
+  return fill(template, { names });
+}
+
 // The notification one player gets about one match. `language` is whatever
 // that device stored; anything the app does not speak falls back to English,
 // the same way i18next does on the client.
 export function composeNudge(
   language: string | null,
-  match: { matchId: string; gameId: string },
+  match: { matchId: string; gameId: string; opponents: string[] },
 ): PushMessage {
   const lang = language && language in COPY ? language : "en";
-  const values = { game: gameName(match.gameId, lang), code: match.matchId };
   return {
-    title: fill(COPY[lang].title, values),
-    body: fill(COPY[lang].body, values),
+    title: fill(COPY[lang].title, { game: gameName(match.gameId, lang) }),
+    body: waitingBody(lang, match.opponents),
     // A path, not `PUBLIC_BASE_URL`: the service worker resolves it against
     // its own origin, so a deployment whose base URL is wrong cannot send a
     // player to somebody else's host.
@@ -437,7 +455,12 @@ export async function sendPush(
         "content-type": "application/octet-stream",
         TTL: String(TTL_SECONDS),
         Topic: message.tag,
-        Urgency: "normal",
+        // "high" is what gets a message through to a phone in battery-saving
+        // doze straight away; at "normal" the push service may sit on it
+        // until the device next wakes on its own, by which time the turn has
+        // often been waiting for many minutes. Every message here ends in a
+        // notification the player asked for, which is what "high" is for.
+        Urgency: "high",
       },
       body: body as BodyInit,
       // A hung push service must not hold the calling Durable Object alive
@@ -457,12 +480,14 @@ export async function sendPush(
 }
 
 // Nudges every device belonging to `playerIds`, each in its own language,
-// and forgets the ones their push service says are gone. Never throws, and
-// no-ops without a word when VAPID is not configured — local dev and any
-// contributor without the secrets must still be able to play.
+// and forgets the ones their push service says are gone. `players` is the
+// match's whole named roster, which each notification's opponents are taken
+// from. Never throws, and no-ops without a word when VAPID is not configured
+// — local dev and any contributor without the secrets must still be able
+// to play.
 export async function sendPushNudges(
   env: Env,
-  match: { matchId: string; gameId: string; playerIds: PlayerId[] },
+  match: { matchId: string; gameId: string; playerIds: PlayerId[]; players: PlayerInfo[] },
 ): Promise<void> {
   const config = readConfig(env);
   if (!config || match.playerIds.length === 0) return;
@@ -478,10 +503,16 @@ export async function sendPushNudges(
   // One message per device, not per player: the same player's phone and
   // laptop both get told, and each in the language it asked for.
   const deliveries = await Promise.all(
-    subscriptions.map(async (subscription) => ({
-      endpoint: subscription.endpoint,
-      outcome: await sendPush(config, subscription, composeNudge(subscription.language, match)),
-    })),
+    subscriptions.map(async (subscription) => {
+      const opponents = match.players
+        .filter((p) => p.id !== subscription.playerId)
+        .map((p) => p.nickname);
+      const message = composeNudge(subscription.language, { ...match, opponents });
+      return {
+        endpoint: subscription.endpoint,
+        outcome: await sendPush(config, subscription, message),
+      };
+    }),
   );
 
   for (const { endpoint, outcome } of deliveries) {

@@ -2,9 +2,11 @@
   <!--
     Full-bleed variant of favicon.svg, and the source the maskable and Apple
     touch PNGs in this directory are rendered from. It has no rounded corners
-    of its own because both consumers supply their own mask, and the buddy is
-    scaled down enough to sit inside the maskable safe zone (the centre 80%
-    circle), so a platform that crops to a circle still shows the whole face.
+    of its own because both consumers supply their own mask. The buddy spans
+    about half the canvas: an Android launcher shows only the middle two
+    thirds of a maskable icon (72 of its 108dp) and then crops that to its
+    own shape, so a buddy sized merely to fit the spec's 80% safe zone fills
+    the whole visible circle and reads as zoomed in.
   -->
   <defs>
     <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
@@ -13,7 +15,7 @@
     </linearGradient>
   </defs>
   <rect width="32" height="32" fill="url(#g)" />
-  <g transform="translate(2.2 1.74) scale(1.15)">
+  <g transform="translate(6.12 5.83) scale(0.82)">
     <g transform="rotate(-7 12 12)">
       <rect x="2.6" y="4.2" width="18.8" height="16.4" rx="7" fill="#ffffff" />
       <circle cx="8.8" cy="11.4" r="1.8" fill="#1a0e2b" />

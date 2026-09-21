@@ -3,11 +3,8 @@ import { describe, expect, it, vi } from "vitest";
 import { MIN_NUDGE_INTERVAL_MS, sendSlackNudge, shouldNudge } from "./nudge";
 
 // Pure parts only (worker/nudge.ts's own file comment): message composition
-// and the rate-limit predicate. `MatchDO.nudgeHook`'s wiring (connectivity
-// filtering, ctx.waitUntil, persisting `nudgedAt`) is exercised separately,
-// by hand in local dev — this repo has no
-// Durable Object integration test harness for that (see worker/match.test.ts's
-// own comment on why).
+// and the rate-limit predicate. `MatchDO.nudgeHook`'s wiring (who counts as
+// watching, and a move answering a nudge) is in worker/match.test.ts.
 
 function fakeEnv(webhookUrl: string | undefined): Env {
   return { SLACK_WEBHOOK_URL: webhookUrl } as unknown as Env;
