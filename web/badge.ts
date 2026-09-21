@@ -12,7 +12,7 @@
 // knows the full truth), `setMatchWaiting` only ever adds/removes the one
 // match id it is watching.
 
-const BASE_TITLE = "Party";
+const BASE_TITLE = "Pimpom";
 const BASE_FAVICON_HREF = "/favicon.svg";
 const FAVICON_SIZE = 32;
 
@@ -47,9 +47,9 @@ function applyFavicon(count: number): void {
     const ctx2d = canvas.getContext("2d");
     if (!ctx2d) return;
 
-    // Base glyph: the same gradient tile as the static favicon, redrawn here
-    // because a canvas cannot load the SVG synchronously. The four-tile mark
-    // is left off: at 32px it would be hidden under the count dot anyway.
+    // Base glyph: the same gradient plate as the static favicon, redrawn here
+    // because a canvas cannot load the SVG synchronously. The buddy itself is
+    // left off: at 32px its face would be hidden under the count dot anyway.
     // Canvas has no access to the stylesheet's custom properties, so these
     // two stops mirror `/favicon.svg` rather than a palette token.
     const gradient = ctx2d.createLinearGradient(0, 0, FAVICON_SIZE, FAVICON_SIZE);

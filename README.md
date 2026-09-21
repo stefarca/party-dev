@@ -1,4 +1,4 @@
-# party-dev
+# Pimpom
 
 A collection of small async, turn-based party games for playing with coworkers, hosted on
 Cloudflare's free tier (Worker + Static Assets + Durable Objects + D1).
@@ -157,7 +157,7 @@ values in at deploy time from a repo secret and a repo variable.
        Durable Objects edit permissions for the target account.
      - `CLOUDFLARE_ACCOUNT_ID` — your Cloudflare account ID.
    - **Settings → Secrets and variables → Actions → Variables:**
-     - `PUBLIC_BASE_URL` — the real public URL (e.g. `https://party-dev.<subdomain>.workers.dev`
+     - `PUBLIC_BASE_URL` — the real public URL (e.g. `https://pimpom.app`
        or a custom domain). Leaving this as the local-dev default in production means every Slack
        nudge links to localhost.
 

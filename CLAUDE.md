@@ -236,7 +236,9 @@ and the two `theme-color` metas repeat the dark and light `--surface-void` from 
 as literals, the same duplication the theme bootstrap makes with its storage key; that spec fails
 when they drift. The icons are in `public/`: `icon-192.png` and `icon-512.png` are rendered from
 `favicon.svg`, and `icon-maskable-512.png` and `apple-touch-icon.png` from `icon.svg`, the
-full-bleed variant whose tiles sit inside the maskable safe zone.
+full-bleed variant whose buddy sits inside the maskable safe zone. Both SVGs draw the same buddy
+as `web/components/Brand.tsx`, as literals — a plain file cannot import the component — so a
+change to the mark has to be made in all three.
 
 ## Conventions
 

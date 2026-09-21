@@ -55,7 +55,7 @@ test("the app is installable", async ({ page }) => {
   const manifest = (await res.json()) as Manifest;
   // A browser offers no install at all for a manifest missing any of these.
   expect(manifest).toMatchObject({
-    name: "Party",
+    name: "Pimpom",
     start_url: "/",
     scope: "/",
     display: "standalone",

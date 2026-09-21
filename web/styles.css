@@ -65,6 +65,8 @@
  *   accent-on-soft on accent-soft (chip-accent text)         7.32    7.25   >= 4.5
  *   pink-on-soft on pink-soft (secondary chip text)          7.30    4.83   >= 4.5
  *   text-on-accent on accent (primary button label)          6.10    5.47   >= 4.5
+ *   accent on surface-void (the wordmark's second syllable)  6.31    4.99   >= 4.5
+ *   accent on surface-1 (the same, on the sign-in card)      5.73    5.47   >= 4.5
  *   text-on-accent on danger (tightest status fill)          7.15    5.79   >= 4.5
  *   border-strong on surface-1 (input/button borders)        3.71    3.58   >= 3.0
  *   accent focus ring on surface-3 (tightest case)           4.32    4.63   >= 3.0
@@ -576,6 +578,25 @@ body {
   }
   50% {
     transform: translateY(-8%) rotate(3deg);
+  }
+}
+
+/* The buddy's idle. It squashes as it lands and stretches as it leaves, so
+ * the mark reads as a character with weight rather than a logo sliding up
+ * and down. Callers set `transform-origin` to the feet. */
+@keyframes party-buddy-bob {
+  0%,
+  100% {
+    transform: translateY(0) scale(1, 1);
+  }
+  40% {
+    transform: translateY(-9%) scale(0.97, 1.03);
+  }
+  62% {
+    transform: translateY(0) scale(1.04, 0.96);
+  }
+  80% {
+    transform: translateY(-2%) scale(1, 1);
   }
 }
 
