@@ -8,7 +8,8 @@ _is_ the account — sign in with the same one on another device and your matche
 with you — a dashboard that buckets your matches into "your turn" / "waiting on others" /
 "finished", five games (Battleship, Checkers, Connect 4, Tic-tac-toe and Trivia) playable over a
 live WebSocket (with an HTTP fallback for every action) with a plain-language move history,
-Slack nudges for players who are newly up and not currently connected, the whole UI in
+nudges for players who are newly up and not currently connected — to a Slack channel, and as a
+web push notification to whichever browsers a player has switched them on from — the whole UI in
 English or Italian (picked from the browser's languages, switchable from the header), and an
 installable PWA build so the app can live on a phone's home screen like any other game. See
 [`games/README.md`](./games/README.md) for how to add another game.
@@ -23,7 +24,7 @@ installable PWA build so the app can live on a phone's home screen like any othe
 
 ```bash
 npm install
-cp .dev.vars.example .dev.vars   # sets a dummy SESSION_SECRET (and SLACK_WEBHOOK_URL) for local dev
+cp .dev.vars.example .dev.vars   # dummy SESSION_SECRET, SLACK_WEBHOOK_URL and VAPID keys for local dev
 npm run cf-typegen        # generates worker-configuration.d.ts (already committed; re-run if bindings change)
 npm run db:migrate:local  # creates the local D1 sqlite file and applies migrations/000*.sql
 npm run dev                # starts vite + workerd; prints the local URL
@@ -31,7 +32,14 @@ npm run dev                # starts vite + workerd; prints the local URL
 
 `SLACK_WEBHOOK_URL` is optional even locally: delete the line (or leave it blank) in `.dev.vars`
 and nudges no-op cleanly (`worker/nudge.ts` logs once and returns) — nothing else in the app
-depends on it.
+depends on it. The three `VAPID_*` variables are optional in the same way, and only as a set:
+without all three, `worker/push.ts` sends nothing and the app shows no notification control at
+all. The pair in `.dev.vars.example` is a throwaway, published on purpose so `npm run dev` runs
+the real code path; generate your own before deploying (see below).
+
+Push notifications need a service worker, and no dev server registers one, so `npm run dev` and
+the Playwright suite behave as if the feature did not exist. `npm run build && npm run preview`
+is the only way to see it locally.
 
 Local D1 and Durable Object storage both persist under `.wrangler/state`, which
 `wrangler d1 migrations apply --local` and `@cloudflare/vite-plugin` share by default. If you ever
@@ -80,10 +88,12 @@ runs the same pipeline, in this order:
 5. broadcast a per-player `snapshot` (each socket's own `view(state, playerId)`, never raw state)
    plus any new events to every connected WebSocket,
 6. update the D1 index (`matches`/`match_players` — derived, dashboard-only),
-7. nudge newly-waited-on players who are not connected, via a Slack incoming webhook
-   (`worker/nudge.ts`), rate-limited to one nudge per player per match per turn plus a hard
-   10-minute floor per player as a backstop. Several players becoming waited-on in the same commit
-   (e.g. a trivia round start) produce one batched Slack message, never one per player.
+7. nudge newly-waited-on players who are not connected, rate-limited to one nudge per player per
+   match per turn plus a hard 10-minute floor per player as a backstop. One decision, two
+   channels: a Slack incoming webhook (`worker/nudge.ts`), where several players becoming
+   waited-on in the same commit — a trivia round start, say — produce one batched message rather
+   than one per player, and a web push notification per device that opted in (`worker/push.ts`),
+   addressed to that player alone and composed in the language that device asked for.
 
 Four rules every `GameModule` must follow:
 
@@ -122,7 +132,25 @@ values in at deploy time from a repo secret and a repo variable.
 4. `wrangler secret put SLACK_WEBHOOK_URL` — optional. Sets the Slack incoming-webhook URL for
    turn nudges; if you skip this, `worker/nudge.ts` no-ops cleanly and the rest of the app is
    unaffected. Never commit a real value anywhere — it belongs only in this secret.
-5. In the GitHub repo settings, add:
+5. `wrangler secret put VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` and `VAPID_SUBJECT` — optional,
+   and only useful as a set: without all three, nothing is ever pushed and the app shows no
+   notification control. Generate a key pair with:
+
+   ```bash
+   node --input-type=module -e '
+   const pair = await crypto.subtle.generateKey({ name: "ECDSA", namedCurve: "P-256" }, true, ["sign"]);
+   const raw = new Uint8Array(await crypto.subtle.exportKey("raw", pair.publicKey));
+   const jwk = await crypto.subtle.exportKey("jwk", pair.privateKey);
+   console.log("VAPID_PUBLIC_KEY=" + Buffer.from(raw).toString("base64url"));
+   console.log("VAPID_PRIVATE_KEY=" + jwk.d);
+   '
+   ```
+
+   `VAPID_SUBJECT` is how a push service reaches you about your traffic: a `mailto:` or `https:`
+   URL. Keep the key pair — rotating it silently invalidates every subscription made against the
+   old one, and every player has to switch notifications on again.
+
+6. In the GitHub repo settings, add:
    - **Settings → Secrets and variables → Actions → Secrets:**
      - `CF_D1_DATABASE_ID` — the `database_id` from step 2.
      - `CLOUDFLARE_API_TOKEN` — an API token with Workers Scripts, Workers Routes, D1, and

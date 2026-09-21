@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 
 import { ApiError, getMe, setIdentity, signOut } from "./api";
 import type { Me } from "./api";
+import { disablePush } from "./push";
 
 export type SessionState = "loading" | "anon" | "ready";
 
@@ -68,6 +69,13 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const endSession = useCallback(async () => {
+    // Whoever signs in here next is someone else, and this browser has one
+    // push subscription for all of them — so it stops being nudged about
+    // matches the player leaving is in. Best-effort: a device that cannot
+    // be unsubscribed must not be a device nobody can sign out of.
+    await disablePush().catch((err: unknown) => {
+      console.error("could not turn off notifications while signing out", err);
+    });
     await signOut();
     setPlayer(null);
     setError(null);

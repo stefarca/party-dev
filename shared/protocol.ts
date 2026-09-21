@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { decodeBase64Url } from "./base64url";
 import type { ActionDescription, Result } from "./game";
 import { NICKNAME_MAX_LENGTH } from "./nickname";
 
@@ -87,6 +88,81 @@ export type ActionRequest = z.infer<typeof ActionRequestSchema>;
 // being silently ignored.
 export const StartMatchRequestSchema = z.object({}).strict();
 export type StartMatchRequest = z.infer<typeof StartMatchRequestSchema>;
+
+// ---------------------------------------------------------------------------
+// Web push subscriptions. A browser hands the app an endpoint plus two keys
+// when a player opts in; worker/push.ts encrypts to those keys and POSTs to
+// that endpoint.
+// ---------------------------------------------------------------------------
+
+// The endpoint is supplied by the client and then fetched by the Worker, so
+// it is validated harder than a field that only gets stored. Its host cannot
+// be checked against a list — it is whatever push service the browser's
+// vendor runs — but its scheme can, and `https:` is the whole of what the
+// standard allows.
+const PushEndpointSchema = z
+  .string()
+  .min(1)
+  .max(2048)
+  .refine((value) => {
+    try {
+      return new URL(value).protocol === "https:";
+    } catch {
+      return false;
+    }
+  }, "endpoint must be an https URL");
+
+// A base64url field of an exact size. The two key sizes RFC 8291 fixes are
+// checked here, at the boundary, rather than when a notification is sent:
+// key material the Worker cannot encrypt to would otherwise sit in the
+// registry as a row it retries every turn, forever, with nothing to learn
+// from the failure — unlike a subscription a push service reports as gone.
+function base64UrlBytes(bytes: number, check?: (decoded: Uint8Array) => boolean) {
+  return z.string().refine((value) => {
+    let decoded: Uint8Array;
+    try {
+      decoded = decodeBase64Url(value);
+    } catch {
+      return false;
+    }
+    return decoded.length === bytes && (check?.(decoded) ?? true);
+  }, `must be ${bytes} base64url-encoded bytes`);
+}
+
+// Exactly the shape `PushSubscription.toJSON()` produces in the browser,
+// minus the fields nothing here reads, so the client can forward it as-is.
+export const PushSubscriptionSchema = z.object({
+  endpoint: PushEndpointSchema,
+  keys: z.object({
+    // The browser's own public key: an uncompressed P-256 point, which is
+    // what the leading 0x04 says it is.
+    p256dh: base64UrlBytes(65, (key) => key[0] === 0x04),
+    auth: base64UrlBytes(16),
+  }),
+});
+export type PushSubscriptionPayload = z.infer<typeof PushSubscriptionSchema>;
+
+export const PushSubscribeRequestSchema = z.object({
+  subscription: PushSubscriptionSchema,
+  // Which language to compose this device's notifications in. Optional: the
+  // service worker re-subscribes without knowing it (it has no i18next), and
+  // the server then keeps whatever the row already said.
+  language: z.string().min(2).max(16).optional(),
+  // An endpoint this one supersedes, when a push service retired the old one
+  // and the service worker subscribed again in its place.
+  replaces: PushEndpointSchema.optional(),
+});
+export type PushSubscribeRequest = z.infer<typeof PushSubscribeRequestSchema>;
+
+export const PushUnsubscribeRequestSchema = z.object({ endpoint: PushEndpointSchema });
+export type PushUnsubscribeRequest = z.infer<typeof PushUnsubscribeRequestSchema>;
+
+// Reply to GET /api/push/key. `key` is the VAPID public key a browser must
+// create its subscription with, or null where this deployment has none
+// configured and can send nothing.
+export interface PushKeyResponse {
+  key: string | null;
+}
 
 // ---------------------------------------------------------------------------
 // Live match wire protocol. Used by both the WebSocket at

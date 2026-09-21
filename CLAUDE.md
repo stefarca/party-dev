@@ -6,14 +6,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ```bash
 npm install
-cp .dev.vars.example .dev.vars   # dummy SESSION_SECRET + dummy SLACK_WEBHOOK_URL (see below)
+cp .dev.vars.example .dev.vars   # dummy SESSION_SECRET, SLACK_WEBHOOK_URL and VAPID keys (see below)
 npm run db:migrate:local         # creates the local D1 sqlite file under .wrangler/state
 npm run dev                      # vite + real workerd, prints the local URL
 ```
 
 Node 26 is pinned in `mise.toml` and CI. `SLACK_WEBHOOK_URL` is optional: with the copied dummy
 value, nudges make a real request that fails and gets logged. Delete the line to make them a clean
-no-op.
+no-op. `VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY`/`VAPID_SUBJECT` are optional the same way, and only
+as a set — missing any one of them and `worker/push.ts` sends nothing and `GET /api/push/key`
+answers `null`, which is what makes the client hide the notification control. The pair in
+`.dev.vars.example` is a real throwaway, published deliberately so local dev runs the real path.
 
 - `npm test` — vitest (node environment). Single file: `npx vitest run worker/match.test.ts`; single
   case: `npx vitest run games/trivia/game.test.ts -t "idempotent"`.
@@ -24,8 +27,8 @@ no-op.
   `npx playwright install chromium`, plus `sudo npx playwright install-deps chromium` on Linux.
 - `npm run e2e:serve` — the Vite dev server in `--mode e2e`. Its D1 and DO state live in
   `.wrangler/e2e`, so it can run beside `npm run dev`. It reads only `SESSION_SECRET` (from
-  `.dev.vars`, or from the environment when there is none), so a test run never sends a Slack
-  nudge. Open it in two browser profiles to play a match against yourself.
+  `.dev.vars`, or from the environment when there is none) — the vite plugin loads only the
+  secrets a mode declares — so a test run never sends a Slack nudge and never has VAPID keys. Open it in two browser profiles to play a match against yourself.
 - `npm run typecheck` — `tsc -b --noEmit` across the four project references below.
 - `npm run lint` / `npm run format` / `npm run format:check`.
 - `npm run cf-typegen` — regenerates the committed `worker-configuration.d.ts`; re-run after
@@ -49,12 +52,14 @@ that old Worker, like the existing `ADD COLUMN`s. One-time operator setup is in 
 **One `MatchDO` class runs every game.** `worker/match.ts` holds no game-specific knowledge; it
 looks games up through `games/registry.ts`. The Durable Object is authoritative; D1's `matches` and
 `match_players` (`migrations/*.sql`) are a derived, dashboard-only index that may be rebuilt or lag
-without affecting correctness. Never read match truth from D1. D1 has two other jobs. One is
+without affecting correctness. Never read match truth from D1. D1 has three other jobs. One is
 match-code reservation: `POST /api/matches` inserts a placeholder `matches` row to claim a fresh
 code (retrying on a primary-key collision) and deletes it if the DO create fails, and join checks
-that row before it contacts the DO. The other is the player registry.
+that row before it contacts the DO. The second is the player registry. The third is
+`push_subscriptions`, the devices to notify, which is authoritative for the same reason `players`
+is: a subscription is a capability a browser granted once and nothing can rebuild it.
 
-**`players` is the one authoritative table in D1.** A nickname is the account — the same one on a
+**`players` is authoritative, not derived.** A nickname is the account — the same one on a
 second device is the same player, with the same matches and record — so `players` and its unique
 index on `nickname_key` (`shared/nickname.ts` folds case, whitespace and NFKC) cannot be rebuilt
 from anything. `worker/players.ts` owns every read and write of it. The unique index, not any check
@@ -91,7 +96,7 @@ the verified session and never from a client payload.
 and `alarm()`.
 Its seven stages run in a binding order: persist → append events → recompute
 `waitingOn`/`deadline` → reconcile the DO alarm → broadcast a per-player snapshot → sync the D1
-index → Slack-nudge newly-waited-on disconnected players. Two rules hold inside it:
+index → nudge newly-waited-on disconnected players. Two rules hold inside it:
 
 - Stages 1–2 are synchronous and protected by the DO input gate. Every stage after the first
   `await` must re-read `this.readMatch()` and recompute via `deriveWaitingAndDeadline()` before
@@ -103,6 +108,34 @@ index → Slack-nudge newly-waited-on disconnected players. Two rules hold insid
 
 `commit()` also auto-finalizes: any state whose `result()` is non-null flips `status` to `"done"`
 and appends `match_finished`. Callers only assign `record.state` and call `commit()`.
+
+**Nudges are one decision and two channels.** `commit()`'s last stage decides _who_ is newly
+waited-on, not connected, and past the rate limit (`shouldNudge` in `worker/nudge.ts`: one per
+player per match per turn, plus a 10-minute floor as a backstop, with `nudgedAt` kept on the DO
+record). Both channels then get that same list, each through its own `ctx.waitUntil()` so neither
+waits on nor is lost to the other. Slack (`worker/nudge.ts`) is one message for the whole batch,
+to a shared channel. Web push (`worker/push.ts`) is one encrypted notification per subscribed
+device, addressed to that player alone. Neither may throw: they are fired from a path `alarm()`
+reaches, and a throw there is retried up to six times.
+
+**Web push is implemented against the RFCs, not a library**, because a Worker has no `web-push`:
+VAPID (RFC 8292) is an ES256 JWT signed with `VAPID_PRIVATE_KEY`, and the payload is encrypted
+with RFC 8291's `aes128gcm` — an ECDH between a key pair generated per message and the browser's
+own key, salted with the subscription's auth secret. Both halves are Web Crypto, and neither is
+readable enough to review by eye, so `worker/push.test.ts` checks them the way the other side
+would: it verifies the JWT with the public key and decrypts the body by re-deriving RFC 8291's
+key schedule in a second implementation that deliberately shares nothing with `worker/push.ts`.
+A push service answering 404 or 410 means that subscription is gone for good, and the row is
+deleted; anything else is transient and the row stays. Rotating the VAPID key pair invalidates
+every existing subscription, because a subscription is bound to the key it was created with.
+
+**A notification is the one player-facing string that cannot go through i18next.** It is composed
+in the Worker, in the language the device stored when it subscribed (`push_subscriptions.language`),
+from the `COPY` table in `worker/push.ts`; a language `web/locales/` ships and that table lacks is
+a test failure. The game's name comes from the same locale files the client reads, through
+`games/names.ts`. The client sends its language again on every load and every switch, so the row
+follows the app. The payload carries a path, never `PUBLIC_BASE_URL`, so a misconfigured base URL
+cannot send a player to another host.
 
 **Game modules** implement `GameModule<S, A>` (`shared/game.ts`). The four binding rules — server
 authority, mandatory per-player `view()`, seeded PRNG from `shared/prng.ts` threaded through state,
@@ -174,7 +207,9 @@ including deep-linked SPA routes like `/m/ABCDEF`, is served by Static Assets wi
 
 **The app is installable.** `vite build` generates a Workbox service worker (`vite-plugin-pwa`)
 into the client output, and only `vite build` does: no dev server registers one, so `npm run dev`,
-`npm run e2e:serve` and the Playwright suite behave as if none of this existed. Use
+`npm run e2e:serve` and the Playwright suite behave as if none of this existed — which is also
+why push notifications are unreachable in all three, and why `web/push.ts` reports "unavailable"
+rather than waiting on a `navigator.serviceWorker.ready` that will never settle. Use
 `npm run build && npm run preview` to exercise it. Two rules hold in `vite.config.ts`. Nothing
 under `/api` or `/ws` is ever cached — match truth is the DO's, so a cached snapshot is a wrong
 board; no runtime-caching rule matches them, and the navigation fallback carries a denylist so an
@@ -183,6 +218,15 @@ activates on its own: `web/components/UpdatePrompt.tsx` registers the worker and
 waiting build, because applying one means a reload, and an unasked-for reload lands mid-move. A
 player therefore keeps running the build they loaded until they accept that prompt, which matters
 because every push to `main` deploys.
+
+The worker's push half is `public/push-sw.js`, pulled in by Workbox's `importScripts` rather than
+bundled: Workbox generates the worker's own source, so there is nowhere for app code to live
+inside it. That is why it is plain JavaScript with no imports and translates nothing — it renders
+the title and body the Worker composed. It must always show a notification (the subscription is
+`userVisibleOnly`, so a `push` handler that shows none gets the browser's own "site updated in
+the background" instead), and it handles `pushsubscriptionchange` by re-subscribing and POSTing
+the new endpoint with the one it replaces, since a push service can retire an endpoint with no
+page open to notice.
 
 The web app manifest is _not_ generated: `public/manifest.webmanifest` is a static file linked
 from `index.html`, so it is byte-identical in dev and in production and `e2e/pwa.spec.ts` can
@@ -248,7 +292,8 @@ full-bleed variant whose tiles sit inside the maskable safe zone.
   `{{variable}}`, and when a game's English `name` differs from its `meta.name`. Dates, times and
   durations go through `Intl` with `useLanguage()`, never through a translated string. Server
   error messages are English, for logs. The client shows `errors.<code>` through `errorText()` in
-  `web/errors.ts` instead. Playwright pins `locale: "en-US"` because specs match English labels.
+  `web/errors.ts` instead. The one player-facing exception is push notification copy, which the
+  Worker composes and so cannot read from `web/locales/` — see the notification section above. Playwright pins `locale: "en-US"` because specs match English labels.
 - Client routing is hand-rolled in `web/router.tsx` with `useSyncExternalStore` and has no router
   dependency. Add new routes to its `parseRoute` table.
 - Prettier: `printWidth` 100; `.claude/` and generated files are ignored. ESLint flat

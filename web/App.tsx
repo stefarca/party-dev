@@ -7,6 +7,7 @@ import { useTranslation } from "react-i18next";
 import { NICKNAME_MAX_LENGTH } from "../shared/nickname";
 import { AppBackground } from "./components/AppBackground";
 import { LanguagePicker } from "./components/LanguagePicker";
+import { NotificationToggle } from "./components/NotificationToggle";
 import { PlayerAvatar } from "./components/PlayerAvatar";
 import { Spinner } from "./components/states";
 import { ThemeToggle } from "./components/ThemeToggle";
@@ -134,6 +135,7 @@ function Header() {
             phone's width. */}
         <div className="flex min-w-0 items-center gap-2">
           <RenameControl />
+          <NotificationToggle />
           <LanguagePicker />
           <ThemeToggle />
         </div>

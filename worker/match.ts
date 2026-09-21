@@ -19,6 +19,7 @@ import type {
   ServerMessage,
 } from "../shared/protocol";
 import { sendSlackNudge, shouldNudge } from "./nudge";
+import { sendPushNudges } from "./push";
 
 // Durable Object gotchas that apply to every method added to this class:
 // - Hibernation API only: use `ctx.acceptWebSocket()` / `webSocketMessage()`
@@ -536,12 +537,19 @@ export class MatchDO extends DurableObject<Env> {
     await this.nudgeHook(current, newlyWaiting);
   }
 
-  // Slack-nudge every player in `newlyWaiting` who is not
-  // currently connected, rate-limited to one nudge per player per match per
-  // turn plus a hard floor backstop — see `shouldNudge` in worker/nudge.ts
-  // for the exact rule. Several players becoming newly-waited-on in the same
-  // commit (e.g. a trivia round start) produce exactly one batched Slack
-  // message, never one per player.
+  // Nudge every player in `newlyWaiting` who is not currently connected,
+  // rate-limited to one nudge per player per match per turn plus a hard
+  // floor backstop — see `shouldNudge` in worker/nudge.ts for the exact
+  // rule. Several players becoming newly-waited-on in the same commit (e.g.
+  // a trivia round start) produce exactly one batched Slack message, never
+  // one per player.
+  //
+  // Two channels, one decision: the Slack webhook (one message for the
+  // whole batch, to a shared channel) and web push (one notification per
+  // device that opted in, to that player alone). Both are driven by the same
+  // eligibility above, so turning one on does not double the other, and a
+  // player who reads a nudge on their phone is not nudged again next turn
+  // any sooner than they would have been.
   //
   // `nudgedAt` lives on this DO's own record rather than in a D1 column,
   // because the DO is authoritative and this avoids
@@ -594,6 +602,20 @@ export class MatchDO extends DurableObject<Env> {
         .catch((err) => {
           console.error("nudgeHook: sendSlackNudge rejected unexpectedly", err);
         }),
+    );
+
+    // Its own waitUntil rather than a link in the chain above: a push
+    // notification names nobody but its reader, so it needs no registry
+    // lookup, and neither channel should wait on the other's round-trips
+    // (or be lost to the other's failure).
+    this.ctx.waitUntil(
+      sendPushNudges(this.env, {
+        matchId: record.id,
+        gameId: record.gameId,
+        playerIds,
+      }).catch((err) => {
+        console.error("nudgeHook: sendPushNudges rejected unexpectedly", err);
+      }),
     );
   }
 

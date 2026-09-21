@@ -27,6 +27,12 @@
     "light": "Chiaro",
     "dark": "Scuro"
   },
+  "notifications": {
+    "on": "Disattiva le notifiche del turno",
+    "off": "Avvisami quando tocca a me",
+    "blocked": "Le notifiche sono bloccate per questo sito nelle impostazioni del browser",
+    "failed": "Impossibile cambiare l'impostazione delle notifiche."
+  },
   "nickname": {
     "required": "Inserisci un nickname per continuare.",
     "tooLong": "Il nickname può avere al massimo {{max}} caratteri.",

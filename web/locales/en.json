@@ -27,6 +27,12 @@
     "light": "Light",
     "dark": "Dark"
   },
+  "notifications": {
+    "on": "Turn off turn notifications",
+    "off": "Notify me when it is my turn",
+    "blocked": "Notifications are blocked for this site in your browser settings",
+    "failed": "Could not change the notification setting."
+  },
   "nickname": {
     "required": "Enter a nickname to continue.",
     "tooLong": "Nickname must be {{max}} characters or fewer.",

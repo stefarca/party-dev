@@ -33,6 +33,12 @@ const e2e: PluginConfig = {
 //   - A new worker never activates on its own (`skipWaiting` is false). Reloading in the middle
 //     of someone's turn is the app's call to make, so the waiting worker sits there until
 //     web/components/UpdatePrompt.tsx asks for it.
+//
+// `public/push-sw.js` adds the push, notification-click and subscription-change handlers. It is
+// `importScripts`ed rather than bundled, because Workbox generates this worker's source and
+// there is nowhere to put app code inside it; that is also why it is plain JavaScript with no
+// imports. It is left out of the precache (`globIgnores`) since the generated worker already
+// pulls it in at install time.
 const pwa = VitePWA({
   registerType: "prompt",
   manifest: false,
@@ -40,6 +46,8 @@ const pwa = VitePWA({
   injectRegister: null,
   workbox: {
     globPatterns: ["**/*.{js,css,html,svg,png,webmanifest}"],
+    globIgnores: ["push-sw.js"],
+    importScripts: ["push-sw.js"],
     // Deep-linked SPA routes like /m/ABCDEF are served by Static Assets' single-page-application
     // fallback online; this is the same fallback for an installed app that is offline.
     navigateFallback: "/index.html",
