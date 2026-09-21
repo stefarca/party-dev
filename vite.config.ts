@@ -81,4 +81,11 @@ const pwa = VitePWA({
 
 export default defineConfig(({ mode }) => ({
   plugins: [tailwindcss(), react(), cloudflare(mode === "e2e" ? e2e : {}), pwa],
+  build: {
+    // The entry chunk is about 690 kB (210 kB gzipped), and almost all of it is React and
+    // HeroUI's react-aria, which no split of the entry would remove. Game UIs are already
+    // lazy-loaded, so what is left is the app shell every page needs. The default 500 kB would
+    // flag it on every build; this leaves headroom, and a warning means the shell has grown.
+    chunkSizeWarningLimit: 750,
+  },
 }));
