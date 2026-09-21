@@ -1,0 +1,39 @@
+{
+  "name": "Campo minato",
+  "loading": "Caricamento del campo…",
+  "board": "Campo",
+  "stats": {
+    "label": "La tua partita",
+    "time": "Tempo",
+    "mines": "Mine",
+    "moves": "Mosse"
+  },
+  "cell": {
+    "label": "Riga {{row}}, colonna {{col}}: {{content}}",
+    "hidden": "coperta",
+    "flag": "con bandierina",
+    "mine": "mina",
+    "clear": "libera",
+    "number_one": "{{count}} mina vicina",
+    "number_other": "{{count}} mine vicine"
+  },
+  "flag": {
+    "mode": "Bandierina",
+    "on": "Sì",
+    "off": "No"
+  },
+  "hint": "Scopri tutte le caselle che non nascondono una mina. Un numero dice quante delle caselle intorno ne nascondono una. Tocca una casella per scoprirla; tieni premuto, usa il tasto destro o attiva Bandierina per segnare una mina. Tocca un numero con tutte le sue mine segnate per scoprire il resto intorno. Da tastiera: spostati con le frecce, scopri con Spazio e metti la bandierina con F.",
+  "cleared": "Campo ripulito in {{time}}!",
+  "blast": "Bum! Era una mina, e questa partita è finita.",
+  "ended": "Questa partita è finita.",
+  "announce_one": "Manca {{count}} casella da scoprire.",
+  "announce_other": "Mancano {{count}} caselle da scoprire.",
+  "chart": {
+    "cleared_one": "Ripulito in {{count}} mossa",
+    "cleared_other": "Ripulito in {{count}} mosse",
+    "blast_one": "Bum! {{cleared}} su {{count}} scoperta",
+    "blast_other": "Bum! {{cleared}} su {{count}} scoperte",
+    "unfinished_one": "{{cleared}} su {{count}} casella scoperta",
+    "unfinished_other": "{{cleared}} su {{count}} caselle scoperte"
+  }
+}

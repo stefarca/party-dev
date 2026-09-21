@@ -129,7 +129,9 @@ same for every daily game (`web/routes/DailyPage.tsx`). `games/2048/` is the ref
    - Seeded PRNG only, threaded through state. `init`'s `seed` is the day's, the same for every
      player, so every player gets the same opening and the same stream of draws.
    - `view(state)` must never return the PRNG state (or anything it can be rebuilt from). With it,
-     a player could see every random draw the day has left, and the seed is everyone's.
+     a player could see every random draw the day has left, and the seed is everyone's. The same
+     goes for anything else the state keeps from the player, like `games/minesweeper/`'s mines:
+     the board is everyone's for the day, so it stays hidden even once a run is over.
 2. **Decide how the chart ranks runs.** `meta.order` is `"desc"` when more is better (points) and
    `"asc"` when less is (a time, a move count); `meta.format` is `"number"` or `"duration"` (in
    milliseconds). `score(state)` returns `{ value, detail }`:

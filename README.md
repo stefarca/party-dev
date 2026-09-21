@@ -8,8 +8,8 @@ _is_ the account — sign in with the same one on another device and your matche
 with you — a dashboard that buckets your matches into "your turn" / "waiting on others" /
 "finished", five games (Battleship, Checkers, Connect 4, Tic-tac-toe and Trivia) playable over a
 live WebSocket (with an HTTP fallback for every action) with a plain-language move history,
-daily single-player challenges (2048 and Sudoku) where everyone gets the same board each day, one
-run each, ranked on the day's chart,
+daily single-player challenges (2048, Sudoku and Minesweeper) where everyone gets the same board
+each day, one run each, ranked on the day's chart,
 nudges for players who are newly up and not currently connected — to a Slack channel, and as a
 web push notification to whichever browsers a player has switched them on from — the whole UI in
 English or Italian (picked from the browser's languages, switchable from the header), and an
@@ -125,8 +125,8 @@ seed is an HMAC of the game and the day under `SESSION_SECRET`: the same for eve
 something a player can work out from the date. A run ends by the game's own rules, when its player
 ends it, or at midnight UTC as it stands. Each run's `DailyDO` writes a row to D1's `daily_runs`
 when the run starts and again when it ends, and the chart is read from those rows. Each game
-chooses which way its scores rank (2048: most points first; Sudoku: fastest solve first). See
-[`games/README.md`](./games/README.md) for adding one; `games/2048` is the reference.
+chooses which way its scores rank (2048: most points first; Sudoku and Minesweeper: fastest solve
+first). See [`games/README.md`](./games/README.md) for adding one; `games/2048` is the reference.
 
 ## Deploying (operator, requires a Cloudflare account)
 
