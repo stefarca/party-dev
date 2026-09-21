@@ -135,8 +135,8 @@ same for every daily game (`web/routes/DailyPage.tsx`). `games/2048/` is the ref
    milliseconds). `score(state)` returns `{ value, detail }`:
    - `value` is what the chart ranks by. It is read from finished runs and from runs the engine
      closed early — by the player's End run, or at midnight UTC — so it must make sense for an
-     unfinished state too. A game that only ranks completed runs (a puzzle ranked by solving time)
-     returns `null` for the rest, which lists them after every ranked run.
+     unfinished state too. A game that only ranks completed runs (a puzzle ranked by solving time,
+     like `games/sudoku/`) returns `null` for the rest, which lists them after every ranked run.
    - A time is measured with the `now` that `init` and `reduce` receive, never the client's clock.
    - `detail` is the one line the chart shows under a player's name: a key in the game's own
      namespace plus its values, like `describeAction`. Pass a `count` to get `_one`/`_other`.

@@ -4,6 +4,7 @@ import { g2048Game } from "./2048/game";
 import { battleshipGame } from "./battleship/game";
 import { checkersGame } from "./checkers/game";
 import { connect4Game } from "./connect4/game";
+import { sudokuGame } from "./sudoku/game";
 import { tictactoeGame } from "./tictactoe/game";
 import { triviaGame } from "./trivia/game";
 import type { DailyGameModule, GameModule } from "../shared/game";
@@ -53,10 +54,12 @@ export function getGame(id: string): GameModule<any, any> | undefined {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- registry is intentionally generic over each game's state/action types
 export const dailyGames: Record<string, DailyGameModule<any, any>> = {
   "2048": g2048Game,
+  sudoku: sudokuGame,
 };
 
 export const dailyUi: Record<string, () => Promise<{ default: ComponentType<DailyUiProps> }>> = {
   "2048": () => import("./2048/ui"),
+  sudoku: () => import("./sudoku/ui"),
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- lookup is intentionally generic over each game's state/action types

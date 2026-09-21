@@ -1,0 +1,41 @@
+{
+  "name": "Sudoku",
+  "loading": "Loading the puzzle…",
+  "board": "Puzzle",
+  "stats": {
+    "label": "Your run",
+    "time": "Time",
+    "left": "Left",
+    "moves": "Moves"
+  },
+  "cell": {
+    "label": "Row {{row}}, column {{col}}: {{content}}",
+    "empty": "empty",
+    "notes": "empty, notes {{notes}}",
+    "given": "{{digit}}, given",
+    "entered": "{{digit}}",
+    "clash": "{{content}}, clashes with another {{digit}}"
+  },
+  "pad": {
+    "label": "Numbers",
+    "digit_one": "{{digit}}, {{count}} left",
+    "digit_other": "{{digit}}, {{count}} left",
+    "notes": "Notes",
+    "on": "On",
+    "off": "Off",
+    "erase": "Erase"
+  },
+  "hint": "Pick a square, then a number. Every row, column and 3×3 box needs each of 1 to 9 once. On a keyboard, type the digit, move with the arrow keys, erase with Backspace, and press N for notes.",
+  "full": "Every square is filled, but some numbers clash.",
+  "solved": "Solved in {{time}}!",
+  "ended": "This run is over.",
+  "announce_one": "{{count}} square left.",
+  "announce_other": "{{count}} squares left.",
+  "announceClash": "Some numbers clash.",
+  "chart": {
+    "solved_one": "Solved in {{count}} move",
+    "solved_other": "Solved in {{count}} moves",
+    "unsolved_one": "{{filled}} of {{count}} square filled",
+    "unsolved_other": "{{filled}} of {{count}} squares filled"
+  }
+}
