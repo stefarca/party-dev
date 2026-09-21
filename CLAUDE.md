@@ -32,7 +32,8 @@ answers `null`, which is what makes the client hide the notification control. Th
 - `npm run typecheck` — `tsc -b --noEmit` across the four project references below.
 - `npm run lint` / `npm run format` / `npm run format:check`.
 - `npm run cf-typegen` — regenerates the committed `worker-configuration.d.ts`; re-run after
-  changing bindings in `wrangler.jsonc`.
+  changing bindings in `wrangler.jsonc`. It reads secrets from `.dev.vars.example`, not your own
+  `.dev.vars`, so the file comes out the same on every machine.
 - CI (`.github/workflows/ci.yml`) runs lint, format:check, typecheck, test, build on every PR,
   plus a separate `e2e` job that runs the Playwright suite and uploads its HTML report.
 
@@ -49,8 +50,9 @@ that old Worker, like the existing `ADD COLUMN`s. One-time operator setup is in 
 
 ## Architecture
 
-**One `MatchDO` class runs every game.** `worker/match.ts` holds no game-specific knowledge; it
-looks games up through `games/registry.ts`. The Durable Object is authoritative; D1's `matches` and
+**One `MatchDO` class runs every multiplayer game.** `worker/match.ts` holds no game-specific
+knowledge; it looks games up through `games/registry.ts`. The daily single-player games are run by
+`DailyDO` instead (see below). The Durable Object is authoritative; D1's `matches` and
 `match_players` (`migrations/*.sql`) are a derived, dashboard-only index that may be rebuilt or lag
 without affecting correctness. Never read match truth from D1. D1 has three other jobs. One is
 match-code reservation: `POST /api/matches` inserts a placeholder `matches` row to claim a fresh
@@ -148,6 +150,29 @@ something a player reads. The payload carries a path, never `PUBLIC_BASE_URL`, s
 base URL cannot send a player to another host. It goes out at `Urgency: high`, since at `normal`
 an Android push service may hold it until a dozing phone next wakes on its own.
 
+**Daily games are one run per player per day, in a `DailyDO` of their own.** A daily game
+implements `DailyGameModule<S, A>` (`shared/game.ts`) and is registered in `dailyGames`/`dailyUi`
+(`games/registry.ts`), which are kept apart from `serverGames`/`gameUi` so neither kind can be
+started as the other. A run's Durable Object is named `runName(gameId, day, playerId)`
+(`worker/daily.ts`), and that name is the whole of the one-run-a-day rule: a second start finds
+the first run and hands it back. A day is a UTC date (`shared/daily.ts`). Start always means today
+by the server's clock, while actions and finish carry the run's own day in the path, so a move
+sent just after midnight reaches yesterday's run and is refused there (`day_over`). The day's seed
+is `daySeed()`: an HMAC of the game and the day under `SESSION_SECRET`, the same for every player
+but not derivable from the date. The seed and the PRNG state must never reach `view()`, because
+with them a player could see every tile the day will spawn. A run ends by the game's own rules
+(`finished()`), when its player ends it (`/finish`), or at midnight. The last two close it as it
+stands, with whatever `score()` says. Every route closes an overdue run before touching it, and
+the DO alarm does the same at the day's end, so a late alarm never lets a move through. D1's
+`daily_runs` is the chart's derived copy, written only when a run starts and when it ends (not on
+every move), through a queue like `syncIndex()`'s. A write D1 refuses is retried from the alarm
+(`CHART_RETRY_MS`) until it lands. The chart (`worker/chart.ts`) ranks by `score.value` in the
+direction the game's `meta.order` says, gives ties a shared rank, and always reports the caller's
+own run, even below the listed page. There is no WebSocket, event log or nudge: a run has one
+player, and every daily route replies with the run as it now stands. The client
+(`web/useDaily.ts`) posts actions one at a time, in order, from a short queue, so a game UI may
+call `send` as fast as its player acts.
+
 **Game modules** implement `GameModule<S, A>` (`shared/game.ts`). The four binding rules — server
 authority, mandatory per-player `view()`, seeded PRNG from `shared/prng.ts` threaded through state,
 idempotent `onDeadline` — are enforced by convention and by each game's own tests, not by the
@@ -219,7 +244,8 @@ pre-registry session that never played, or one minted by the old Worker during a
 registered under its own nickname if that is free, and dropped if it is not.
 
 `wrangler.jsonc`'s `run_worker_first` limits the Worker to `/api/*` and `/ws/*`; every other path,
-including deep-linked SPA routes like `/m/ABCDEF`, is served by Static Assets with SPA fallback.
+including deep-linked SPA routes like `/m/ABCDEF` and `/daily/2048`, is served by Static Assets
+with SPA fallback.
 
 **The app is installable.** `vite build` generates a Workbox service worker (`vite-plugin-pwa`)
 into the client output, and only `vite build` does: no dev server registers one, so `npm run dev`,
@@ -294,7 +320,9 @@ change to the mark has to be made in all three.
   registry; the test adds it to `serverGames` and removes it afterwards. `worker/players.test.ts`
   and `worker/hub.test.ts` run their SQL against the real schema through
   `worker/__fixtures__/d1.ts`, a D1 mock on `node:sqlite` that applies every `migrations/*.sql` in
-  name order. A new migration needs no change there.
+  name order. A new migration needs no change there. `worker/daily.test.ts` drives `DailyDO` the
+  same way, against `games/__fixtures__/dice.ts`, a test-only daily game it registers in
+  `dailyGames` for its own run, with `Date` faked to cross midnight.
 - Playwright specs drive the real app (Vite + workerd) through the UI and never import app code.
   `e2e/fixtures.ts` is the harness. `newPlayer(name)` gives each player a browser context of
   their own (with any context options it is passed, such as a `devices` entry), signed in over

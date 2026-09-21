@@ -117,6 +117,63 @@
     "starting": "Starting…",
     "play": "▸ Play"
   },
+  "daily": {
+    "section": "Daily challenge",
+    "sectionHint": "The same board for everyone, one run each. A new one every day at midnight.",
+    "chip": "Daily",
+    "newBoard": "New board {{when}}",
+    "loadFailed": "Failed to load today's daily challenge.",
+    "tile": {
+      "label": "{{game}}, today's daily challenge. {{status}}",
+      "play": "▸ Play today's",
+      "continue": "▸ Continue",
+      "seeChart": "▸ See the chart",
+      "fresh": "Same board for everyone. One run a day.",
+      "inProgress": "Your run is under way.",
+      "scored": "You scored {{score}}",
+      "placed": "#{{rank}} of {{count}}",
+      "leader": "Top today: {{name}}, {{score}}",
+      "noScores": "No scores on today's chart yet."
+    },
+    "start": {
+      "title": "Today's board",
+      "body": "Everyone plays the same board today, and you get one run at it. When your run ends, its score goes on today's chart.",
+      "action": "Start today's run",
+      "starting": "Starting…",
+      "failed": "Could not start the run."
+    },
+    "end": {
+      "trigger": "End run",
+      "title": "End today's run?",
+      "body": "Whatever the run has scored so far goes on today's chart, and there is no second run until tomorrow.",
+      "confirm": "End run",
+      "cancel": "Keep playing",
+      "failed": "Could not end the run."
+    },
+    "result": {
+      "title": "Today's run is over",
+      "score": "You scored {{score}}.",
+      "rank": "That's #{{rank}} of {{count}} on today's chart so far.",
+      "unranked": "It ended without a score to rank.",
+      "comeBack": "A new board opens {{when}}."
+    },
+    "dayOver": "That day's board has closed, and your run went on its chart as it stood.",
+    "moveFailed": "A move didn't go through. The board shows where your run really is.",
+    "chart": {
+      "title": "Chart",
+      "label": "Chart for {{day}}",
+      "previous": "Previous day",
+      "next": "Next day",
+      "empty": "Nobody has finished today's run yet.",
+      "emptyPast": "Nobody played that day.",
+      "playing_one": "{{count}} still playing.",
+      "playing_other": "{{count}} still playing.",
+      "you": "you",
+      "rank": "#{{rank}}",
+      "unranked": "No score",
+      "loadFailed": "Failed to load the chart."
+    }
+  },
   "join": {
     "title": "Got a code?",
     "subtitle": "Join a coworker's match",
@@ -226,18 +283,22 @@
   "errors": {
     "action_failed": "Your move didn't go through — try again.",
     "already_started": "This match has already started.",
+    "day_over": "That day's board has closed.",
     "game_unavailable": "That game can't be started right now.",
     "invalid_action": "That move isn't allowed.",
     "invalid_move": "That move isn't allowed.",
     "lobby_full": "This lobby is full.",
     "nickname_taken": "That nickname belongs to someone else. Pick another, or sign out and use it to sign in.",
     "no_identity": "Your session expired — sign in again.",
+    "no_run": "There's no run to play yet. Start today's first.",
     "not_a_player": "You are not a player in this match.",
     "not_active": "This match isn't being played right now.",
     "not_found": "No match with that code.",
     "not_host": "Only the host can start the match.",
     "not_joinable": "This match has already started.",
+    "not_today": "That day's board isn't open yet.",
     "not_your_turn": "It's not your turn.",
+    "run_over": "This run is already over.",
     "snapshot_failed": "Failed to load this match.",
     "start_failed": "Could not start the match.",
     "unknown_game": "That game doesn't exist.",

@@ -113,3 +113,51 @@ That's it — `MatchDO` (`worker/match.ts`) never needs a game-specific change: 
 persist/broadcast/D1-index/nudge pipeline, the WebSocket transport, and the dashboard all run
 identically against any `GameModule`. See `games/connect4/` (sequential) and `games/trivia/`
 (simultaneous + deadline) as complete reference implementations.
+
+# Adding a daily game
+
+A daily game is played alone, once a day, on the board every player gets that day, and ranked
+against everyone else's run on the day's chart. It is run by `DailyDO` (`worker/daily.ts`), not
+`MatchDO`, and the page around it — starting the run, ending it, the result and the chart — is the
+same for every daily game (`web/routes/DailyPage.tsx`). `games/2048/` is the reference. Checklist:
+
+1. **`games/<id>/game.ts`** implements `DailyGameModule<S, A>` from `shared/game.ts`: `id`, `meta`,
+   `actionSchema`, `init(seed, now)`, `reduce(state, action, now)`, `view`, `finished` and
+   `score`. The rules that bind a match game bind this one too, less the ones about other players:
+   - The server is the authority. `reduce` is the only thing that produces state, and it throws
+     to reject an illegal action; the run is then left exactly as it was.
+   - Seeded PRNG only, threaded through state. `init`'s `seed` is the day's, the same for every
+     player, so every player gets the same opening and the same stream of draws.
+   - `view(state)` must never return the PRNG state (or anything it can be rebuilt from). With it,
+     a player could see every random draw the day has left, and the seed is everyone's.
+2. **Decide how the chart ranks runs.** `meta.order` is `"desc"` when more is better (points) and
+   `"asc"` when less is (a time, a move count); `meta.format` is `"number"` or `"duration"` (in
+   milliseconds). `score(state)` returns `{ value, detail }`:
+   - `value` is what the chart ranks by. It is read from finished runs and from runs the engine
+     closed early — by the player's End run, or at midnight UTC — so it must make sense for an
+     unfinished state too. A game that only ranks completed runs (a puzzle ranked by solving time)
+     returns `null` for the rest, which lists them after every ranked run.
+   - A time is measured with the `now` that `init` and `reduce` receive, never the client's clock.
+   - `detail` is the one line the chart shows under a player's name: a key in the game's own
+     namespace plus its values, like `describeAction`. Pass a `count` to get `_one`/`_other`.
+   - `finished(state)` says when the run has ended by the game's own rules (solved, stuck).
+3. **`games/<id>/ui.tsx`** default-exports a component typed `DailyUiProps` (`shared/protocol.ts`):
+   render `view`, and call `send(action)` for every move. The page posts actions one at a time in
+   the order they were sent, so the UI can send as fast as the player acts, but it should not
+   depend on its own sends having landed: a move that turns out to do nothing should be a no-op in
+   `reduce`, not an error. `status` is `"done"` once the run is over; stop taking input then. The
+   styling rules, the string rules and the ban on importing a `.css` file are the same as for a
+   match game (above). As there, `ui.tsx` is also type-checked by the Worker's project, with no
+   DOM types: reach anything global through a narrow type of your own (see how
+   `games/2048/ui.tsx` listens for arrow keys). Include a `name` string whose English value equals
+   `meta.name`.
+4. **Register it** in `games/registry.ts`: `dailyGames` (server) and `dailyUi` (client, lazy).
+   Its id must not also be a match game's. An icon goes in `games/icons.ts`, the same as for a
+   match game.
+5. **`games/<id>/game.test.ts`** covers the rules, determinism from a seed, purity, and that
+   `view()` never carries the PRNG state. The engine itself — one run a day, the midnight close,
+   the chart — is covered once, in `worker/daily.test.ts` and `worker/chart.test.ts`.
+6. **`games/<id>/ui.spec.ts`** plays it in a browser. The day's board comes from a secret seed, so
+   a spec cannot expect particular tiles or cards. Read what the board shows through its
+   accessible names, and assert what any board must do. `e2e/daily.spec.ts` already covers the
+   shared page.
