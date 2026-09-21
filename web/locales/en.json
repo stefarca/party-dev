@@ -47,9 +47,11 @@
     "footnote": "No password. Your nickname is your account — type the same one on any device to find your matches waiting.",
     "failed": "Could not sign in — try again."
   },
+  "profile": {
+    "trigger": "Signed in as {{nickname}}. Profile and settings",
+    "dialog": "Profile and settings"
+  },
   "rename": {
-    "trigger": "Signed in as {{nickname}}. Change nickname",
-    "dialog": "Rename nickname",
     "label": "Nickname",
     "save": "Save",
     "cancel": "Cancel",

@@ -47,9 +47,11 @@
     "footnote": "Niente password. Il tuo nickname è il tuo account — scrivi lo stesso su qualsiasi dispositivo e ritrovi le tue partite.",
     "failed": "Accesso non riuscito, riprova."
   },
+  "profile": {
+    "trigger": "Sei entrato come {{nickname}}. Profilo e impostazioni",
+    "dialog": "Profilo e impostazioni"
+  },
   "rename": {
-    "trigger": "Sei entrato come {{nickname}}. Cambia nickname",
-    "dialog": "Cambia nickname",
     "label": "Nickname",
     "save": "Salva",
     "cancel": "Annulla",
