@@ -1,3 +1,5 @@
+import { devices } from "@playwright/test";
+
 import { expect, test } from "./fixtures";
 import type { Player } from "./fixtures";
 
@@ -44,6 +46,37 @@ test("the hub offers today's run, which starts from the game's own page", async 
 
   await ada.page.goto("/");
   await expect(dailyTile(ada)).toHaveAccessibleName(/Your run is under way/);
+});
+
+// The daily games are a rail, not a column: on a phone they take one tile's
+// height however many there are, which is what keeps the games to start with
+// someone else in view without scrolling for them.
+test("on a phone the daily games sit side by side, above the games in view", async ({
+  newPlayer,
+}) => {
+  const ada = await newPlayer("Ada", devices["iPhone 15"]);
+  await ada.page.goto("/");
+
+  const tiles = ada.page.getByRole("link", { name: /today's daily challenge/ });
+  await expect(tiles.first()).toBeVisible();
+  expect(await tiles.count()).toBeGreaterThan(1);
+  // Each tile flies in from below, one after another, so where they are only
+  // means anything once that has played out.
+  await tiles.evaluateAll((els) =>
+    Promise.all(els.flatMap((el) => el.getAnimations().map((a) => a.finished))),
+  );
+
+  const first = await tiles.first().boundingBox();
+  const second = await tiles.nth(1).boundingBox();
+  expect(first, "the first daily tile is laid out").not.toBeNull();
+  expect(second, "the second daily tile is laid out").not.toBeNull();
+  // Same row, and the next one starts beyond the first: a rail, and one that
+  // shows enough of its neighbour to look scrollable.
+  expect(second!.y).toBeCloseTo(first!.y, 0);
+  expect(second!.x).toBeGreaterThan(first!.x);
+  expect(second!.x).toBeLessThan(ada.page.viewportSize()!.width);
+
+  await expect(ada.page.getByRole("heading", { name: "Pick a game" })).toBeInViewport();
 });
 
 test("an ended run goes on the chart, and there is no second one today", async ({ newPlayer }) => {

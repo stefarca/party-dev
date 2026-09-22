@@ -18,12 +18,16 @@ export function DailyTile({
   endsAt,
   now,
   style,
+  className = "",
 }: {
   meta: DailyGameMeta;
   summary: DailyGameSummary;
   endsAt: number;
   now: number;
   style?: CSSProperties;
+  // Sizing and scroll-snap for the shelf the tile is placed on. The tile
+  // itself has no width of its own, so its container decides.
+  className?: string;
 }) {
   const { t } = useTranslation();
   const language = useLanguage();
@@ -63,7 +67,7 @@ export function DailyTile({
         fresh
           ? "border-[var(--border-accent)] shadow-[var(--shadow-2),var(--glow-accent)]"
           : "border-[var(--border-subtle)] shadow-[var(--shadow-2),var(--edge-highlight)]"
-      }`}
+      } ${className}`}
     >
       <div className="flex items-start gap-3">
         <GameGlyph

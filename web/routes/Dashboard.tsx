@@ -349,9 +349,26 @@ function StatsStrip({ stats, onReset }: { stats: PlayerStats; onReset: () => Pro
   );
 }
 
+// How wide one tile sits on the rail below. Three across from `lg` and no
+// scrolling — the row the grid this replaced already produced — while a
+// narrower screen shows part of the next tile, which is the only thing that
+// says the rail scrolls. `flex-1` with both a floor and that same third as a
+// ceiling is what keeps a rail that fits from scrolling: the tiles grow to
+// fill the row until there are more than fit, and only then does it move.
+const DAILY_TILE = [
+  "flex-none snap-start w-[85%] max-w-[22rem]",
+  "sm:w-[calc((100%-1rem)/2.25)] sm:max-w-none",
+  "lg:w-auto lg:flex-1 lg:min-w-[16rem] lg:max-w-[calc((100%-2rem)/3)]",
+].join(" ");
+
 // The day's single-player games, above the shelf of matches to start. Hidden
 // until the first read of them lands, and kept as it was when a later poll
 // fails, so a hiccup never blanks it.
+//
+// They are one horizontal rail rather than a grid: stacked on a phone they
+// pushed the games to start below the fold, and every daily game added made
+// that worse. The rail's own height never grows, so what is underneath it
+// stays where it is.
 function DailySection({ daily }: { daily: DailyHub }) {
   const { t } = useTranslation();
   const now = Date.now();
@@ -368,7 +385,15 @@ function DailySection({ daily }: { daily: DailyHub }) {
         </h2>
         <p className="m-0 text-sm text-[var(--text-muted)]">{t("daily.sectionHint")}</p>
       </div>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      {/* A scroll container clips what its children paint outside it, and these
+          tiles lift and glow on hover, so the padding is the room that leaves
+          them — negative margins take it back so the section occupies exactly
+          what it did before. Overflowing tiles only ever scroll sideways: the
+          entry animation starts each tile below its resting place, which would
+          otherwise flash a vertical scrollbar on load. `overscroll-x-contain`
+          keeps a swipe that reaches the end of the rail from being read as the
+          browser's back gesture. */}
+      <div className="-mx-4 -my-6 flex snap-x snap-mandatory gap-4 overflow-x-auto overflow-y-hidden overscroll-x-contain scroll-px-4 px-4 py-6 [scrollbar-width:thin] lg:mx-0 lg:scroll-px-0 lg:px-0">
         {games.map(({ meta, summary }, i) => (
           <DailyTile
             key={meta.id}
@@ -377,6 +402,7 @@ function DailySection({ daily }: { daily: DailyHub }) {
             endsAt={daily.endsAt}
             now={now}
             style={staggerStyle(i)}
+            className={DAILY_TILE}
           />
         ))}
       </div>
