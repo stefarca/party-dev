@@ -4,6 +4,7 @@ import { api } from "./api";
 import { sessionMiddleware, type SessionBindings } from "./auth";
 import { DailyDO } from "./daily";
 import { MatchDO } from "./match";
+import { sweepLobbies } from "./sweep";
 import { MATCH_CODE_RE, normalizeMatchCode } from "../shared/ids";
 
 export { DailyDO, MatchDO };
@@ -51,4 +52,8 @@ app.get("/ws/:id", async (c) => {
 // — there is no hand-rolled asset fallback in this Worker.
 export default {
   fetch: app.fetch,
+  // The lobby sweep; its only trigger is the cron in wrangler.jsonc.
+  scheduled(_controller, env, ctx) {
+    ctx.waitUntil(sweepLobbies(env));
+  },
 } satisfies ExportedHandler<Env>;

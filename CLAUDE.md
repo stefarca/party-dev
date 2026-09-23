@@ -78,9 +78,26 @@ starts. Anyone with the code can join either kind. A public one is also listed u
 Public tab, which `worker/hub.ts` reads from `matches.visibility` in the derived index. Only lobbies
 the caller is not in and that still have a seat are listed. The seat check runs in SQL, before the
 LIMIT, against seat counts taken from the game catalog. An index row whose `visibility` is NULL
-predates the column and counts as private. A listing lasts a day, and every join starts that day
-over: the record's `publicUntil` is the DO alarm while the match is a lobby, and `alarm()` turns a
-lobby private once it passes. Expiry only unlists: the lobby, its players and its code stay.
+predates the column and counts as private.
+
+**Lobbies expire.** A lobby nobody starts is deleted at the record's `expiresAt`, whatever its
+visibility and however many players it has. That is a day after its creation, and going from
+private to public sets it to a day from then. Nothing else moves it: joins do not, and going back
+to private keeps it. While the match is a lobby, the DO alarm is `lobbyWakeAt()`: first an hour
+before `expiresAt`, when the host gets a nudge of kind `lobbyExpiring` whether or not they are
+watching (`expiryWarnedFor` records it went out for that `expiresAt`), then `expiresAt` itself.
+`dissolveLobby()` empties the DO's tables rather than calling `deleteAll()`, which would drop
+them from under an instance whose constructor will not run again. It closes the sockets with a
+`not_found` error and deletes the D1 rows, which frees the code and takes the lobby off every hub.
+A record from before `expiresAt` existed falls back to its old `publicUntil`, then to a day after
+creation. A lobby nobody touches never wakes to set an alarm, so an hourly cron
+(`triggers.crons` in `wrangler.jsonc`, `scheduled()` in `worker/index.ts`) runs
+`sweepLobbies()` (`worker/sweep.ts`). It reads index lobbies older than a day, oldest first and
+`SWEEP_BATCH` at a time to stay under the per-invocation subrequest limit, and posts
+`/lobby/sweep` to each one's DO, which arms the alarm if it is missing or wrong. A DO that answers
+404 holds no match, so its index rows are deleted. That also cleans up after a failed
+`dissolveLobby()` index delete. Test the handler locally with
+`curl "http://localhost:5173/cdn-cgi/handler/scheduled"`.
 
 **`players` is the only place a nickname is stored.** Match records, the event log and
 `match_players` hold player ids. Every roster is named from `players` when it is read: the hub

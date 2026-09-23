@@ -225,8 +225,8 @@
     "public": "Public match",
     "about": "What private and public mean",
     "hint": {
-      "private": "Invite only — people need the code to join.",
-      "public": "Listed under Public on everyone's hub, so anyone can join. Comes off after a day with nobody joining."
+      "private": "Invite only — people need the code to join. Closes a day after it's created unless you start it.",
+      "public": "Listed under Public on everyone's hub, so anyone can join. Closes a day after it goes public unless you start it."
     },
     "failed": "Could not change who can join."
   },

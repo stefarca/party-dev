@@ -56,8 +56,15 @@ interface MatchRecord {
   // Whether the hub lists this lobby for anyone to join. Absent on records
   // created before it existed, which are all private.
   visibility?: MatchVisibility;
-  // While the lobby is public: when it comes off the hub unless somebody
-  // joins first. Every join starts the day over.
+  // When the lobby is deleted if nobody has started it: a day after it was
+  // created, or after it last went from private to public, whichever is
+  // later. Joins do not move it. Absent on records created before it
+  // existed; see `lobbyExpiresAt()`.
+  expiresAt?: number;
+  // The `expiresAt` the host has already been warned about, so the warning
+  // goes out once per expiry, and again only after going public reset it.
+  expiryWarnedFor?: number;
+  // What older records kept instead of `expiresAt` while they were public.
   publicUntil?: number;
   createdAt: number;
   updatedAt: number;
@@ -100,15 +107,22 @@ const VisibilityBody = z.object({
 });
 const ActionBody = z.object({ playerId: z.string().min(1), action: z.unknown() });
 
-// How long a public lobby stays on the hub with nobody joining it.
-const PUBLIC_LISTING_MS = 24 * 60 * 60 * 1000;
+// How long a lobby lasts unstarted, from its creation or from when it last
+// went public, and how long before that its host is warned.
+const LOBBY_LIFETIME_MS = 24 * 60 * 60 * 1000;
+const LOBBY_EXPIRY_WARNING_MS = 60 * 60 * 1000;
 
-// When `record`'s place on the hub runs out, or null if it has none: it is
-// private, or no longer a lobby.
-function listingExpiry(record: MatchRecord): number | null {
-  return record.status === "lobby" && record.visibility === "public"
-    ? (record.publicUntil ?? null)
-    : null;
+// When `record`, a lobby, is deleted.
+function lobbyExpiresAt(record: MatchRecord): number {
+  return record.expiresAt ?? record.publicUntil ?? record.createdAt + LOBBY_LIFETIME_MS;
+}
+
+// When `lobbyAlarm()` next has something to do to `record`, or null once it
+// is no longer a lobby: warn the host an hour ahead, then expire it.
+function lobbyWakeAt(record: MatchRecord): number | null {
+  if (record.status !== "lobby") return null;
+  const expiresAt = lobbyExpiresAt(record);
+  return record.expiryWarnedFor === expiresAt ? expiresAt : expiresAt - LOBBY_EXPIRY_WARNING_MS;
 }
 
 // Whether `record` is a lobby with every seat taken, so all that is left is
@@ -204,6 +218,10 @@ export class MatchDO extends DurableObject<Env> {
 
     if (request.method === "POST" && url.pathname === "/lobby/visibility") {
       return this.handleVisibilityRequest(request);
+    }
+
+    if (request.method === "POST" && url.pathname === "/lobby/sweep") {
+      return this.handleLobbySweep();
     }
 
     if (request.method === "GET" && url.pathname === "/snapshot") {
@@ -498,8 +516,8 @@ export class MatchDO extends DurableObject<Env> {
     // freshly-read `derived.deadline` above so a commit that got overtaken
     // re-arms (or clears) against the latest truth instead of its own stale
     // value. A lobby has no game and so no deadline; a public one sets the
-    // alarm for when its listing runs out instead (see `expireListing()`).
-    const wakeAt = derived.deadline ?? listingExpiry(current);
+    // alarm for its expiry warning or its expiry instead (see `lobbyAlarm()`).
+    const wakeAt = derived.deadline ?? lobbyWakeAt(current);
     if (wakeAt !== null) {
       if (existingAlarm !== wakeAt) await this.ctx.storage.setAlarm(wakeAt);
     } else if (existingAlarm !== null) {
@@ -686,7 +704,7 @@ export class MatchDO extends DurableObject<Env> {
       hostId,
       players: [{ id: hostId, joinedAt: now }],
       visibility,
-      ...(visibility === "public" ? { publicUntil: now + PUBLIC_LISTING_MS } : {}),
+      expiresAt: now + LOBBY_LIFETIME_MS,
       createdAt: now,
       updatedAt: now,
       seed: Math.floor(Math.random() * 2 ** 31),
@@ -726,18 +744,18 @@ export class MatchDO extends DurableObject<Env> {
       if (record.players.length >= maxPlayers) {
         return Response.json({ ok: false, error: "lobby_full" }, { status: 409 });
       }
-      const now = Date.now();
-      record.players.push({ id, joinedAt: now });
-      if (record.visibility === "public") record.publicUntil = now + PUBLIC_LISTING_MS;
+      record.players.push({ id, joinedAt: Date.now() });
       await this.commit(record, [{ type: "player_joined", id }]);
     }
     return this.namedSummaryResponse();
   }
 
-  // Lists the lobby on every hub for a day, or takes it off. It changes who
-  // may join, which is the host's call, and means nothing once the match has
-  // started: only a lobby accepts new players. Logs no event — nothing about
-  // the game itself happened. An unchanged setting commits nothing.
+  // Lists the lobby on every hub, or takes it off. It changes who may join,
+  // which is the host's call, and means nothing once the match has started:
+  // only a lobby accepts new players. Going public gives the lobby a new day
+  // before it expires; going private keeps the expiry it had. Logs no event —
+  // nothing about the game itself happened. An unchanged setting commits
+  // nothing.
   private async setVisibility(
     playerId: PlayerId,
     visibility: MatchVisibility,
@@ -752,8 +770,10 @@ export class MatchDO extends DurableObject<Env> {
     }
     if ((record.visibility ?? "private") !== visibility) {
       record.visibility = visibility;
-      if (visibility === "public") record.publicUntil = Date.now() + PUBLIC_LISTING_MS;
-      else delete record.publicUntil;
+      if (visibility === "public") {
+        record.expiresAt = Date.now() + LOBBY_LIFETIME_MS;
+        delete record.publicUntil;
+      }
       await this.commit(record, []);
     }
     return { ok: true };
@@ -1022,7 +1042,7 @@ export class MatchDO extends DurableObject<Env> {
   async alarm(): Promise<void> {
     const record = this.readMatch();
     if (record?.status === "lobby") {
-      await this.expireListing(record);
+      await this.lobbyAlarm(record);
       return;
     }
     if (!record || record.status !== "active" || record.state == null) return;
@@ -1076,21 +1096,84 @@ export class MatchDO extends DurableObject<Env> {
     await this.commit(record, [{ type: "deadline_resolved", round: due }]);
   }
 
-  // A public lobby nobody has joined for a day comes off the hub by turning
-  // private, which is all the listing ever was. It stays a lobby, its code
-  // still works, and the host can list it again for another day. Like the
-  // rest of alarm(), it must not throw, and commit() does not.
-  private async expireListing(record: MatchRecord): Promise<void> {
-    const due = listingExpiry(record);
+  // Arms a lobby's expiry alarm if it has none, or the wrong one: the lobby
+  // sweep (worker/sweep.ts) sends this to every old lobby in the index, which
+  // is what reaches a lobby whose alarm was never set, such as one created
+  // before lobbies expired. An alarm set in the past fires at once, and
+  // `lobbyAlarm()` then decides what is due. 404 when there is no match
+  // here at all, so the sweep can drop the index rows that point at nothing.
+  private async handleLobbySweep(): Promise<Response> {
+    const record = this.readMatch();
+    if (!record) return Response.json({ error: "not_found" }, { status: 404 });
+    const wakeAt = lobbyWakeAt(record);
+    if (wakeAt !== null && (await this.ctx.storage.getAlarm()) !== wakeAt) {
+      await this.ctx.storage.setAlarm(wakeAt);
+    }
+    return Response.json({ ok: true, status: record.status });
+  }
+
+  // A lobby nobody starts is deleted when it expires (`dissolveLobby()`),
+  // however many players it has, and its host is warned an hour before. The
+  // warning is skipped when the alarm is already past the expiry (a record
+  // older than `expiresAt` that only now got an alarm), since there is no
+  // hour left to warn about. It goes out whether or not the host is
+  // watching, because the lobby page does not show when it expires. Like the
+  // rest of alarm(), this must not throw, and neither commit() nor
+  // dissolveLobby() does.
+  private async lobbyAlarm(record: MatchRecord): Promise<void> {
+    const due = lobbyWakeAt(record);
     if (due === null) return;
-    if (Date.now() < due) {
+    const now = Date.now();
+    if (now < due) {
       // Spurious/early fire — reschedule and return without mutating state.
       await this.ctx.storage.setAlarm(due);
       return;
     }
-    record.visibility = "private";
-    delete record.publicUntil;
+    const expiresAt = lobbyExpiresAt(record);
+    if (now >= expiresAt) {
+      await this.dissolveLobby(record);
+      return;
+    }
+    record.expiryWarnedFor = expiresAt;
+    this.sendNudges(record, [record.hostId], "lobbyExpiring");
     await this.commit(record, []);
+  }
+
+  // Deletes the lobby as if it had never been created: its record and event
+  // log, its alarm, and its rows in the D1 index, which frees its code and
+  // takes it off every hub. Anyone with it open is told it is gone. The
+  // tables are emptied rather than dropped with `deleteAll()`, because the
+  // constructor that creates them does not run again on this instance.
+  private async dissolveLobby(record: MatchRecord): Promise<void> {
+    this.ctx.storage.sql.exec("DELETE FROM meta");
+    this.ctx.storage.sql.exec("DELETE FROM events");
+    for (const ws of this.ctx.getWebSockets()) {
+      this.safeSend(ws, { t: "error", code: "not_found", message: "this lobby has expired" });
+      try {
+        ws.close(1000, "lobby expired");
+      } catch (err) {
+        console.error("websocket close failed", err);
+      }
+    }
+    try {
+      await this.ctx.storage.deleteAlarm();
+    } catch (err) {
+      console.error("dissolveLobby: deleteAlarm failed", err);
+    }
+    // Queued behind any index write still pending, so none of them can
+    // re-insert the rows afterwards. Those find no record and write nothing.
+    const task = this.dbWriteQueue.then(async () => {
+      try {
+        await this.env.DB.batch([
+          this.env.DB.prepare("DELETE FROM match_players WHERE match_id = ?").bind(record.id),
+          this.env.DB.prepare("DELETE FROM matches WHERE id = ?").bind(record.id),
+        ]);
+      } catch (err) {
+        console.error("dissolveLobby: index delete failed", { matchId: record.id, err });
+      }
+    });
+    this.dbWriteQueue = task.catch(() => {});
+    await task;
   }
 
   // ---------------------------------------------------------------------

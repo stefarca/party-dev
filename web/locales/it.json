@@ -225,8 +225,8 @@
     "public": "Partita pubblica",
     "about": "Cosa vuol dire privata e pubblica",
     "hint": {
-      "private": "Solo su invito: per entrare serve il codice.",
-      "public": "Elencata in Pubbliche nella home di tutti: chiunque può entrare. Viene tolta dopo un giorno senza nuovi giocatori."
+      "private": "Solo su invito: per entrare serve il codice. Chiude un giorno dopo la creazione, se non la inizi.",
+      "public": "Elencata in Pubbliche nella home di tutti: chiunque può entrare. Chiude un giorno dopo essere diventata pubblica, se non la inizi."
     },
     "failed": "Impossibile cambiare chi può entrare."
   },

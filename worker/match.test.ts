@@ -722,70 +722,157 @@ describe("MatchDO visibility", () => {
     expect((await lobby(matchDo)).visibility).toBe("private");
   });
 
-  // A public lobby's alarm is when its listing runs out. The clock is faked (Date only, so the
-  // harness's own timers still run) to move a day forward without waiting one.
-  describe("listing expiry", () => {
+  // A lobby expires a day after it was created, or after it last went public, and its host is
+  // warned an hour before. The clock is faked (Date only, so the harness's own timers still run)
+  // to move a day forward without waiting one.
+  describe("lobby expiry", () => {
     const DAY = 24 * 60 * 60 * 1000;
+    const HOUR = 60 * 60 * 1000;
     const T0 = Date.UTC(2026, 8, 1, 9);
+    const HOOK = "http://slack.test/hook";
+    let fetchSpy: MockInstance<typeof fetch>;
 
     beforeEach(() => {
       vi.useFakeTimers({ toFake: ["Date"] });
       vi.setSystemTime(T0);
+      fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(null));
     });
 
     afterEach(() => {
       vi.useRealTimers();
+      fetchSpy.mockRestore();
     });
 
-    it("arms the alarm for a day after the lobby goes public, and only then", async () => {
-      const { matchDo, alarmController } = await createMatch(["alice"], { start: false });
-      expect(alarmController.value).toBeNull();
+    // The Slack messages sent so far, once the `waitUntil()` chains that send them have run.
+    async function warnings(): Promise<string[]> {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      return fetchSpy.mock.calls
+        .filter(([url]) => url === HOOK)
+        .map(([, init]) => (JSON.parse(String(init?.body)) as { text: string }).text);
+    }
 
-      vi.setSystemTime(T0 + 1000);
-      await setVisibility(matchDo, "alice", "public");
-      expect(alarmController.value).toBe(T0 + 1000 + DAY);
+    async function lobbyGone(matchDo: MatchDOInstance): Promise<boolean> {
+      return (await matchDo.fetch(new Request("http://do/snapshot"))).status === 404;
+    }
 
-      await setVisibility(matchDo, "alice", "private");
-      expect(alarmController.value).toBeNull();
-    });
+    it("warns the host an hour ahead, then deletes a full lobby nobody started", async () => {
+      const created = await createMatch(["alice", "bob"], { start: false });
+      const { matchDo, alarmController, db, ctx, sockets } = created;
+      created.env.SLACK_WEBHOOK_URL = HOOK;
+      expect(alarmController.value).toBe(T0 + DAY - HOUR);
 
-    it("takes a lobby nobody joined off the hub a day later, and leaves it a lobby", async () => {
-      const { matchDo, alarmController, db } = await createMatch(["alice"], {
-        start: false,
-        visibility: "public",
-      });
+      vi.setSystemTime(T0 + DAY - HOUR);
+      await matchDo.alarm();
+      expect(await warnings()).toEqual([
+        "Alice's counter lobby closes in an hour unless it is started: undefined/m/m1",
+      ]);
       expect(alarmController.value).toBe(T0 + DAY);
+      expect(await lobbyGone(matchDo)).toBe(false);
 
+      // A second fire at the same moment warns nobody twice.
+      await matchDo.alarm();
+      expect(await warnings()).toHaveLength(1);
+
+      const closed: number[] = [];
+      Object.assign(sockets.alice, { close: (code: number) => closed.push(code) });
       vi.setSystemTime(T0 + DAY);
       await matchDo.alarm();
-      const expired = await lobby(matchDo);
-      expect(expired.visibility).toBe("private");
-      expect(expired.status).toBe("lobby");
-      expect(indexedVisibility(db)).toBe("private");
-      expect(alarmController.value).toBeNull();
 
-      // Its code still works, and the host can list it again for another day.
-      expect((await matchDo.fetch(jsonRequest("/lobby/join", { playerId: "bob" }))).status).toBe(
-        200,
+      expect(ctx.storage.sql.exec("SELECT * FROM meta").toArray()).toEqual([]);
+      expect(ctx.storage.sql.exec("SELECT * FROM events").toArray()).toEqual([]);
+      expect(alarmController.value).toBeNull();
+      expect(db.batches.at(-1)?.map((s) => s.sql)).toEqual([
+        "DELETE FROM match_players WHERE match_id = ?",
+        "DELETE FROM matches WHERE id = ?",
+      ]);
+      expect(sockets.alice.sent.at(-1)).toMatchObject({ t: "error", code: "not_found" });
+      expect(closed).toEqual([1000]);
+      expect(await lobbyGone(matchDo)).toBe(true);
+
+      // The code is free again, for a lobby that starts from nothing.
+      const res = await matchDo.fetch(
+        jsonRequest("/lobby/create", { matchId: "m1", gameId: "counter", hostId: "bob" }),
       );
-      await setVisibility(matchDo, "alice", "public");
-      expect(alarmController.value).toBe(T0 + DAY + DAY);
+      expect(res.status).toBe(200);
+      expect((await lobby(matchDo)).players.map((p) => p.id)).toEqual(["bob"]);
     });
 
-    it("starts the day over when somebody joins", async () => {
+    it("counts a public lobby from its creation, and joins do not move it", async () => {
       const { matchDo, alarmController } = await createMatch(["alice"], {
         start: false,
         visibility: "public",
       });
       vi.setSystemTime(T0 + DAY / 2);
       await matchDo.fetch(jsonRequest("/lobby/join", { playerId: "bob" }));
-      expect(alarmController.value).toBe(T0 + DAY / 2 + DAY);
+      expect(alarmController.value).toBe(T0 + DAY - HOUR);
 
-      // An alarm firing at the original time finds half a day left, and waits for it.
+      vi.setSystemTime(T0 + DAY - HOUR);
+      await matchDo.alarm();
       vi.setSystemTime(T0 + DAY);
       await matchDo.alarm();
-      expect((await lobby(matchDo)).visibility).toBe("public");
-      expect(alarmController.value).toBe(T0 + DAY / 2 + DAY);
+      expect(await lobbyGone(matchDo)).toBe(true);
+    });
+
+    it("gives a lobby a new day, and a new warning, when it goes public", async () => {
+      const created = await createMatch(["alice"], { start: false });
+      const { matchDo, alarmController } = created;
+      created.env.SLACK_WEBHOOK_URL = HOOK;
+
+      vi.setSystemTime(T0 + DAY - HOUR);
+      await matchDo.alarm();
+      expect(await warnings()).toHaveLength(1);
+
+      vi.setSystemTime(T0 + DAY - HOUR / 2);
+      await setVisibility(matchDo, "alice", "public");
+      const expiresAt = T0 + DAY - HOUR / 2 + DAY;
+      expect(alarmController.value).toBe(expiresAt - HOUR);
+
+      // Going private again keeps the day going public gave it.
+      await setVisibility(matchDo, "alice", "private");
+      expect(alarmController.value).toBe(expiresAt - HOUR);
+
+      vi.setSystemTime(T0 + DAY);
+      await matchDo.alarm();
+      expect(await lobbyGone(matchDo)).toBe(false);
+
+      vi.setSystemTime(expiresAt - HOUR);
+      await matchDo.alarm();
+      expect(await warnings()).toHaveLength(2);
+      vi.setSystemTime(expiresAt);
+      await matchDo.alarm();
+      expect(await lobbyGone(matchDo)).toBe(true);
+    });
+
+    it("arms the alarm of a lobby that has none when the sweep asks", async () => {
+      const { matchDo, alarmController, ctx } = await createMatch(["alice"], { start: false });
+      // A lobby from before lobbies expired: no `expiresAt`, and no alarm.
+      const [stored] = ctx.storage.sql
+        .exec("SELECT value FROM meta WHERE key = 'match'")
+        .toArray() as { value: string }[];
+      const { expiresAt: _dropped, ...older } = JSON.parse(stored.value) as Record<string, unknown>;
+      ctx.storage.sql.exec("UPDATE meta SET value = ? WHERE key = 'match'", JSON.stringify(older));
+      await ctx.storage.deleteAlarm();
+
+      const res = await matchDo.fetch(new Request("http://do/lobby/sweep", { method: "POST" }));
+      expect(res.status).toBe(200);
+      expect(alarmController.value).toBe(T0 + DAY - HOUR);
+    });
+
+    it("answers the sweep with 404 when it holds no match", async () => {
+      const { matchDo } = await createMatch(["alice"], { start: false });
+      vi.setSystemTime(T0 + DAY);
+      await matchDo.alarm();
+      const res = await matchDo.fetch(new Request("http://do/lobby/sweep", { method: "POST" }));
+      expect(res.status).toBe(404);
+    });
+
+    it("skips the warning for a lobby already past its expiry, and just deletes it", async () => {
+      const created = await createMatch(["alice"], { start: false });
+      created.env.SLACK_WEBHOOK_URL = HOOK;
+      vi.setSystemTime(T0 + 2 * DAY);
+      await created.matchDo.alarm();
+      expect(await warnings()).toEqual([]);
+      expect(await lobbyGone(created.matchDo)).toBe(true);
     });
 
     it("hands the alarm to the game once the match starts", async () => {

@@ -18,8 +18,9 @@ export interface NudgePlayer {
 
 // What a nudge is about. "turn": the game is waiting on these players.
 // "lobbyFull": their lobby has filled every seat, and only the host (who is
-// the one player it is ever sent to) can start the match.
-export type NudgeKind = "turn" | "lobbyFull";
+// the one player it is ever sent to) can start the match. "lobbyExpiring":
+// their lobby, which only the host can start, is deleted in an hour.
+export type NudgeKind = "turn" | "lobbyFull" | "lobbyExpiring";
 
 export interface NudgeParams {
   matchId: string;
@@ -35,6 +36,9 @@ export interface NudgeParams {
 function composeMessage({ gameName, players, url, kind = "turn" }: NudgeParams): string {
   const names = players.map((p) => p.nickname).join(", ");
   if (kind === "lobbyFull") return `${names} can start ${gameName}, the lobby is full: ${url}`;
+  if (kind === "lobbyExpiring") {
+    return `${names}'s ${gameName} lobby closes in an hour unless it is started: ${url}`;
+  }
   const verb = players.length === 1 ? "is" : "are";
   return `${names} ${verb} up in ${gameName}: ${url}`;
 }
