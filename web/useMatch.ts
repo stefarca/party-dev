@@ -213,7 +213,9 @@ export function useMatch(
             applyEvents(msg.events);
             break;
           case "error":
-            if (!helloAcked && FATAL_ERROR_CODES.has(msg.code)) {
+            // `not_found` can also come later, from a lobby that expired
+            // while it was open, and is just as final then.
+            if ((!helloAcked || msg.code === "not_found") && FATAL_ERROR_CODES.has(msg.code)) {
               markFatal({ code: msg.code, message: msg.message });
               ws.close();
               return;

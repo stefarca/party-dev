@@ -197,7 +197,8 @@ async function forgetDeadEndpoint(db: D1Database, endpoint: string): Promise<voi
 // wants when it subscribes.
 //
 // One set per `NudgeKind`: "turn" when the game is waiting on the reader,
-// "lobbyFull" when the reader hosts a lobby whose last seat was just taken.
+// "lobbyFull" when the reader hosts a lobby whose last seat was just taken,
+// "lobbyExpiring" when the reader hosts a lobby that is deleted in an hour.
 //
 // The body names the reader's opponents rather than the match code: a code
 // is how the app addresses a match, not how a person remembers one, and
@@ -223,6 +224,11 @@ export const COPY: Record<
       one: "{{names}} joined. Start the match when you're ready.",
       many: "{{names}} joined. Start the match when you're ready.",
     },
+    lobbyExpiring: {
+      title: "Your {{game}} lobby closes in an hour",
+      one: "{{names}} is waiting for you to start.",
+      many: "{{names}} are waiting for you to start.",
+    },
   },
   it: {
     turn: {
@@ -234,6 +240,11 @@ export const COPY: Record<
       title: "La tua lobby di {{game}} è piena",
       one: "{{names}} è entrato. Inizia la partita quando vuoi.",
       many: "{{names}} sono entrati. Inizia la partita quando vuoi.",
+    },
+    lobbyExpiring: {
+      title: "La tua lobby di {{game}} chiude tra un'ora",
+      one: "{{names}} aspetta che inizi la partita.",
+      many: "{{names}} aspettano che inizi la partita.",
     },
   },
 };
