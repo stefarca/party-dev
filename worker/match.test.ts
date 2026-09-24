@@ -34,7 +34,8 @@ vi.mock("cloudflare:workers", () => ({
   ) {}
 };
 
-const { counterGame } = await import("../games/__fixtures__/counter");
+const { counterGame, ROUND_TIMEOUT_MS } = await import("../games/__fixtures__/counter");
+const { createMigratedDb } = await import("./__fixtures__/d1");
 const { serverGames } = await import("../games/registry");
 const { MatchDO } = await import("./match");
 
@@ -224,6 +225,7 @@ function createFakeDB(pauses: ReturnType<typeof createPauseController>) {
   const registry: Record<string, string> = { alice: "Alice", bob: "Bob", carol: "Carol" };
   const db = {
     failLookups: false,
+    failBatches: false,
     prepare(sql: string) {
       return {
         bind(...args: unknown[]) {
@@ -245,6 +247,7 @@ function createFakeDB(pauses: ReturnType<typeof createPauseController>) {
     },
     async batch(statements: RecordedStatement[]) {
       await pauses.waitIfArmed("dbBatch");
+      if (db.failBatches) throw new Error("D1 unavailable");
       batches.push(statements.map(({ sql, args }) => ({ sql, args })));
       return statements.map(() => ({ success: true }));
     },
@@ -976,5 +979,165 @@ describe("MatchDO nudges", () => {
     sockets.alice.pingedAt = new Date();
     await matchDo.fetch(jsonRequest("/lobby/join", { playerId: "dave" }));
     expect(await nudges()).toEqual([]);
+  });
+});
+
+describe("MatchDO turn-wait ledger", () => {
+  const T0 = Date.UTC(2026, 8, 1, 9);
+  const MINUTE = 60 * 1000;
+
+  beforeEach(() => {
+    serverGames.counter = counterGame;
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(T0);
+  });
+
+  afterEach(() => {
+    delete serverGames.counter;
+    vi.useRealTimers();
+  });
+
+  interface IndexedWait {
+    player_id: string;
+    started_at: number;
+    ended_at: number | null;
+    moved: number | null;
+  }
+
+  // What the index holds once every batch the DO wrote has landed, in order,
+  // on the real schema: the ledger's rows are only as right as the SQL that
+  // writes them, the heal included. `seed` runs first, standing in for what
+  // the index held before these writes.
+  async function indexedWaits(
+    batches: RecordedStatement[][],
+    seed: (db: D1Database) => Promise<void> = async () => {},
+  ): Promise<IndexedWait[]> {
+    const index = createMigratedDb();
+    await seed(index);
+    for (const statement of batches.flat()) {
+      await index
+        .prepare(statement.sql)
+        .bind(...statement.args)
+        .run();
+    }
+    const { results } = await index
+      .prepare(
+        "SELECT player_id, started_at, ended_at, moved FROM turn_waits ORDER BY started_at, player_id",
+      )
+      .bind()
+      .all<IndexedWait>();
+    return results;
+  }
+
+  const waitWrites = (batch: RecordedStatement[] | undefined) =>
+    (batch ?? []).filter((s) => s.sql.includes("INSERT INTO turn_waits"));
+
+  it("opens a wait when the match turns to a player, and closes it as moved when they move", async () => {
+    const { matchDo, db } = await createMatch(["alice", "bob"]);
+    vi.setSystemTime(T0 + 5 * MINUTE);
+    await play(matchDo, increment("alice"));
+
+    expect(await indexedWaits(db.batches)).toEqual([
+      { player_id: "alice", started_at: T0, ended_at: T0 + 5 * MINUTE, moved: 1 },
+      { player_id: "bob", started_at: T0 + 5 * MINUTE, ended_at: null, moved: null },
+    ]);
+  });
+
+  it("closes a wait a deadline ends as not moved", async () => {
+    const { matchDo, db } = await createMatch(["alice", "bob"]);
+    vi.setSystemTime(T0 + MINUTE);
+    await reachSimultaneousPhase(matchDo, ["alice", "bob"]);
+    vi.setSystemTime(T0 + 2 * MINUTE);
+    await play(matchDo, pick("alice", 3));
+    vi.setSystemTime(T0 + MINUTE + ROUND_TIMEOUT_MS);
+    await matchDo.alarm();
+
+    const round = (await indexedWaits(db.batches)).filter((w) => w.started_at === T0 + MINUTE);
+    expect(round).toEqual([
+      { player_id: "alice", started_at: T0 + MINUTE, ended_at: T0 + 2 * MINUTE, moved: 1 },
+      {
+        player_id: "bob",
+        started_at: T0 + MINUTE,
+        ended_at: T0 + MINUTE + ROUND_TIMEOUT_MS,
+        moved: 0,
+      },
+    ]);
+  });
+
+  it("writes a closed wait until one write of it lands, and an open one every time", async () => {
+    const { matchDo, db } = await createMatch(["alice", "bob", "carol"]);
+
+    db.failBatches = true;
+    vi.setSystemTime(T0 + MINUTE);
+    await play(matchDo, increment("alice"));
+    db.failBatches = false;
+
+    vi.setSystemTime(T0 + 2 * MINUTE);
+    await play(matchDo, increment("bob"));
+    // Alice's close failed to land the first time, so it goes out again beside Bob's.
+    expect(waitWrites(db.batches.at(-1)).map((s) => [s.args[1], s.args[3]])).toEqual([
+      ["alice", T0 + MINUTE],
+      ["bob", T0 + 2 * MINUTE],
+      ["carol", null],
+    ]);
+
+    vi.setSystemTime(T0 + 3 * MINUTE);
+    await play(matchDo, increment("carol"));
+    // Carol's move starts the round everyone plays at once, which opens a new
+    // wait for Alice; her first one, now written, is not sent again.
+    expect(waitWrites(db.batches.at(-1)).map((s) => [s.args[1], s.args[2]])).not.toContainEqual([
+      "alice",
+      T0,
+    ]);
+  });
+
+  it("closes every wait when the match finishes", async () => {
+    const { matchDo, db } = await createMatch(["alice", "bob"]);
+    await reachSimultaneousPhase(matchDo, ["alice", "bob"]);
+    vi.setSystemTime(T0 + MINUTE);
+    await play(matchDo, pick("alice", 1));
+    await play(matchDo, pick("bob", 2));
+
+    const waits = await indexedWaits(db.batches);
+    expect(waits.every((w) => w.ended_at !== null && w.moved === 1)).toBe(true);
+  });
+
+  // A match already under way when the ledger shipped has no row for the wait
+  // in flight. The migration backfilled one starting at the match's last
+  // update, and the ledger takes the wait to start at that same commit, so
+  // the move closes the backfilled row rather than leaving a second one.
+  it("picks up a wait from before the ledger existed on the row the migration backfilled", async () => {
+    const { matchDo, db, ctx } = await createMatch(["alice", "bob"]);
+    ctx.storage.sql.exec("DELETE FROM waits");
+    db.batches.length = 0;
+    const backfill = (start: number) => async (index: D1Database) => {
+      await index
+        .prepare(
+          "INSERT INTO turn_waits (match_id, player_id, started_at) VALUES ('m1', 'alice', ?)",
+        )
+        .bind(start)
+        .run();
+    };
+
+    vi.setSystemTime(T0 + 30 * MINUTE);
+    await play(matchDo, increment("alice"));
+
+    expect(await indexedWaits(db.batches, backfill(T0))).toEqual([
+      { player_id: "alice", started_at: T0, ended_at: T0 + 30 * MINUTE, moved: 1 },
+      { player_id: "bob", started_at: T0 + 30 * MINUTE, ended_at: null, moved: null },
+    ]);
+
+    // An index that had fallen behind the record backfilled a different
+    // start. That row is closed where it began, so the wait counts once.
+    expect(await indexedWaits(db.batches, backfill(T0 - 60 * MINUTE))).toEqual([
+      { player_id: "alice", started_at: T0 - 60 * MINUTE, ended_at: T0 - 60 * MINUTE, moved: 0 },
+      { player_id: "alice", started_at: T0, ended_at: T0 + 30 * MINUTE, moved: 1 },
+      { player_id: "bob", started_at: T0 + 30 * MINUTE, ended_at: null, moved: null },
+    ]);
+  });
+
+  it("writes no ledger for a lobby", async () => {
+    const { db } = await createMatch(["alice", "bob"], { start: false });
+    expect(db.batches.flat().filter((s) => s.sql.includes("turn_waits"))).toEqual([]);
   });
 });

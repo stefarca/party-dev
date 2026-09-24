@@ -100,11 +100,84 @@
         "trigger": "Azzera",
         "label": "Azzera il tuo bilancio",
         "title": "Azzerare il tuo bilancio?",
-        "body": "Giocate, vinte e concluse ripartono da zero e contano solo le partite iniziate da adesso. Tutte le partite restano nelle tue liste: non viene cancellato nulla.",
+        "body": "Giocate, vinte e concluse, la serie di vittorie e le rivalità ripartono da zero e contano solo le partite iniziate da adesso. La serie di giorni resta, e tutte le partite restano nelle tue liste: non viene cancellato nulla.",
         "confirm": "Azzera bilancio",
         "cancel": "Annulla",
         "failed": "Impossibile azzerare il bilancio."
-      }
+      },
+      "playStreak_one": "{{count}} giorno di fila",
+      "playStreak_other": "{{count}} giorni di fila",
+      "keepStreak": "Gioca oggi per non perderla",
+      "winStreak_one": "{{count}} vittoria di fila",
+      "winStreak_other": "{{count}} vittorie di fila",
+      "seeAll": "Statistiche e rivali ▸"
+    }
+  },
+  "stats": {
+    "title": "Le tue statistiche",
+    "loadFailed": "Impossibile caricare le tue statistiche.",
+    "since": "Il tuo bilancio conta le partite iniziate dal {{date}}.",
+    "streaks": {
+      "label": "Le tue serie",
+      "play": "Serie di giorni",
+      "days_one": "{{count}} giorno",
+      "days_other": "{{count}} giorni",
+      "playDone": "Fatto per oggi. Torna domani per continuarla.",
+      "playAtRisk": "Fai una mossa o gioca una sfida del giorno oggi, o finisce a mezzanotte UTC.",
+      "playNone": "Fai una mossa o gioca una sfida del giorno per iniziarne una.",
+      "wins": "Serie di vittorie",
+      "winsCount_one": "{{count}} vittoria",
+      "winsCount_other": "{{count}} vittorie",
+      "winsLive": "Di fila, e non è finita.",
+      "winsNone": "Vinci la prossima partita per iniziarne una.",
+      "best": "Record: {{value}}"
+    },
+    "record": {
+      "title": "Bilancio",
+      "winRate": "vittorie",
+      "reply": "Risposta tipica",
+      "replyHint": "Quanto ci metti di solito a muovere quando tocca a te, negli ultimi {{days}} giorni.",
+      "replyNone": "Nessuna mossa di recente"
+    },
+    "games": {
+      "title": "Per gioco",
+      "label": "Il tuo bilancio per gioco",
+      "game": "Gioco",
+      "played": "Giocate",
+      "won": "Vinte",
+      "winRate": "Vittorie",
+      "empty": "Gioca una partita e il tuo bilancio comparirà qui."
+    },
+    "rivals": {
+      "title": "Rivalità",
+      "hint": "Tutti quelli con cui hai concluso una partita, dai più frequenti.",
+      "record": "Sei {{wins}}–{{losses}} contro {{name}}",
+      "draws_one": "{{count}} pareggio",
+      "draws_other": "{{count}} pareggi",
+      "game": "{{game}}: {{wins}}–{{losses}}",
+      "nemesis": "Nemesi",
+      "victim": "Vittima preferita",
+      "empty": "Concludi una partita contro qualcuno e la vostra rivalità inizia qui."
+    },
+    "week": {
+      "title": "Questa settimana",
+      "hint": "Gli ultimi sette giorni, per tutti.",
+      "loadFailed": "Impossibile caricare le classifiche della settimana.",
+      "you": "tu",
+      "rank": "#{{rank}}",
+      "champions": "Campioni",
+      "championsLabel": "Più vittorie questa settimana",
+      "championLine": "{{won}} vinte su {{finished}}",
+      "championsEmpty": "Nessuno ha ancora vinto una partita questa settimana. Il titolo è libero.",
+      "shame": "Muro della vergogna",
+      "shameLabel": "Chi ha fatto aspettare tutti più a lungo questa settimana",
+      "shameHint": "Chi ha fatto aspettare tutti più a lungo.",
+      "turns_one": "{{count}} turno",
+      "turns_other": "{{count}} turni",
+      "longest": "il più lungo",
+      "stalled_one": "{{count}} partita lo aspetta adesso",
+      "stalled_other": "{{count}} partite lo aspettano adesso",
+      "shameEmpty": "Nessuno ha fatto aspettare nessuno questa settimana. Sospetto."
     }
   },
   "tile": {

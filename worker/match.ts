@@ -93,6 +93,15 @@ type ActionResult =
 
 type MutationResult = { ok: true } | { ok: false; code: string; message: string };
 
+// One row of the turn-wait ledger, as `writeIndexNow()` reads it.
+type WaitRow = {
+  seq: number;
+  player_id: string;
+  started_at: number;
+  ended_at: number | null;
+  moved: number | null;
+};
+
 const LobbyCreateBody = z.object({
   matchId: z.string().min(1),
   gameId: z.string().min(1),
@@ -183,6 +192,20 @@ export class MatchDO extends DurableObject<Env> {
     // Append-only event log.
     this.ctx.storage.sql.exec(
       "CREATE TABLE IF NOT EXISTS events (seq INTEGER PRIMARY KEY AUTOINCREMENT, ts INTEGER, payload TEXT)",
+    );
+    // The turn-wait ledger: one row per stretch of time the match spent
+    // waiting on one player (see `trackWaits()`). `synced` is set once a
+    // closed row has reached the D1 index, which is the only thing that
+    // stops it being written again.
+    this.ctx.storage.sql.exec(
+      `CREATE TABLE IF NOT EXISTS waits (
+         seq INTEGER PRIMARY KEY AUTOINCREMENT,
+         player_id TEXT NOT NULL,
+         started_at INTEGER NOT NULL,
+         ended_at INTEGER,
+         moved INTEGER,
+         synced INTEGER NOT NULL DEFAULT 0
+       )`,
     );
     // Hibernation-safe keepalive: the runtime answers a raw "ping"
     // text frame with "pong" itself, without ever waking this DO. This is
@@ -317,6 +340,66 @@ export class MatchDO extends DurableObject<Env> {
       .exec("SELECT COALESCE(MAX(seq), 0) AS seq FROM events")
       .one() as { seq: number };
     return row.seq;
+  }
+
+  // Brings the turn-wait ledger up to date with one commit: closes the wait
+  // of every player the match stopped waiting on, and opens one for every
+  // player it started waiting on. A wait the mover leaves is closed as
+  // `moved`, since their own move is what ended it; anyone else's was ended
+  // by a deadline or by the match finishing around them.
+  //
+  // A player who was already being waited on but has no open row is from a
+  // match that was under way before the ledger existed. Their wait is taken
+  // to have begun at `since`, the commit before this one, which is also when
+  // the index last marked them waiting and what the migration that created
+  // the index's copy of the ledger used, so both sides name the same wait.
+  //
+  // Synchronous, like the rest of `commit()`'s first stage.
+  private trackWaits(
+    previous: PlayerId[],
+    next: PlayerId[],
+    { mover, now, since }: { mover: PlayerId | undefined; now: number; since: number },
+  ): void {
+    const sql = this.ctx.storage.sql;
+    const open = new Set(
+      (
+        sql.exec("SELECT player_id FROM waits WHERE ended_at IS NULL").toArray() as {
+          player_id: string;
+        }[]
+      ).map((row) => row.player_id),
+    );
+    const waiting = new Set(next);
+    const moved = (id: PlayerId) => (id === mover ? 1 : 0);
+
+    for (const id of previous) {
+      if (open.has(id)) continue;
+      if (waiting.has(id)) {
+        sql.exec("INSERT INTO waits (player_id, started_at) VALUES (?, ?)", id, since);
+        open.add(id);
+      } else {
+        sql.exec(
+          "INSERT INTO waits (player_id, started_at, ended_at, moved) VALUES (?, ?, ?, ?)",
+          id,
+          since,
+          now,
+          moved(id),
+        );
+      }
+    }
+    for (const id of open) {
+      if (waiting.has(id)) continue;
+      sql.exec(
+        "UPDATE waits SET ended_at = ?, moved = ? WHERE player_id = ? AND ended_at IS NULL",
+        now,
+        moved(id),
+        id,
+      );
+    }
+    for (const id of waiting) {
+      if (!open.has(id)) {
+        sql.exec("INSERT INTO waits (player_id, started_at) VALUES (?, ?)", id, now);
+      }
+    }
   }
 
   // Looks up the display names of `ids` in the player registry. Never throws:
@@ -479,9 +562,19 @@ export class MatchDO extends DurableObject<Env> {
       finalEvents.push({ type: "match_finished", result: finishedResult });
     }
 
-    // 1. Persist state (+ updatedAt) to the meta table.
+    // 1. Persist state (+ updatedAt) to the meta table, and the waits it
+    // opened and closed to the ledger. Both come from the same two
+    // `waitingOn`s, read with no await between them and this write, so the
+    // ledger can never disagree with the state it describes.
     record.updatedAt = Date.now();
     this.writeMatch(record);
+    const nextWaiting = finalizingHasState ? module.waitingOn(finalizingState) : [];
+    const mover = finalEvents.find((event) => event.type === "action");
+    this.trackWaits(previousWaiting, nextWaiting, {
+      mover: mover?.type === "action" ? mover.by : undefined,
+      now: record.updatedAt,
+      since: priorRecord?.updatedAt ?? record.updatedAt,
+    });
 
     // 2. Append events to the log.
     const seqBefore = this.currentSeq();
@@ -830,6 +923,21 @@ export class MatchDO extends DurableObject<Env> {
     const { waitingOn, deadline } = this.deriveWaitingAndDeadline(module, record);
     const result = module && record.state !== null ? module.result(record.state) : null;
     const winners = winnersOf(result);
+    // Read in the same synchronous stretch as the record, so the ledger and
+    // the match rows below describe one moment. A lobby has never waited on
+    // anyone, so it has no ledger to write.
+    const waits =
+      record.state === null
+        ? []
+        : (this.ctx.storage.sql
+            .exec(
+              `SELECT seq, player_id, started_at, ended_at, moved FROM waits
+               WHERE ended_at IS NULL OR synced = 0 ORDER BY seq`,
+            )
+            .toArray() as WaitRow[]);
+    const stillOpen = waits
+      .filter((w) => w.ended_at === null)
+      .map((w) => `${w.player_id}:${w.started_at}`);
     try {
       const waitingSet = new Set(waitingOn);
       const statements = [
@@ -864,8 +972,40 @@ export class MatchDO extends DurableObject<Env> {
                won = excluded.won`,
           ).bind(record.id, p.id, waitingSet.has(p.id) ? 1 : 0, winners.has(p.id) ? 1 : 0),
         ),
+        ...waits.map((w) =>
+          this.env.DB.prepare(
+            `INSERT INTO turn_waits (match_id, player_id, started_at, ended_at, moved)
+             VALUES (?, ?, ?, ?, ?)
+             ON CONFLICT(match_id, player_id, started_at) DO UPDATE SET
+               ended_at = excluded.ended_at,
+               moved = excluded.moved`,
+          ).bind(record.id, w.player_id, w.started_at, w.ended_at, w.moved),
+        ),
       ];
+      if (record.state !== null) {
+        // Closes any wait the index holds open that this ledger does not:
+        // one the migration backfilled under a start the ledger took
+        // differently, because the index had fallen behind the record when
+        // it ran. The ledger has its own row for that same wait, so this one
+        // is closed where it began, to count for nothing rather than twice.
+        // Left open, it would sit on the wall of shame forever.
+        statements.push(
+          this.env.DB.prepare(
+            `UPDATE turn_waits SET ended_at = started_at, moved = 0
+             WHERE match_id = ? AND ended_at IS NULL
+               AND player_id || ':' || started_at NOT IN (SELECT value FROM json_each(?))`,
+          ).bind(record.id, JSON.stringify(stillOpen)),
+        );
+      }
       await this.env.DB.batch(statements);
+      // A closed wait never changes again, so once one write of it has
+      // landed it is done with. An open one goes out on every write until its
+      // close has.
+      for (const w of waits) {
+        if (w.ended_at !== null) {
+          this.ctx.storage.sql.exec("UPDATE waits SET synced = 1 WHERE seq = ?", w.seq);
+        }
+      }
     } catch (err) {
       console.error("syncIndex failed", err);
     }
@@ -1147,6 +1287,7 @@ export class MatchDO extends DurableObject<Env> {
   private async dissolveLobby(record: MatchRecord): Promise<void> {
     this.ctx.storage.sql.exec("DELETE FROM meta");
     this.ctx.storage.sql.exec("DELETE FROM events");
+    this.ctx.storage.sql.exec("DELETE FROM waits");
     for (const ws of this.ctx.getWebSockets()) {
       this.safeSend(ws, { t: "error", code: "not_found", message: "this lobby has expired" });
       try {

@@ -21,7 +21,9 @@ import type {
   DailyHub,
   DailyRunSnapshot,
   DailyToday,
+  Leaderboard,
   MatchSummary,
+  PlayerStatsDetail,
   PushKeyResponse,
 } from "../shared/protocol";
 import type { Session, SessionBindings } from "./auth";
@@ -45,6 +47,7 @@ import {
   signIn,
 } from "./players";
 import { forgetSubscription, pushPublicKey, saveSubscription } from "./push";
+import { leaderboard, playerStatsDetail, playerStreaks } from "./stats";
 
 export const api = new Hono<SessionBindings>();
 
@@ -187,6 +190,20 @@ api.post("/me/stats/reset", requireSession(), async (c) => {
   }
   return c.json(await playerStats(c.env.DB, session.pid));
 });
+
+// Everything the stats page shows about the caller: their record game by
+// game, their streaks, their rivalries and how quickly they reply.
+api.get("/me/stats", requireSession(), async (c) => {
+  const session = c.get("session") as Session;
+  return c.json<PlayerStatsDetail>(await playerStatsDetail(c.env.DB, session.pid, Date.now()));
+});
+
+// The last seven days for everyone: who won most, and who kept matches
+// waiting longest. The same for every caller, but a session is still asked
+// for, like every other read of who played what.
+api.get("/leaderboard", requireSession(), async (c) =>
+  c.json<Leaderboard>(await leaderboard(c.env.DB, Date.now())),
+);
 
 // Web push, which is a property of one browser rather than of an account:
 // a player who opts in on their phone has said nothing about their laptop.
@@ -535,12 +552,14 @@ api.get("/matches", requireSession(), async (c) => {
   // The record travels with the player id, so it follows them onto a new
   // device the moment the nickname signs them back in. Fetched alongside
   // the buckets rather than from a route of its own — it reads the same two
-  // tables, and the hub draws both in one pass. So is the list of public
-  // lobbies, which fills the hub's last tab.
-  const [{ results }, open, stats] = await Promise.all([
+  // tables, and the hub draws both in one pass. So are the player's streaks,
+  // which the hub shows beside it, and the list of public lobbies, which
+  // fills the hub's last tab.
+  const [{ results }, open, stats, streaks] = await Promise.all([
     mine,
     openMatches(c.env.DB, session.pid),
     playerStats(c.env.DB, session.pid),
+    playerStreaks(c.env.DB, session.pid, Date.now()),
   ]);
 
   const yourTurn: MatchSummary[] = [];
@@ -556,7 +575,7 @@ api.get("/matches", requireSession(), async (c) => {
     }
   }
 
-  return c.json({ yourTurn, waiting, finished, open, stats });
+  return c.json({ yourTurn, waiting, finished, open, stats, streaks });
 });
 
 // ---------------------------------------------------------------------------

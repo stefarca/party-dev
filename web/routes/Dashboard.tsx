@@ -7,7 +7,7 @@ import { useTranslation } from "react-i18next";
 import { getDailyMeta } from "../../games/catalog";
 import type { GameMeta } from "../../games/catalog";
 import { normalizeMatchCode } from "../../shared/ids";
-import type { DailyHub, MatchSummary, MatchVisibility } from "../../shared/protocol";
+import type { DailyHub, MatchSummary, MatchVisibility, PlayerStreaks } from "../../shared/protocol";
 import {
   ApiError,
   createMatch,
@@ -305,11 +305,23 @@ function ResetRecord({ onReset }: { onReset: () => Promise<void> }) {
 }
 
 // The player's record, which follows the nickname rather than the browser:
-// signing in with the same one anywhere shows the same three numbers. Three
-// is deliberately all of them — a bigger scoreboard would need per-game
-// breakdowns the index does not carry. After a reset it says since when it
-// counts, so a short record never passes for a lifetime one.
-function StatsStrip({ stats, onReset }: { stats: PlayerStats; onReset: () => Promise<void> }) {
+// signing in with the same one anywhere shows the same numbers. After a reset
+// it says since when it counts, so a short record never passes for a lifetime
+// one. The breakdowns — by game, by opponent — are on the stats page it links
+// to.
+//
+// The play streak leads, because it is what brings a player back: while today
+// still has to be played for it, its flame goes grey and it says so, the way
+// a streak app nags. A win streak shows only once it is a streak.
+function StatsStrip({
+  stats,
+  streaks,
+  onReset,
+}: {
+  stats: PlayerStats;
+  streaks: PlayerStreaks;
+  onReset: () => Promise<void>;
+}) {
   const { t } = useTranslation();
   const language = useLanguage();
   const cells: ["played" | "won" | "finished", string][] = [
@@ -317,8 +329,38 @@ function StatsStrip({ stats, onReset }: { stats: PlayerStats; onReset: () => Pro
     ["won", t("hub.stats.won")],
     ["finished", t("hub.stats.finished")],
   ];
+  const { play, wins } = streaks;
   return (
     <div className="party-pop flex flex-wrap items-center gap-2 sm:gap-3">
+      {play.current > 0 && (
+        <p
+          className={`m-0 flex items-center gap-1.5 rounded-[var(--radius-pill)] border px-3.5 py-1.5 text-xs ${
+            play.today
+              ? "border-[var(--warn-border)] bg-[var(--warn-soft)]"
+              : "border-dashed border-[var(--warn-border)] bg-[var(--surface-1)]"
+          }`}
+        >
+          <span aria-hidden="true" className={`text-base ${play.today ? "" : "grayscale"}`}>
+            🔥
+          </span>
+          <span className="font-display text-sm font-bold text-[var(--text-primary)]">
+            {t("hub.stats.playStreak", { count: play.current })}
+          </span>
+          {!play.today && (
+            <span className="font-bold text-[var(--warn-fg)]">{t("hub.stats.keepStreak")}</span>
+          )}
+        </p>
+      )}
+      {wins.current >= 2 && (
+        <p className="m-0 flex items-center gap-1.5 rounded-[var(--radius-pill)] border border-[var(--ok-border)] bg-[var(--ok-soft)] px-3.5 py-1.5 text-xs">
+          <span aria-hidden="true" className="text-base">
+            🏆
+          </span>
+          <span className="font-display text-sm font-bold text-[var(--text-primary)]">
+            {t("hub.stats.winStreak", { count: wins.current })}
+          </span>
+        </p>
+      )}
       <dl aria-label={t("hub.stats.label")} className="m-0 flex flex-wrap gap-2 sm:gap-3">
         {cells.map(([key, label]) => (
           <div
@@ -344,6 +386,16 @@ function StatsStrip({ stats, onReset }: { stats: PlayerStats; onReset: () => Pro
           })}
         </p>
       )}
+      <a
+        href="/stats"
+        onClick={(e) => {
+          e.preventDefault();
+          navigate("/stats");
+        }}
+        className="rounded-[var(--radius-pill)] px-3 py-1.5 text-sm font-bold text-[var(--accent-on-soft)] no-underline transition-colors hover:bg-[var(--accent-soft)]"
+      >
+        {t("hub.stats.seeAll")}
+      </a>
       <ResetRecord onReset={onReset} />
     </div>
   );
@@ -539,12 +591,13 @@ export function Dashboard() {
     }
   }
 
-  // Swaps in the record the server replies with, rather than refetching: the buckets it would
-  // also bring back are exactly what a reset leaves alone.
+  // Swaps in the record the server replies with at once, then refetches for the win streak,
+  // which a reset starts over too.
   async function handleResetStats() {
     try {
       const stats = await resetStats();
       setBuckets((prev) => (prev ? { ...prev, stats } : prev));
+      void refresh();
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) {
         notifyUnauthorized();
@@ -602,6 +655,10 @@ export function Dashboard() {
     finished: [],
     open: [],
     stats: { played: 0, finished: 0, won: 0, since: null },
+    streaks: {
+      play: { current: 0, best: 0, today: false },
+      wins: { current: 0, best: 0 },
+    },
   };
   const turnCount = data.yourTurn.length;
   // Someone who has not played anything yet has no reason to come back, so is not asked to install.
@@ -622,9 +679,10 @@ export function Dashboard() {
         <p className="mt-2 mb-4 text-[var(--text-secondary)]">
           {turnCount > 0 ? t("hub.movesNeeded", { count: turnCount }) : t("hub.noMovesNeeded")}
         </p>
-        {/* Still shown at zero after a reset, so the reset visibly took. */}
-        {(data.stats.played > 0 || data.stats.since !== null) && (
-          <StatsStrip stats={data.stats} onReset={handleResetStats} />
+        {/* Still shown at zero after a reset, so the reset visibly took, and to a player whose
+            only streak is from the daily games. */}
+        {(data.stats.played > 0 || data.stats.since !== null || data.streaks.play.current > 0) && (
+          <StatsStrip stats={data.stats} streaks={data.streaks} onReset={handleResetStats} />
         )}
         {hasOwnMatches && <InstallPrompt className="mt-5" />}
       </section>

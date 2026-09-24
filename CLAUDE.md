@@ -56,14 +56,16 @@ that old Worker, like the existing `ADD COLUMN`s. One-time operator setup is in 
 
 **One `MatchDO` class runs every multiplayer game.** `worker/match.ts` holds no game-specific
 knowledge; it looks games up through `games/registry.ts`. The daily single-player games are run by
-`DailyDO` instead (see below). The Durable Object is authoritative; D1's `matches` and
-`match_players` (`migrations/*.sql`) are a derived, dashboard-only index that may be rebuilt or lag
-without affecting correctness. Never read match truth from D1. D1 has three other jobs. One is
+`DailyDO` instead (see below). The Durable Object is authoritative; D1's `matches`,
+`match_players` and `turn_waits` (`migrations/*.sql`) are a derived index, read by the hub, the
+stats page and the weekly recap, that may be rebuilt or lag without affecting correctness. Never
+read match truth from D1. D1 has four other jobs. One is
 match-code reservation: `POST /api/matches` inserts a placeholder `matches` row to claim a fresh
 code (retrying on a primary-key collision) and deletes it if the DO create fails, and join checks
 that row before it contacts the DO. The second is the player registry. The third is
 `push_subscriptions`, the devices to notify, which is authoritative for the same reason `players`
-is: a subscription is a capability a browser granted once and nothing can rebuild it.
+is: a subscription is a capability a browser granted once and nothing can rebuild it. The fourth is
+`recaps`, the weeks whose Slack recap has already gone out (see below).
 
 **`players` is authoritative, not derived.** A nickname is the account — the same one on a
 second device is the same player, with the same matches and record — so `players` and its unique
@@ -117,7 +119,8 @@ the verified session and never from a client payload.
 
 **Everything funnels through `MatchDO.commit()`** — lobby create, join, visibility, start, action,
 and `alarm()`.
-Its seven stages run in a binding order: persist → append events → recompute
+Its seven stages run in a binding order: persist (the record and the turn-wait ledger) → append
+events → recompute
 `waitingOn`/`deadline` → reconcile the DO alarm → broadcast a per-player snapshot → sync the D1
 index → nudge newly-waited-on disconnected players (and the host of a lobby that commit filled). Two rules hold inside it:
 
@@ -131,6 +134,35 @@ index → nudge newly-waited-on disconnected players (and the host of a lobby th
 
 `commit()` also auto-finalizes: any state whose `result()` is non-null flips `status` to `"done"`
 and appends `match_finished`. Callers only assign `record.state` and call `commit()`.
+
+**Stats come from the index, and waits from a ledger.** `worker/stats.ts` reads everything the
+stats page (`/stats`, `GET /api/me/stats`, `GET /api/leaderboard`) and the hub's streaks show,
+from D1 only. Results come from `match_players.won`. How long matches waited on whom comes from
+`turn_waits`: `MatchDO.trackWaits()` keeps a ledger in the DO's own `waits` table, opening a row
+when a player enters `waitingOn` and closing it when they leave (`moved` = 1 when their own action
+did it), in `commit()`'s synchronous first stage from the same two `waitingOn`s it persists.
+`writeIndexNow()` copies it into the index: an open row on every write, a closed one until one
+write of it lands (`synced`). Both sides key a wait by `(match, player, started_at)`. A match under
+way before the ledger existed has no row for the wait in flight; the ledger takes it to start at
+the previous commit's `updatedAt`, which is what the migration backfilled from
+`matches.updated_at`, and `writeIndexNow()` closes as zero-length any open index row the ledger
+does not hold, so a mismatch counts once rather than twice or forever. Two counting rules: a
+player's record (wins, win streak, rivalries, per-game lines) follows their `stats_since` reset,
+like the hub's; a week's boards (champions, wall of shame) and the play streak do not. A finished
+match with a NULL `result_kind` counts for neither side. A play streak is UTC days (the daily
+games' `dayOf()`) with a move or a daily run, alive through the day after its last one. In SQL,
+beware that a HAVING clause resolves an alias that shares a column's name (`won`) to the column.
+
+**The weekly recap** (`worker/recap.ts`) is one English Slack message every Monday at 08:00 UTC
+about the seven UTC days before, through the same `postSlackMessage()` as the nudges. It has a
+cron of its own in `wrangler.jsonc`, and `scheduled()` tells it from the hourly sweep by comparing
+`controller.cron` with `RECAP_CRON`, so the two strings must match (`worker/recap.test.ts` checks).
+It claims the week's row in `recaps` before posting and deletes it if Slack refuses, so no week is
+posted twice and a failed one can be retried; a week with nothing to say posts nothing. Nicknames
+are escaped for Slack (`&`, `<`, `>`), or a nickname could ping the channel. Its jabs are picked by
+week, so a re-run reads the same. Like the nudges, it must never throw. Test it locally with
+`curl "http://localhost:5173/cdn-cgi/handler/scheduled?cron=0+8+*+*+1"` and a
+`SLACK_WEBHOOK_URL` in `.dev.vars`.
 
 **Nudges are one decision and two channels.** `commit()`'s last stage decides _who_ is newly
 waited-on, not watching, and past the rate limit (`shouldNudge` in `worker/nudge.ts`: one per
@@ -338,9 +370,9 @@ change to the mark has to be made in all three.
   slice of `DurableObjectState`/`Env` it touches, backed by `node:sqlite` (typed by the local
   `worker/node-builtins.d.ts`, since the worker project loads no `@types` packages). Engine tests
   run against `games/__fixtures__/counter.ts`, a test-only game that is deliberately left out of the
-  registry; the test adds it to `serverGames` and removes it afterwards. `worker/players.test.ts`
-  and `worker/hub.test.ts` run their SQL against the real schema through
-  `worker/__fixtures__/d1.ts`, a D1 mock on `node:sqlite` that applies every `migrations/*.sql` in
+  registry; the test adds it to `serverGames` and removes it afterwards. `worker/players.test.ts`,
+  `worker/hub.test.ts`, `worker/stats.test.ts` and `worker/recap.test.ts` run their SQL against
+  the real schema through `worker/__fixtures__/d1.ts`, a D1 mock on `node:sqlite` that applies every `migrations/*.sql` in
   name order. A new migration needs no change there. `worker/daily.test.ts` drives `DailyDO` the
   same way, against `games/__fixtures__/dice.ts`, a test-only daily game it registers in
   `dailyGames` for its own run, with `Date` faked to cross midnight.

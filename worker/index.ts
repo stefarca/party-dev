@@ -4,6 +4,7 @@ import { api } from "./api";
 import { sessionMiddleware, type SessionBindings } from "./auth";
 import { DailyDO } from "./daily";
 import { MatchDO } from "./match";
+import { RECAP_CRON, sendWeeklyRecap } from "./recap";
 import { sweepLobbies } from "./sweep";
 import { MATCH_CODE_RE, normalizeMatchCode } from "../shared/ids";
 
@@ -52,8 +53,14 @@ app.get("/ws/:id", async (c) => {
 // — there is no hand-rolled asset fallback in this Worker.
 export default {
   fetch: app.fetch,
-  // The lobby sweep; its only trigger is the cron in wrangler.jsonc.
-  scheduled(_controller, env, ctx) {
-    ctx.waitUntil(sweepLobbies(env));
+  // Both crons in wrangler.jsonc land here, told apart by their schedule: the
+  // weekly recap's, and the hourly lobby sweep's. At the hour the recap goes
+  // out, both fire, each as a run of its own.
+  scheduled(controller, env, ctx) {
+    if (controller.cron === RECAP_CRON) {
+      ctx.waitUntil(sendWeeklyRecap(env, controller.scheduledTime));
+    } else {
+      ctx.waitUntil(sweepLobbies(env));
+    }
   },
 } satisfies ExportedHandler<Env>;

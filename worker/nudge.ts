@@ -2,7 +2,8 @@ import type { PlayerId } from "../shared/protocol";
 
 // Slack incoming-webhook nudges. Deliberately minimal:
 // one `fetch()` to a secret URL with Slack's plain `text` payload — no Block
-// Kit, no retries. A nudge is always best-effort: nothing in this file may
+// Kit, no retries. The weekly recap (worker/recap.ts) posts through the same
+// `postSlackMessage()`. A nudge is always best-effort: nothing in this file may
 // ever throw out of `sendSlackNudge`, because it is fired from
 // `MatchDO.sendNudges()` via `ctx.waitUntil()`, and a throw reaching `alarm()`
 // would be retried up to 6 times.
@@ -43,35 +44,48 @@ function composeMessage({ gameName, players, url, kind = "turn" }: NudgeParams):
   return `${names} ${verb} up in ${gameName}: ${url}`;
 }
 
-// Never throws. Every failure mode below (missing secret, network error,
-// non-2xx response) is swallowed after a single log line — see the file
-// comment above for why.
-export async function sendSlackNudge(env: Env, params: NudgeParams): Promise<void> {
-  if (params.players.length === 0) return;
-
+// Posts `text` to the team's Slack channel: every Slack message the app sends
+// goes through here. Resolves to whether Slack accepted it, and never throws:
+// a missing webhook, a network error and a non-2xx reply each cost one log
+// line and resolve false. `what` and `context` are only for that line.
+export async function postSlackMessage(
+  env: Env,
+  text: string,
+  what: string,
+  context: Record<string, unknown>,
+): Promise<boolean> {
   const webhookUrl = env.SLACK_WEBHOOK_URL;
   if (!webhookUrl) {
     // Local dev and any contributor without the secret must still work —
     // this is a no-op, not an error.
-    console.log("SLACK_WEBHOOK_URL not set; skipping nudge", {
-      matchId: params.matchId,
-      players: params.players.map((p) => p.id),
-    });
-    return;
+    console.log(`SLACK_WEBHOOK_URL not set; skipping ${what}`, context);
+    return false;
   }
 
   try {
-    await fetch(webhookUrl, {
+    const res = await fetch(webhookUrl, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ text: composeMessage(params) }),
+      body: JSON.stringify({ text }),
       // A hung Slack request must not hold the calling Durable Object alive
       // indefinitely via ctx.waitUntil().
       signal: AbortSignal.timeout(5000),
     });
+    if (!res.ok) console.error(`Slack refused the ${what}`, { ...context, status: res.status });
+    return res.ok;
   } catch (err) {
-    console.error("sendSlackNudge failed", err);
+    console.error(`posting the ${what} to Slack failed`, err);
+    return false;
   }
+}
+
+// Never throws — see the file comment above for why.
+export async function sendSlackNudge(env: Env, params: NudgeParams): Promise<void> {
+  if (params.players.length === 0) return;
+  await postSlackMessage(env, composeMessage(params), "nudge", {
+    matchId: params.matchId,
+    players: params.players.map((p) => p.id),
+  });
 }
 
 // The rate-limit decision, extracted as a pure function so it is
