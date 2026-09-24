@@ -19,6 +19,7 @@ import { DailyPage } from "./routes/DailyPage";
 import { Dashboard } from "./routes/Dashboard";
 import { MatchPage } from "./routes/MatchPage";
 import { NicknameGate } from "./routes/NicknameGate";
+import { StatsPage } from "./routes/StatsPage";
 import { navigate, useRoute } from "./router";
 import { SessionProvider, useSession } from "./session";
 
@@ -190,6 +191,7 @@ function RouteContent() {
   if (route.name === "dashboard") return <Dashboard />;
   if (route.name === "match") return <MatchPage code={route.code} />;
   if (route.name === "daily") return <DailyPage gameId={route.gameId} />;
+  if (route.name === "stats") return <StatsPage />;
   return (
     <main id="main-content" className="app-container">
       <div className="flex flex-col items-center gap-4 py-16 text-center">

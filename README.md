@@ -11,7 +11,10 @@ live WebSocket (with an HTTP fallback for every action) with a plain-language mo
 daily single-player challenges (2048, Sudoku and Minesweeper) where everyone gets the same board
 each day, one run each, ranked on the day's chart,
 nudges for players who are newly up and not currently connected — to a Slack channel, and as a
-web push notification to whichever browsers a player has switched them on from — the whole UI in
+web push notification to whichever browsers a player has switched them on from — a stats page
+with play and win streaks, a record game by game, head-to-head rivalries ("you're 3–11 against
+Luca"), the week's champions and a wall of shame for whoever keeps everyone waiting, a weekly
+recap of all of that posted to Slack every Monday, the whole UI in
 English or Italian (picked from the browser's languages, switchable from the header), and an
 installable PWA build so the app can live on a phone's home screen like any other game. See
 [`games/README.md`](./games/README.md) for how to add another game.
@@ -83,13 +86,15 @@ Every game is a `GameModule` (`shared/game.ts`) run inside `MatchDO`. After ever
 player joining, the host starting, a submitted action, or an alarm firing — `MatchDO.commit()`
 runs the same pipeline, in this order:
 
-1. persist the new state (+ `updatedAt`) to the DO's own SQLite,
+1. persist the new state (+ `updatedAt`) to the DO's own SQLite, along with which players the
+   match stopped and started waiting on (the turn-wait ledger),
 2. append the mutation's events to the append-only event log,
 3. recompute `waitingOn(state)` and `deadline(state)`,
 4. reconcile the DO alarm against that deadline (`setAlarm`/`deleteAlarm`),
 5. broadcast a per-player `snapshot` (each socket's own `view(state, playerId)`, never raw state)
    plus any new events to every connected WebSocket,
-6. update the D1 index (`matches`/`match_players` — derived, dashboard-only),
+6. update the D1 index (`matches`/`match_players`/`turn_waits` — derived, read by the hub, the
+   stats page and the weekly recap),
 7. nudge newly-waited-on players who are not connected, rate-limited to one nudge per player per
    match per turn plus a hard 10-minute floor per player as a backstop. One decision, two
    channels: a Slack incoming webhook (`worker/nudge.ts`), where several players becoming
@@ -128,6 +133,34 @@ when the run starts and again when it ends, and the chart is read from those row
 chooses which way its scores rank (2048: most points first; Sudoku and Minesweeper: fastest solve
 first). See [`games/README.md`](./games/README.md) for adding one; `games/2048` is the reference.
 
+### Stats, streaks and the weekly recap
+
+Everything on the stats page (`/stats`) and in the recap is read from the derived D1 index
+(`worker/stats.ts`), never from a Durable Object. Results come from `matches`/`match_players`.
+How long matches waited on whom comes from `turn_waits`: every `MatchDO` keeps a ledger of the
+stretches of time it spent waiting on each player, opened and closed in `commit()` from the same
+`waitingOn` it persists, and copies it into the index. A wait closed by the player's own move is
+also what makes a day count towards their play streak, as does a daily run.
+
+- **Play streak:** UTC days in a row with a move or a daily run. It stays alive through the day
+  after its last one, so the hub can say "play today to keep it" before it breaks.
+- **Win streak:** finished matches in a row the player won. A loss, a draw or someone else's top
+  score ends it.
+- **Rivalries:** the player's wins, losses and draws against each opponent, game by game. In a
+  match of more than two, each opponent is a pairing of its own.
+- **Wall of shame:** who kept matches waiting longest over the last seven days, a stuck match
+  counting for as long as it has been stuck.
+
+A reset starts the record over — wins, win streak, rivalries — but not the play streak or the
+week's boards. The recap (`worker/recap.ts`) goes to the same Slack webhook as the nudges, on a
+cron every Monday at 08:00 UTC, about the seven UTC days before it: the champion, anyone on a
+winning streak, the rivalry of the week, the daily champ, play streaks, the quickest replier, the
+wall of shame, and the matches still stuck on someone, with a jab or two. A row in D1's `recaps`
+is claimed before posting, so the same week is never posted twice, and given back if Slack
+refuses it. A week with nothing in it posts nothing. To try it locally, with `SLACK_WEBHOOK_URL`
+set in `.dev.vars`, trigger the cron by hand:
+`curl "http://localhost:5173/cdn-cgi/handler/scheduled?cron=0+8+*+*+1"`.
+
 ## Deploying (operator, requires a Cloudflare account)
 
 This repo's `wrangler.jsonc` commits **placeholder** values for `d1_databases[0].database_id`
@@ -144,8 +177,8 @@ values in at deploy time from a repo secret and a repo variable.
 3. `wrangler secret put SESSION_SECRET` — sets the HMAC key used to sign identity cookies.
    Generate a long random value; never reuse the `.dev.vars` dummy.
 4. `wrangler secret put SLACK_WEBHOOK_URL` — optional. Sets the Slack incoming-webhook URL for
-   turn nudges; if you skip this, `worker/nudge.ts` no-ops cleanly and the rest of the app is
-   unaffected. Never commit a real value anywhere — it belongs only in this secret.
+   turn nudges and the Monday recap; if you skip this, `worker/nudge.ts` and `worker/recap.ts`
+   no-op cleanly and the rest of the app is unaffected. Never commit a real value anywhere — it belongs only in this secret.
 5. `wrangler secret put VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` and `VAPID_SUBJECT` — optional,
    and only useful as a set: without all three, nothing is ever pushed and the app shows no
    notification control. Generate a key pair with:

@@ -44,7 +44,8 @@
   // checklist for `wrangler secret put SLACK_WEBHOOK_URL`).
   "vars": { "PUBLIC_BASE_URL": "http://localhost:5173" },
   // Hourly lobby sweep (worker/sweep.ts): arms the expiry alarm of any old
-  // lobby that has none, a batch at a time.
-  "triggers": { "crons": ["0 * * * *"] },
+  // lobby that has none, a batch at a time. Mondays at 08:00 UTC, the weekly
+  // recap to Slack (worker/recap.ts, whose RECAP_CRON must match it).
+  "triggers": { "crons": ["0 * * * *", "0 8 * * 1"] },
   "observability": { "enabled": true }
 }

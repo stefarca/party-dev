@@ -375,3 +375,105 @@ export interface GameUiProps {
   result: Result | null;
   send: (action: unknown) => void;
 }
+
+// ---------------------------------------------------------------------------
+// Stats: a player's record, streaks and rivalries, and the week's boards.
+// Everything here is read from the derived index (worker/stats.ts), so it can
+// lag a match by a commit, and names come from the player registry when it is
+// read, like every roster.
+// ---------------------------------------------------------------------------
+
+// A player's record. After a reset it counts only matches created since
+// `since`; null means they never reset and every match counts.
+export interface PlayerStats {
+  played: number; // every match this player is in, including unfinished ones
+  finished: number;
+  won: number;
+  since: number | null;
+}
+
+export interface Streak {
+  current: number;
+  best: number;
+}
+
+// Days in a row, as UTC days (shared/daily.ts), on which the player moved in
+// a match or played a daily game. A streak is still `current` on the day after
+// its last day, since that day is not over yet; `today` says whether today
+// already counts, which is what tells a player their streak is at risk.
+export interface PlayStreak extends Streak {
+  today: boolean;
+}
+
+export interface PlayerStreaks {
+  play: PlayStreak;
+  // Finished matches in a row the player won. Anything else ends it: a loss,
+  // a draw, or a scoreboard someone else topped.
+  wins: Streak;
+}
+
+// One game's line in a player's record.
+export interface GameRecord {
+  gameId: string;
+  played: number;
+  finished: number;
+  won: number;
+}
+
+export interface HeadToHead {
+  played: number;
+  wins: number;
+  losses: number;
+  // Finished together with neither ahead: a draw, or a scoreboard both topped
+  // or both missed.
+  draws: number;
+}
+
+// The player's head-to-head against one opponent, over every finished match
+// they were both in, and game by game.
+export interface Rival extends HeadToHead {
+  playerId: PlayerId;
+  nickname: string;
+  games: (HeadToHead & { gameId: string })[];
+}
+
+// Reply to GET /api/me/stats.
+export interface PlayerStatsDetail {
+  record: PlayerStats;
+  streaks: PlayerStreaks;
+  games: GameRecord[];
+  // Most-played first.
+  rivals: Rival[];
+  // How long the player typically took to move once a match turned to them,
+  // over the last `days` days: the median, so one match left overnight does
+  // not stand for all of them. Null with no moves in that time.
+  reply: { days: number; moves: number; medianMs: number | null };
+}
+
+// One player on the wall of shame: how long matches spent waiting on them in
+// the window, over how many turns, the longest single one, and how many
+// matches are waiting on them right now.
+export interface ShameEntry {
+  playerId: PlayerId;
+  nickname: string;
+  waitedMs: number;
+  turns: number;
+  longestMs: number;
+  stalled: number;
+}
+
+// One player on the champions board: matches finished in the window, and won.
+export interface ChampionEntry {
+  playerId: PlayerId;
+  nickname: string;
+  won: number;
+  finished: number;
+}
+
+// Reply to GET /api/leaderboard: the last seven days, for everyone.
+export interface Leaderboard {
+  from: number;
+  to: number;
+  champions: ChampionEntry[];
+  shame: ShameEntry[];
+}

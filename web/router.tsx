@@ -8,15 +8,18 @@ import { useSyncExternalStore } from "react";
 //   /                -> dashboard
 //   /m/:code         -> match/lobby page
 //   /daily/:gameId   -> today's run at a daily game, and its chart
+//   /stats           -> the player's stats, and the week's boards
 
 export type Route =
   | { name: "dashboard" }
   | { name: "match"; code: string }
   | { name: "daily"; gameId: string }
+  | { name: "stats" }
   | { name: "not-found" };
 
 function parseRoute(pathname: string): Route {
   if (pathname === "/") return { name: "dashboard" };
+  if (/^\/stats\/?$/.test(pathname)) return { name: "stats" };
   const match = pathname.match(/^\/m\/([^/]+)\/?$/);
   if (match) return { name: "match", code: match[1] };
   const daily = pathname.match(/^\/daily\/([^/]+)\/?$/);

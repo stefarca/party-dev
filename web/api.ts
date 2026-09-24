@@ -5,10 +5,14 @@ import type {
   DailyRunSnapshot,
   DailyToday,
   EventsResponse,
+  Leaderboard,
   MatchEvent,
   MatchSnapshot,
   MatchSummary,
   MatchVisibility,
+  PlayerStats,
+  PlayerStatsDetail,
+  PlayerStreaks,
   PushKeyResponse,
   PushSubscriptionPayload,
 } from "../shared/protocol";
@@ -115,17 +119,21 @@ export function getGames(): Promise<GameMeta[]> {
   return request<GameMeta[]>("/api/games");
 }
 
-export interface PlayerStats {
-  played: number;
-  finished: number;
-  won: number;
-  // When the player last reset their record (epoch ms), or null if they never have.
-  since: number | null;
-}
+export type { PlayerStats };
 
 // Starts the record over. Only the numbers: every match stays in the hub's lists.
 export function resetStats(): Promise<PlayerStats> {
   return request<PlayerStats>("/api/me/stats/reset", { method: "POST", body: JSON.stringify({}) });
+}
+
+// Everything the stats page shows about the player: record, streaks, rivalries, reply time.
+export function getMyStats(): Promise<PlayerStatsDetail> {
+  return request<PlayerStatsDetail>("/api/me/stats");
+}
+
+// The last seven days for everyone: who won most, and who kept matches waiting longest.
+export function getLeaderboard(): Promise<Leaderboard> {
+  return request<Leaderboard>("/api/leaderboard");
 }
 
 export interface MatchBuckets {
@@ -135,6 +143,7 @@ export interface MatchBuckets {
   // Public lobbies the player is not in, each with a seat left, newest first.
   open: MatchSummary[];
   stats: PlayerStats;
+  streaks: PlayerStreaks;
 }
 
 export function listMatches(): Promise<MatchBuckets> {

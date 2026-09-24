@@ -1,4 +1,7 @@
 import { displayNickname, nicknameKey } from "../shared/nickname";
+import type { PlayerStats } from "../shared/protocol";
+
+export type { PlayerStats };
 
 // The player registry: the nickname *is* the account. Typing the same one
 // on a second device signs in as the same player and finds the same
@@ -18,13 +21,6 @@ import { displayNickname, nicknameKey } from "../shared/nickname";
 export interface PlayerRecord {
   id: string;
   nickname: string;
-}
-
-export interface PlayerStats {
-  played: number; // every match this player is in, including unfinished ones
-  finished: number;
-  won: number;
-  since: number | null; // when the player last reset their record; null = never
 }
 
 // Thrown when a nickname belongs to a different player. Callers turn it

@@ -63,6 +63,29 @@ export function longDuration(language: string, ms: number): string {
   );
 }
 
+// A duration in its two largest units, narrow ("3d 4h", "1h 10m", "5m", "12s"), for a list with
+// no room for the spelled-out form. Like `shortDuration`, pair it with `longDuration` for screen
+// readers.
+export function compactDuration(language: string, ms: number): string {
+  const units: [number, "day" | "hour" | "minute" | "second"][] = [
+    [Math.floor(ms / DAY), "day"],
+    [Math.floor((ms % DAY) / HOUR), "hour"],
+    [Math.floor((ms % HOUR) / MINUTE), "minute"],
+    [Math.floor((ms % MINUTE) / SECOND), "second"],
+  ];
+  const first = units.findIndex(([value]) => value > 0);
+  // Under a second, the seconds rounded up: never "0d".
+  const parts =
+    first === -1
+      ? [[Math.ceil(ms / SECOND), "second"] as const]
+      : units.slice(first, first + 2).filter(([value], i) => i === 0 || value > 0);
+  return new Intl.ListFormat(language, { type: "unit", style: "narrow" }).format(
+    parts.map(([value, unit]) =>
+      new Intl.NumberFormat(language, { style: "unit", unit, unitDisplay: "narrow" }).format(value),
+    ),
+  );
+}
+
 // "2 players", or "2–8 players" for a game that takes a range.
 export function playerRange(t: TFunction, meta: GameMeta): string {
   return meta.minPlayers === meta.maxPlayers

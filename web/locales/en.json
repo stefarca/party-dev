@@ -100,11 +100,84 @@
         "trigger": "Reset",
         "label": "Reset your record",
         "title": "Reset your record?",
-        "body": "Played, won and finished start again from zero, counting only matches started from now on. Every match stays in your lists — nothing is deleted.",
+        "body": "Played, won and finished, your win streak and your rivalries all start again from zero, counting only matches started from now on. Your play streak stays, and every match stays in your lists — nothing is deleted.",
         "confirm": "Reset record",
         "cancel": "Cancel",
         "failed": "Could not reset your record."
-      }
+      },
+      "playStreak_one": "{{count}}-day streak",
+      "playStreak_other": "{{count}}-day streak",
+      "keepStreak": "Play today to keep it",
+      "winStreak_one": "{{count}} win in a row",
+      "winStreak_other": "{{count}} wins in a row",
+      "seeAll": "Stats & rivals ▸"
+    }
+  },
+  "stats": {
+    "title": "Your stats",
+    "loadFailed": "Failed to load your stats.",
+    "since": "Your record counts matches started since {{date}}.",
+    "streaks": {
+      "label": "Your streaks",
+      "play": "Play streak",
+      "days_one": "{{count}} day",
+      "days_other": "{{count}} days",
+      "playDone": "Done for today. Come back tomorrow to keep it going.",
+      "playAtRisk": "Make a move or play a daily today, or it ends at midnight UTC.",
+      "playNone": "Make a move or play a daily to start one.",
+      "wins": "Win streak",
+      "winsCount_one": "{{count}} win",
+      "winsCount_other": "{{count}} wins",
+      "winsLive": "In a row, and counting.",
+      "winsNone": "Win your next match to start one.",
+      "best": "Best: {{value}}"
+    },
+    "record": {
+      "title": "Record",
+      "winRate": "win rate",
+      "reply": "Typical reply",
+      "replyHint": "How long you usually take to move once it's your turn, over the last {{days}} days.",
+      "replyNone": "No moves lately"
+    },
+    "games": {
+      "title": "By game",
+      "label": "Your record by game",
+      "game": "Game",
+      "played": "Played",
+      "won": "Won",
+      "winRate": "Win rate",
+      "empty": "Play a match and your record shows up here."
+    },
+    "rivals": {
+      "title": "Rivalries",
+      "hint": "Everyone you've finished a match against, most-played first.",
+      "record": "You're {{wins}}–{{losses}} against {{name}}",
+      "draws_one": "{{count}} draw",
+      "draws_other": "{{count}} draws",
+      "game": "{{game}}: {{wins}}–{{losses}}",
+      "nemesis": "Nemesis",
+      "victim": "Favourite victim",
+      "empty": "Finish a match against someone and your rivalry with them starts here."
+    },
+    "week": {
+      "title": "This week",
+      "hint": "The last seven days, for everyone.",
+      "loadFailed": "Failed to load this week's boards.",
+      "you": "you",
+      "rank": "#{{rank}}",
+      "champions": "Champions",
+      "championsLabel": "Most wins this week",
+      "championLine": "{{won}} won of {{finished}}",
+      "championsEmpty": "Nobody has won a match this week yet. It's up for grabs.",
+      "shame": "Wall of shame",
+      "shameLabel": "Who kept everyone waiting longest this week",
+      "shameHint": "Who kept everyone waiting longest.",
+      "turns_one": "{{count}} turn",
+      "turns_other": "{{count}} turns",
+      "longest": "longest",
+      "stalled_one": "{{count}} match waiting on them now",
+      "stalled_other": "{{count}} matches waiting on them now",
+      "shameEmpty": "Nobody has kept anyone waiting this week. Suspicious."
     }
   },
   "tile": {
