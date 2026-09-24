@@ -20,9 +20,6 @@ answers `null`, which is what makes the client hide the notification control. Th
 
 - `npm test` — vitest (node environment). Single file: `npx vitest run worker/match.test.ts`; single
   case: `npx vitest run games/trivia/game.test.ts -t "idempotent"`.
-- `npm run test:coverage` — the same run with V8 coverage into `coverage/`. It counts only
-  `worker/`, `shared/` and game logic: game UIs and `web/` are Playwright's, and Playwright's
-  Worker runs in workerd, where coverage is not collected.
 - `npm run test:e2e` — Playwright, Chromium only. It starts `npm run e2e:serve` on port 5199, or
   reuses one already running there. Single file: `npx playwright test games/connect4`; single case:
   `npx playwright test -g "four in a column"`; `npm run test:e2e:ui` for the interactive runner,
@@ -37,9 +34,8 @@ answers `null`, which is what makes the client hide the notification control. Th
 - `npm run cf-typegen` — regenerates the committed `worker-configuration.d.ts`; re-run after
   changing bindings in `wrangler.jsonc`. It reads secrets from `.dev.vars.example`, not your own
   `.dev.vars`, so the file comes out the same on every machine.
-- CI (`.github/workflows/ci.yml`) runs lint, format:check, typecheck, test (with coverage), build on every PR,
-  plus a separate `e2e` job that runs the Playwright suite and uploads its HTML report. The
-  coverage lands as a PR comment on the changed files; it has no threshold and never fails a job.
+- CI (`.github/workflows/ci.yml`) runs lint, format:check, typecheck, test, build on every PR,
+  plus a separate `e2e` job that runs the Playwright suite and uploads its HTML report.
 
 If `/api/health` reports "no such table: matches", the migration CLI and the vite plugin are
 pointed at different `.wrangler/state` persist directories — re-run `npm run db:migrate:local`.
