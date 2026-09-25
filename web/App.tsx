@@ -188,7 +188,9 @@ function Header() {
 function RouteContent() {
   const { t } = useTranslation();
   const route = useRoute();
-  if (route.name === "dashboard") return <Dashboard />;
+  // One element for every section, so switching between them keeps the
+  // dashboard mounted and its data on screen.
+  if (route.name === "dashboard") return <Dashboard tab={route.tab} />;
   if (route.name === "match") return <MatchPage code={route.code} />;
   if (route.name === "daily") return <DailyPage gameId={route.gameId} />;
   if (route.name === "stats") return <StatsPage />;

@@ -73,10 +73,19 @@
     "greetingNoName": "Ciao 👋",
     "movesNeeded_one": "{{count}} partita aspetta la tua mossa.",
     "movesNeeded_other": "{{count}} partite aspettano la tua mossa.",
-    "noMovesNeeded": "Nessuna partita aspetta la tua mossa. Scegli un gioco e iniziane una.",
+    "noMovesNeeded": "Nessuna partita aspetta la tua mossa.",
     "pickGame": "Scegli un gioco",
     "loadFailed": "Impossibile caricare le partite.",
     "createFailed": "Impossibile creare la partita.",
+    "nav": {
+      "label": "Home",
+      "matches": "Partite",
+      "play": "Gioca",
+      "daily": "Sfida del giorno",
+      "matchesWaiting_one": "Partite, {{count}} aspetta la tua mossa",
+      "matchesWaiting_other": "Partite, {{count}} aspettano la tua mossa",
+      "dailyWaiting": "Sfida del giorno, non ancora giocata oggi"
+    },
     "tabsLabel": "Partite",
     "tabs": {
       "yourTurn": "Tocca a te",
@@ -85,17 +94,15 @@
       "open": "Pubbliche"
     },
     "empty": {
-      "yourTurn": "Per ora nessuna partita aspetta la tua mossa. Iniziane una qui sopra.",
+      "yourTurn": "Per ora nessuna partita aspetta la tua mossa. Iniziane una da Gioca.",
       "waiting": "Nessuna partita in attesa di qualcun altro.",
       "finished": "Ancora nessuna partita finita.",
-      "open": "Al momento nessuna partita pubblica cerca giocatori. Porta l'interruttore qui sopra su Partita pubblica per ospitarne una."
+      "open": "Al momento nessuna partita pubblica cerca giocatori. Attiva Partita pubblica in Gioca per ospitarne una."
     },
     "stats": {
-      "label": "Il tuo bilancio",
       "played": "giocate",
       "finished": "concluse",
       "won": "vinte",
-      "since": "dal {{date}}",
       "reset": {
         "trigger": "Azzera",
         "label": "Azzera il tuo bilancio",
@@ -192,7 +199,7 @@
   },
   "daily": {
     "section": "Sfida del giorno",
-    "sectionHint": "La stessa sfida per tutti, una partita a testa. Se ne apre una nuova ogni giorno a mezzanotte.",
+    "sectionHint": "La stessa sfida per tutti, una partita a testa.",
     "chip": "Del giorno",
     "newBoard": "Nuova sfida {{when}}",
     "loadFailed": "Impossibile caricare la sfida di oggi.",
@@ -201,7 +208,7 @@
       "play": "▸ Gioca la sfida di oggi",
       "continue": "▸ Continua",
       "seeChart": "▸ Vedi la classifica",
-      "fresh": "La stessa sfida per tutti. Una partita al giorno.",
+      "fresh": "La tua partita ti aspetta.",
       "inProgress": "La tua partita è in corso.",
       "scored": "Hai fatto {{score}}",
       "placed": "{{rank}}º su {{count}}",
