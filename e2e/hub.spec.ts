@@ -1,3 +1,5 @@
+import { devices } from "@playwright/test";
+
 import { createMatch, expect, joinMatch, test, uniqueNickname } from "./fixtures";
 
 test("a new visitor picks a nickname and stays signed in", async ({ page }) => {
@@ -33,7 +35,9 @@ test("the same nickname in another browser is the same player", async ({ newPlay
 
     await expect(page.getByRole("heading", { name: `Hey ${alice.nickname} 👋` })).toBeVisible();
     // Alice's match followed her here, and so did the record it counts towards.
+    await page.getByRole("link", { name: "Matches" }).click();
     await expect(page.getByRole("tabpanel").getByRole("link")).toContainText(bob.nickname);
+    await page.getByRole("link", { name: "Stats & rivals ▸" }).click();
     await expect(page.getByText("1 played")).toBeVisible();
   } finally {
     await secondDevice.close();
@@ -124,7 +128,7 @@ test("a rename reaches the matches the player is already in", async ({ startMatc
   await first.page.getByRole("button", { name: "Save" }).click();
   await expect(first.page.getByRole("heading", { name: `Hey ${renamed} 👋` })).toBeVisible();
 
-  await second.page.goto("/");
+  await second.page.goto("/matches");
   const card = second.page.getByRole("tabpanel").getByRole("link");
   await expect(card).toContainText(renamed);
   await expect(card).not.toContainText(first.nickname);
@@ -137,12 +141,13 @@ test("a rename reaches the matches the player is already in", async ({ startMatc
 });
 
 // Resetting the record starts the numbers over and deletes nothing: the match it counted is still
-// on the hub, and the reset belongs to the account rather than to this browser.
+// on the hub, and the reset belongs to the account rather than to this browser. The record is the
+// stats page's, so that is where it is reset.
 test("a player can reset their record and keep their matches", async ({ newPlayer }) => {
   const [alice, bob] = await Promise.all([newPlayer("Alice"), newPlayer("Bob")]);
   const code = await createMatch(alice, "tictactoe");
   await joinMatch(bob, code);
-  await alice.page.goto("/");
+  await alice.page.goto("/stats");
   await expect(alice.page.getByText("1 played")).toBeVisible();
 
   await alice.page.getByRole("button", { name: "Reset your record" }).click();
@@ -151,11 +156,13 @@ test("a player can reset their record and keep their matches", async ({ newPlaye
   await expect(dialog).toBeHidden();
 
   await expect(alice.page.getByText("0 played")).toBeVisible();
-  await expect(alice.page.getByText(/^since /)).toBeVisible();
-  await expect(alice.page.getByRole("tabpanel").getByRole("link")).toContainText(bob.nickname);
+  await expect(alice.page.getByText(/^Your record counts matches started since /)).toBeVisible();
 
   await alice.page.reload();
   await expect(alice.page.getByText("0 played")).toBeVisible();
+
+  await alice.page.goto("/matches");
+  await expect(alice.page.getByRole("tabpanel").getByRole("link")).toContainText(bob.nickname);
 });
 
 test("the shelf offers every playable game and greys out shelved ones", async ({ newPlayer }) => {
@@ -165,7 +172,7 @@ test("the shelf offers every playable game and greys out shelved ones", async ({
   const games = (await res.json()) as Array<{ id: string; name: string; comingSoon?: boolean }>;
   expect(games.length).toBeGreaterThan(0);
 
-  await alice.page.goto("/");
+  await alice.page.goto("/play");
   for (const game of games) {
     if (game.comingSoon) {
       await expect(
@@ -183,6 +190,34 @@ test("the shelf offers every playable game and greys out shelved ones", async ({
   }
 });
 
+// `/` opens on whichever section needs the player: their matches when one waits on them, and
+// otherwise the games to start something with. The address then names that section.
+// The shelf is two tiles to a row on a phone, and the code box one row under it, so starting or
+// joining a match never needs a scroll. The tab bar sits over the bottom of the page, so whatever
+// it covers does not count as on screen.
+test("on a phone the whole shelf and the code box fit on one screen", async ({ newPlayer }) => {
+  const alice = await newPlayer("Alice", devices["iPhone 15"]);
+  await alice.page.goto("/play");
+
+  const tiles = alice.page.getByRole("button", { name: /^(Start a new .* match|.*, coming soon)/ });
+  const codeBox = alice.page.getByRole("textbox", { name: "Match code" });
+  await expect(codeBox).toBeVisible();
+  // Each tile flies in from below, one after another, so where they are only means anything once
+  // that has played out.
+  await tiles.evaluateAll((els) =>
+    Promise.all(els.flatMap((el) => el.getAnimations().map((a) => a.finished))),
+  );
+
+  const nav = await alice.page.getByRole("navigation", { name: "Hub" }).boundingBox();
+  expect(nav, "the tab bar is laid out").not.toBeNull();
+  for (const item of [...(await tiles.all()), codeBox]) {
+    const box = await item.boundingBox();
+    expect(box, "the item is laid out").not.toBeNull();
+    expect(box!.y).toBeGreaterThanOrEqual(0);
+    expect(box!.y + box!.height).toBeLessThanOrEqual(nav!.y);
+  }
+});
+
 test("the hub files a match under whoever's move it is", async ({ startMatch }) => {
   const {
     code,
@@ -190,7 +225,11 @@ test("the hub files a match under whoever's move it is", async ({ startMatch }) 
   } = await startMatch("tictactoe");
   await Promise.all([mover.page.goto("/"), waiter.page.goto("/")]);
 
+  await expect(mover.page).toHaveURL("/matches");
   await expect(mover.page.getByText("1 match needs your move.")).toBeVisible();
+  await expect(
+    mover.page.getByRole("link", { name: "Matches, 1 needs your move" }),
+  ).toHaveAttribute("aria-current", "page");
   await expect(mover.page.getByRole("tab", { name: /^Your turn/ })).toHaveAttribute(
     "aria-selected",
     "true",
@@ -200,8 +239,12 @@ test("the hub files a match under whoever's move it is", async ({ startMatch }) 
   await expect(card).toContainText(waiter.nickname);
   await expect(card).toContainText("Your move");
 
-  // Nothing is waiting on the other player, so their hub opens on the tab that has the match.
+  // Nothing is waiting on the other player, so their hub opens on the games to start, and their
+  // matches open on the bucket that has the match.
+  await expect(waiter.page).toHaveURL("/play");
   await expect(waiter.page.getByText("Nothing needs your move.")).toBeVisible();
+  await waiter.page.getByRole("link", { name: "Matches", exact: true }).click();
+  await expect(waiter.page).toHaveURL("/matches");
   await expect(waiter.page.getByRole("tab", { name: /^Their turn/ })).toHaveAttribute(
     "aria-selected",
     "true",
@@ -216,14 +259,14 @@ test("the hub files a match under whoever's move it is", async ({ startMatch }) 
 test("a code that matches nothing says so, and can be corrected", async ({ newPlayer }) => {
   const [alice, bob] = await Promise.all([newPlayer("Alice"), newPlayer("Bob")]);
   const code = await createMatch(alice, "tictactoe");
-  await bob.page.goto("/");
+  await bob.page.goto("/play");
 
   const codeBox = bob.page.getByRole("textbox", { name: "Match code" });
   const join = bob.page.getByRole("button", { name: "Join", exact: true });
   await codeBox.fill("ZZZZ99");
   await join.click();
   await expect(bob.page.getByText("No match with that code.")).toBeVisible();
-  await expect(bob.page).toHaveURL("/");
+  await expect(bob.page).toHaveURL("/play");
 
   await codeBox.fill(code);
   await join.click();

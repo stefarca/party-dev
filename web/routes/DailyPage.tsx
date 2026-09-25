@@ -54,10 +54,10 @@ function BackLink() {
   const { t } = useTranslation();
   return (
     <a
-      href="/"
+      href="/daily"
       onClick={(e) => {
         e.preventDefault();
-        navigate("/");
+        navigate("/daily");
       }}
       className="mb-4 inline-flex items-center gap-1 text-sm font-bold text-[var(--text-muted)] no-underline transition-colors hover:text-[var(--text-primary)]"
     >

@@ -73,10 +73,19 @@
     "greetingNoName": "Hey there 👋",
     "movesNeeded_one": "{{count}} match needs your move.",
     "movesNeeded_other": "{{count}} matches need your move.",
-    "noMovesNeeded": "Nothing needs your move. Pick a game and start one.",
+    "noMovesNeeded": "Nothing needs your move.",
     "pickGame": "Pick a game",
     "loadFailed": "Failed to load matches.",
     "createFailed": "Could not create the match.",
+    "nav": {
+      "label": "Hub",
+      "matches": "Matches",
+      "play": "Play",
+      "daily": "Daily",
+      "matchesWaiting_one": "Matches, {{count}} needs your move",
+      "matchesWaiting_other": "Matches, {{count}} need your move",
+      "dailyWaiting": "Daily, not played today"
+    },
     "tabsLabel": "Matches",
     "tabs": {
       "yourTurn": "Your turn",
@@ -85,17 +94,15 @@
       "open": "Public"
     },
     "empty": {
-      "yourTurn": "Nothing needs your move right now. Start something above.",
+      "yourTurn": "Nothing needs your move right now. Start a match from Play.",
       "waiting": "No matches waiting on someone else.",
       "finished": "No finished matches yet.",
-      "open": "No public lobbies are looking for players right now. Flip the switch above to Public match to host one."
+      "open": "No public lobbies are looking for players right now. Turn on Public match under Play to host one."
     },
     "stats": {
-      "label": "Your record",
       "played": "played",
       "finished": "finished",
       "won": "won",
-      "since": "since {{date}}",
       "reset": {
         "trigger": "Reset",
         "label": "Reset your record",
@@ -192,7 +199,7 @@
   },
   "daily": {
     "section": "Daily challenge",
-    "sectionHint": "The same board for everyone, one run each. A new one every day at midnight.",
+    "sectionHint": "The same board for everyone, one run each.",
     "chip": "Daily",
     "newBoard": "New board {{when}}",
     "loadFailed": "Failed to load today's daily challenge.",
@@ -201,7 +208,7 @@
       "play": "▸ Play today's",
       "continue": "▸ Continue",
       "seeChart": "▸ See the chart",
-      "fresh": "Same board for everyone. One run a day.",
+      "fresh": "Your run is waiting.",
       "inProgress": "Your run is under way.",
       "scored": "You scored {{score}}",
       "placed": "#{{rank}} of {{count}}",

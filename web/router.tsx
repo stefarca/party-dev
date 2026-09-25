@@ -5,20 +5,31 @@ import { useSyncExternalStore } from "react";
 // without touching every component that navigates.
 //
 // Routes:
-//   /                -> dashboard
+//   /                -> dashboard, on whichever section needs the player most
+//   /matches         -> dashboard, the player's matches
+//   /play            -> dashboard, the games to start and the code box
+//   /daily           -> dashboard, today's daily games
 //   /m/:code         -> match/lobby page
 //   /daily/:gameId   -> today's run at a daily game, and its chart
 //   /stats           -> the player's stats, and the week's boards
 
+// The dashboard's sections. Each has an address of its own, so a reload or the
+// back button lands on the section the player left.
+export const HUB_TABS = ["matches", "play", "daily"] as const;
+export type HubTab = (typeof HUB_TABS)[number];
+
 export type Route =
-  | { name: "dashboard" }
+  // `tab` is null at `/`, where the dashboard picks the section itself.
+  | { name: "dashboard"; tab: HubTab | null }
   | { name: "match"; code: string }
   | { name: "daily"; gameId: string }
   | { name: "stats" }
   | { name: "not-found" };
 
 function parseRoute(pathname: string): Route {
-  if (pathname === "/") return { name: "dashboard" };
+  if (pathname === "/") return { name: "dashboard", tab: null };
+  const tab = pathname.match(/^\/(matches|play|daily)\/?$/);
+  if (tab) return { name: "dashboard", tab: tab[1] as HubTab };
   if (/^\/stats\/?$/.test(pathname)) return { name: "stats" };
   const match = pathname.match(/^\/m\/([^/]+)\/?$/);
   if (match) return { name: "match", code: match[1] };

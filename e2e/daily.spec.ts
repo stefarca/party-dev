@@ -31,9 +31,14 @@ async function endRun(player: Player) {
 
 test("the hub offers today's run, which starts from the game's own page", async ({ newPlayer }) => {
   const ada = await newPlayer("Ada");
-  await ada.page.goto("/");
+  await ada.page.goto("/daily");
 
-  await expect(dailyTile(ada)).toHaveAccessibleName(/Same board for everyone/);
+  // Nothing played today, so the tab bar marks the daily games until something is.
+  await expect(ada.page.getByRole("link", { name: "Daily, not played today" })).toHaveAttribute(
+    "aria-current",
+    "page",
+  );
+  await expect(dailyTile(ada)).toHaveAccessibleName(/Your run is waiting/);
   await dailyTile(ada).click();
   await expect(ada.page).toHaveURL(/\/daily\/2048$/);
   await expect(ada.page.getByRole("heading", { name: "2048", level: 1 })).toBeVisible();
@@ -44,18 +49,17 @@ test("the hub offers today's run, which starts from the game's own page", async 
   await expect(ada.page.getByRole("group", { name: "Slide the tiles" })).toBeVisible();
   await expect(ada.page.getByRole("button", { name: "End run" })).toBeVisible();
 
-  await ada.page.goto("/");
+  await ada.page.getByRole("link", { name: "← Hub" }).click();
+  await expect(ada.page).toHaveURL("/daily");
   await expect(dailyTile(ada)).toHaveAccessibleName(/Your run is under way/);
+  await expect(ada.page.getByRole("link", { name: "Daily", exact: true })).toBeVisible();
 });
 
-// The daily games are a rail, not a column: on a phone they take one tile's
-// height however many there are, which is what keeps the games to start with
-// someone else in view without scrolling for them.
-test("on a phone the daily games sit side by side, above the games in view", async ({
-  newPlayer,
-}) => {
+// On a phone each daily game is a row, so every one of them is on the screen at once, above the
+// tab bar that sits over the bottom of the page.
+test("on a phone every daily game fits on one screen", async ({ newPlayer }) => {
   const ada = await newPlayer("Ada", devices["iPhone 15"]);
-  await ada.page.goto("/");
+  await ada.page.goto("/daily");
 
   const tiles = ada.page.getByRole("link", { name: /today's daily challenge/ });
   await expect(tiles.first()).toBeVisible();
@@ -66,17 +70,14 @@ test("on a phone the daily games sit side by side, above the games in view", asy
     Promise.all(els.flatMap((el) => el.getAnimations().map((a) => a.finished))),
   );
 
-  const first = await tiles.first().boundingBox();
-  const second = await tiles.nth(1).boundingBox();
-  expect(first, "the first daily tile is laid out").not.toBeNull();
-  expect(second, "the second daily tile is laid out").not.toBeNull();
-  // Same row, and the next one starts beyond the first: a rail, and one that
-  // shows enough of its neighbour to look scrollable.
-  expect(second!.y).toBeCloseTo(first!.y, 0);
-  expect(second!.x).toBeGreaterThan(first!.x);
-  expect(second!.x).toBeLessThan(ada.page.viewportSize()!.width);
-
-  await expect(ada.page.getByRole("heading", { name: "Pick a game" })).toBeInViewport();
+  const nav = await ada.page.getByRole("navigation", { name: "Hub" }).boundingBox();
+  expect(nav, "the tab bar is laid out").not.toBeNull();
+  for (const tile of await tiles.all()) {
+    const box = await tile.boundingBox();
+    expect(box, "the daily tile is laid out").not.toBeNull();
+    expect(box!.y).toBeGreaterThanOrEqual(0);
+    expect(box!.y + box!.height).toBeLessThanOrEqual(nav!.y);
+  }
 });
 
 test("an ended run goes on the chart, and there is no second one today", async ({ newPlayer }) => {
@@ -102,7 +103,7 @@ test("an ended run goes on the chart, and there is no second one today", async (
   await expect(again).toBeOK();
   expect(((await again.json()) as { run: { status: string } }).run.status).toBe("done");
 
-  await ada.page.goto("/");
+  await ada.page.goto("/daily");
   await expect(dailyTile(ada)).toHaveAccessibleName(/You scored 0/);
 });
 

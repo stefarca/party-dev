@@ -8,7 +8,7 @@ import type { Player } from "./fixtures";
 // other specs' lobbies too: a card is always picked out by its host's unique nickname.
 
 async function openPublicTab(page: Page): Promise<void> {
-  await page.goto("/");
+  await page.goto("/matches");
   await page.getByRole("tab", { name: /^Public/ }).click();
 }
 
@@ -45,7 +45,7 @@ test("a match started as public is listed on the hub, and anyone can join it fro
 }) => {
   const [alice, bob] = await Promise.all([newPlayer("Alice"), newPlayer("Bob")]);
 
-  await alice.page.goto("/");
+  await alice.page.goto("/play");
   await expect(publicSwitch(alice.page)).not.toBeChecked();
   await expect(publicSwitch(alice.page)).toHaveAccessibleName("Private match");
   await pressPublicSwitch(alice.page);

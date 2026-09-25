@@ -7,7 +7,7 @@ test("the host opens a lobby from the shelf, and a guest joins with its code", a
 }) => {
   const [alice, bob] = await Promise.all([newPlayer("Alice"), newPlayer("Bob")]);
 
-  await alice.page.goto("/");
+  await alice.page.goto("/play");
   await alice.page.getByRole("button", { name: "Start a new Tic-tac-toe match" }).click();
   await expect(alice.page).toHaveURL(/\/m\/[A-Z2-9]{6}$/);
   const code = new URL(alice.page.url()).pathname.slice("/m/".length);
@@ -18,7 +18,7 @@ test("the host opens a lobby from the shelf, and a guest joins with its code", a
   await expect(start).toBeDisabled();
   await expect(alice.live).toBeVisible();
 
-  await bob.page.goto("/");
+  await bob.page.goto("/play");
   // Codes are case-insensitive, so a guest can type one in however they heard it.
   await bob.page.getByRole("textbox", { name: "Match code" }).fill(code.toLowerCase());
   await bob.page.getByRole("button", { name: "Join", exact: true }).click();

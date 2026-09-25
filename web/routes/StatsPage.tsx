@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import type { ReactNode } from "react";
+
+import { AlertDialog, Button } from "@heroui/react";
 import { useTranslation } from "react-i18next";
 
 import type {
@@ -10,7 +12,7 @@ import type {
   Rival,
   ShameEntry,
 } from "../../shared/protocol";
-import { ApiError, getLeaderboard, getMyStats } from "../api";
+import { ApiError, getLeaderboard, getMyStats, resetStats } from "../api";
 import { GameGlyph } from "../components/GameGlyph";
 import { PlayerAvatar } from "../components/PlayerAvatar";
 import { EmptyState, Notice, Skeleton } from "../components/states";
@@ -181,6 +183,72 @@ function Streaks({ stats }: { stats: PlayerStatsDetail }) {
   );
 }
 
+// Asks before starting the record over. Nothing is deleted, but the numbers a player has built up
+// disappear from view, so one stray tap must not do it.
+function ResetRecord({ onReset }: { onReset: () => Promise<void> }) {
+  const { t } = useTranslation();
+  const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  function handleOpenChange(next: boolean) {
+    setOpen(next);
+    if (next) setError(null);
+  }
+
+  async function handleConfirm() {
+    setBusy(true);
+    setError(null);
+    try {
+      await onReset();
+      setOpen(false);
+    } catch (err) {
+      setError(errorText(t, err, t("hub.stats.reset.failed")));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <AlertDialog isOpen={open} onOpenChange={handleOpenChange}>
+      <Button
+        variant="ghost"
+        size="sm"
+        aria-label={t("hub.stats.reset.label")}
+        className="rounded-[var(--radius-pill)] text-[var(--text-muted)]"
+      >
+        {t("hub.stats.reset.trigger")}
+      </Button>
+      <AlertDialog.Backdrop>
+        <AlertDialog.Container>
+          <AlertDialog.Dialog className="sm:max-w-[400px]">
+            <AlertDialog.Header>
+              <AlertDialog.Icon status="warning" />
+              <AlertDialog.Heading>{t("hub.stats.reset.title")}</AlertDialog.Heading>
+            </AlertDialog.Header>
+            <AlertDialog.Body className="flex flex-col gap-2">
+              <p className="m-0">{t("hub.stats.reset.body")}</p>
+              {error && (
+                <p role="alert" className="m-0 text-sm text-danger">
+                  {error}
+                </p>
+              )}
+            </AlertDialog.Body>
+            <AlertDialog.Footer>
+              <Button slot="close" variant="tertiary">
+                {t("hub.stats.reset.cancel")}
+              </Button>
+              <Button variant="danger" isDisabled={busy} onPress={handleConfirm}>
+                {t("hub.stats.reset.confirm")}
+              </Button>
+            </AlertDialog.Footer>
+          </AlertDialog.Dialog>
+        </AlertDialog.Container>
+      </AlertDialog.Backdrop>
+    </AlertDialog>
+  );
+}
+
 function RecordCard({ stats }: { stats: PlayerStatsDetail }) {
   const { t } = useTranslation();
   const language = useLanguage();
@@ -195,13 +263,15 @@ function RecordCard({ stats }: { stats: PlayerStatsDetail }) {
     <Card title={t("stats.record.title")}>
       <dl className="m-0 grid grid-cols-2 gap-2 sm:grid-cols-4">
         {cells.map(([value, label]) => (
-          <div
-            key={label}
-            className="flex flex-col rounded-[var(--radius-md)] bg-[var(--surface-2)] px-3 py-2"
-          >
-            <dt className="order-2 text-xs text-[var(--text-muted)]">{label}</dt>
-            <dd className="order-1 m-0 font-display text-2xl font-bold tabular-nums text-[var(--text-primary)]">
-              {value}
+          <div key={label} className="rounded-[var(--radius-md)] bg-[var(--surface-2)] px-3 py-2">
+            <dt className="sr-only">{label}</dt>
+            {/* Number and word share one element, with a real space between them, so the whole
+                cell reads as "12 played" to a screen reader and to a test alike. */}
+            <dd className="m-0 flex flex-col text-xs text-[var(--text-muted)]">
+              <span className="font-display text-2xl font-bold tabular-nums text-[var(--text-primary)]">
+                {value}
+              </span>{" "}
+              <span aria-hidden="true">{label}</span>
             </dd>
           </div>
         ))}
@@ -591,6 +661,18 @@ export function StatsPage() {
     void loadBoard();
   }, [loadStats, loadBoard]);
 
+  // Reads the numbers again rather than patching them in place: a reset starts the win streak and
+  // the rivalries over too.
+  async function handleReset() {
+    try {
+      await resetStats();
+    } catch (err) {
+      if (unauthorized(err)) return;
+      throw err;
+    }
+    await loadStats();
+  }
+
   let mine: ReactNode;
   if (statsError) {
     mine = (
@@ -614,19 +696,22 @@ export function StatsPage() {
   return (
     <main id="main-content" className="app-container">
       <BackLink />
-      <header className="party-pop mb-6 flex flex-col gap-1">
-        <h1 className="m-0 font-display text-3xl font-bold tracking-tight text-[var(--text-primary)] sm:text-4xl">
-          {t("stats.title")}
-        </h1>
-        {stats?.record.since != null && (
-          <p className="m-0 text-sm text-[var(--text-muted)]">
-            {t("stats.since", {
-              date: new Intl.DateTimeFormat(language, { dateStyle: "medium" }).format(
-                stats.record.since,
-              ),
-            })}
-          </p>
-        )}
+      <header className="party-pop mb-6 flex flex-wrap items-end justify-between gap-x-4 gap-y-2">
+        <div className="flex flex-col gap-1">
+          <h1 className="m-0 font-display text-3xl font-bold tracking-tight text-[var(--text-primary)] sm:text-4xl">
+            {t("stats.title")}
+          </h1>
+          {stats?.record.since != null && (
+            <p className="m-0 text-sm text-[var(--text-muted)]">
+              {t("stats.since", {
+                date: new Intl.DateTimeFormat(language, { dateStyle: "medium" }).format(
+                  stats.record.since,
+                ),
+              })}
+            </p>
+          )}
+        </div>
+        {stats && <ResetRecord onReset={handleReset} />}
       </header>
       <div className="mb-10 flex flex-col gap-4">{mine}</div>
       <WeekSection

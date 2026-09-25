@@ -3,31 +3,27 @@ import { useTranslation } from "react-i18next";
 
 import type { DailyGameMeta } from "../../games/catalog";
 import type { DailyGameSummary } from "../../shared/protocol";
-import { relativeTime, scoreText } from "../format";
+import { scoreText } from "../format";
 import { useGameName, useLanguage } from "../i18n";
 import { navigate } from "../router";
 import { GameGlyph } from "./GameGlyph";
 
-// One daily game on the hub: where the player's run stands today, who leads
-// the day's chart, and when the board changes. Opening it goes to the game's
-// daily page, which is where a run is started — never from here, so a stray
-// tap on the hub cannot spend the day's only run.
+// One daily game on the hub: where the player's run stands today, and who
+// leads the day's chart. Opening it goes to the game's daily page, which is
+// where a run is started — never from here, so a stray tap on the hub cannot
+// spend the day's only run. When the board changes is the same for every
+// daily game, so the section around the tiles says it once.
+//
+// On a phone it is a row, a list entry with a chevron, so every daily game
+// fits on one screen; from `sm` up it is a card with its action spelled out.
 export function DailyTile({
   meta,
   summary,
-  endsAt,
-  now,
   style,
-  className = "",
 }: {
   meta: DailyGameMeta;
   summary: DailyGameSummary;
-  endsAt: number;
-  now: number;
   style?: CSSProperties;
-  // Sizing and scroll-snap for the shelf the tile is placed on. The tile
-  // itself has no width of its own, so its container decides.
-  className?: string;
 }) {
   const { t } = useTranslation();
   const language = useLanguage();
@@ -63,20 +59,20 @@ export function DailyTile({
       }}
       aria-label={t("daily.tile.label", { game: name, status })}
       style={style}
-      className={`party-pop group flex flex-col gap-3 rounded-[var(--radius-xl)] border-2 bg-[var(--surface-1)] p-5 no-underline transition-[transform,box-shadow,border-color] duration-[var(--dur-base)] ease-[var(--ease-spring)] hover:-translate-y-1.5 hover:border-[var(--border-accent)] hover:shadow-[var(--shadow-3),var(--glow-accent)] active:translate-y-0 active:scale-[0.98] ${
+      className={`party-pop group flex items-center gap-3 rounded-[var(--radius-lg)] border-2 bg-[var(--surface-1)] p-3 no-underline transition-[transform,box-shadow,border-color] duration-[var(--dur-base)] ease-[var(--ease-spring)] hover:-translate-y-1.5 hover:border-[var(--border-accent)] hover:shadow-[var(--shadow-3),var(--glow-accent)] active:translate-y-0 active:scale-[0.98] sm:flex-col sm:items-stretch sm:rounded-[var(--radius-xl)] sm:p-5 ${
         fresh
           ? "border-[var(--border-accent)] shadow-[var(--shadow-2),var(--glow-accent)]"
           : "border-[var(--border-subtle)] shadow-[var(--shadow-2),var(--edge-highlight)]"
-      } ${className}`}
+      }`}
     >
-      <div className="flex items-start gap-3">
+      <div className="flex min-w-0 flex-1 items-start gap-3">
         <GameGlyph
           gameId={meta.id}
-          className="size-14 transition-transform duration-[var(--dur-base)] ease-[var(--ease-bounce)] group-hover:-rotate-12 group-hover:scale-110"
+          className="size-12 transition-transform duration-[var(--dur-base)] ease-[var(--ease-bounce)] group-hover:-rotate-12 group-hover:scale-110 sm:size-14"
         />
-        <div className="flex min-w-0 flex-1 flex-col gap-1">
+        <div className="flex min-w-0 flex-1 flex-col gap-0.5 sm:gap-1">
           <span className="flex items-center gap-2">
-            <span className="truncate font-display text-lg font-bold text-[var(--text-primary)]">
+            <span className="truncate font-display text-base font-bold text-[var(--text-primary)] sm:text-lg">
               {name}
             </span>
             <span
@@ -87,26 +83,35 @@ export function DailyTile({
             </span>
           </span>
           <span className="text-sm text-[var(--text-secondary)]">{status}</span>
+          <span className="truncate text-xs text-[var(--text-muted)]">
+            {leader
+              ? t("daily.tile.leader", {
+                  name: leader.nickname,
+                  score: scoreText(language, leader.score, meta.format),
+                })
+              : t("daily.tile.noScores")}
+          </span>
         </div>
-      </div>
-      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs text-[var(--text-muted)]">
-        <span className="min-w-0 truncate">
-          {leader
-            ? t("daily.tile.leader", {
-                name: leader.nickname,
-                score: scoreText(language, leader.score, meta.format),
-              })
-            : t("daily.tile.noScores")}
-        </span>
-        <span>{t("daily.newBoard", { when: relativeTime(language, endsAt, now) })}</span>
       </div>
       <span
         aria-hidden="true"
-        className="inline-flex w-fit items-center rounded-[var(--radius-pill)] px-3 py-1.5 text-sm font-bold transition-transform duration-[var(--dur-base)] ease-[var(--ease-spring)] group-hover:scale-105"
+        className="hidden w-fit items-center rounded-[var(--radius-pill)] px-3 py-1.5 text-sm font-bold transition-transform duration-[var(--dur-base)] ease-[var(--ease-spring)] group-hover:scale-105 sm:inline-flex"
         style={{ background: "var(--accent-soft)", color: "var(--accent-on-soft)" }}
       >
         {action}
       </span>
+      <svg
+        viewBox="0 0 24 24"
+        className="size-5 flex-none text-[var(--text-muted)] sm:hidden"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={2.5}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden="true"
+      >
+        <path d="m9 6 6 6-6 6" />
+      </svg>
     </a>
   );
 }

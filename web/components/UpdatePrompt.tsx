@@ -21,11 +21,12 @@ export function UpdatePrompt() {
   if (!needRefresh) return null;
 
   // Bottom right from `sm` up, where it clears the centred column the hub and the nickname gate
-  // both lay out in; centred on a phone, which has no room to sit beside anything.
+  // both lay out in; centred on a phone, which has no room to sit beside anything, and lifted
+  // clear of the hub's tab bar there.
   return (
     <div
       role="status"
-      className="fixed bottom-4 left-1/2 z-50 flex w-[min(24rem,calc(100%-2rem))] -translate-x-1/2 animate-in flex-col gap-3 rounded-[var(--radius-lg)] border border-[var(--border-accent)] bg-[var(--surface-2)] p-4 shadow-[var(--shadow-3)] duration-300 fade-in slide-in-from-bottom-4 sm:left-auto sm:right-4 sm:translate-x-0"
+      className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] left-1/2 z-50 flex w-[min(24rem,calc(100%-2rem))] -translate-x-1/2 animate-in flex-col gap-3 rounded-[var(--radius-lg)] border border-[var(--border-accent)] bg-[var(--surface-2)] p-4 shadow-[var(--shadow-3)] duration-300 fade-in slide-in-from-bottom-4 sm:right-4 sm:bottom-4 sm:left-auto sm:translate-x-0"
     >
       <div className="flex flex-col gap-1">
         <p className="m-0 font-display text-sm font-bold">{t("update.title")}</p>
