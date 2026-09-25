@@ -84,8 +84,10 @@
  *   code-5 on board-hole (a code peg in its hole, tightest)  3.76    3.76   >= 3.0
  *   code-6-ink on code-6 (a peg's symbol, tightest dark ink) 4.87    4.87   >= 4.5
  *   code-5-ink on code-5 (the blue peg's light symbol)       5.19    5.19   >= 4.5
- *   golf-wall on golf-green (a wall around the course)       4.05    4.05   >= 3.0
- *   golf-wall on golf-water (a wall beside a pond)           3.66    3.66   >= 3.0
+ *   golf-wall on golf-green (a rail's lip on the turf)       4.05    4.05   >= 3.0
+ *   golf-wall on golf-water (a rail's lip beside a pond)     3.66    3.66   >= 3.0
+ *   golf-rail on golf-stripe (a rail, tightest turf)         3.13    3.13   >= 3.0
+ *   golf-rail on golf-water (a rail beside a pond)           4.08    4.08   >= 3.0
  *   golf-ball on golf-stripe (the ball, tightest turf)       3.53    3.53   >= 3.0
  *   golf-ball-ring on golf-sand (the ball in a bunker)      11.70   11.70   >= 3.0
  *   board-hole on golf-green (the cup)                       4.48    4.48   >= 3.0
@@ -230,26 +232,41 @@
   --code-7: #cc79a7;
   --code-7-ink: hsl(268, 60%, 10%);
 
-  /* Mini golf's course: mown turf in two stripes, dark walls, and hazards
-     that each carry a texture of their own (grains in sand, ripples on
-     water, chevrons down a slope), so none is told apart by colour alone.
-     A course is a board, so the same in both themes. The ball is ringed in
-     the dark ink, which is what keeps it visible in a light bunker. */
+  /* Mini golf's course: cross-mown turf inside pale rails, raised bumpers,
+     and hazards that each carry a texture of their own (grains in sand,
+     ripples on water, chevrons down a slope), so none is told apart by
+     colour alone. A course is a board, so the same in both themes. A rail
+     and a bumper are drawn in `--golf-rail` with a thin `--golf-wall` lip
+     where they meet the turf, so either alone outlines the course. The ball
+     is ringed in the dark ink, which is what keeps it visible in a light
+     bunker. `--golf-glint` is white light: the gloss on the ball, and, at a
+     low opacity, light falling across the turf and hazards. */
   --golf-green: hsl(136, 50%, 36%);
   --golf-stripe: hsl(136, 48%, 40%);
   --golf-tee: hsl(136, 46%, 26%);
+  --golf-tee-line: hsl(136, 44%, 58%);
   --golf-wall: hsl(266, 44%, 13%);
+  --golf-rail: hsl(268, 36%, 94%);
+  --golf-rail-side: hsl(266, 22%, 66%);
+  --golf-ground-dot: hsla(268, 60%, 76%, 0.12);
+  --golf-glint: hsl(0, 0%, 100%);
   --golf-sand: hsl(42, 62%, 72%);
   --golf-sand-grain: hsl(34, 45%, 50%);
+  --golf-sand-shade: hsl(34, 50%, 40%);
   --golf-water: hsl(206, 76%, 42%);
+  --golf-water-deep: hsl(212, 78%, 32%);
   --golf-wave: hsl(198, 90%, 80%);
-  --golf-slope: hsla(0, 0%, 100%, 0.55);
-  --golf-slope-tint: hsla(0, 0%, 100%, 0.08);
+  --golf-foam: hsl(198, 90%, 90%);
+  --golf-slope: hsla(0, 0%, 100%, 0.5);
   --golf-ball: hsl(0, 0%, 98%);
+  --golf-ball-shade: hsl(268, 14%, 78%);
   --golf-ball-ring: hsl(268, 60%, 10%);
   --golf-shadow: hsla(268, 60%, 5%, 0.4);
+  --golf-cup-liner: hsl(268, 24%, 30%);
   --golf-pole: hsl(0, 0%, 92%);
   --golf-flag: hsl(48, 96%, 60%);
+  /* The aim warms from the ball's own white towards this as power rises. */
+  --golf-aim-hot: hsl(14, 92%, 64%);
 
   /* Seat colours: a game-agnostic ramp any game can assign to up to 4
      players. Colour is never the only signal — games pair these with a glyph
@@ -650,6 +667,81 @@ body {
   }
   100% {
     transform: scale(2.6);
+    opacity: 0;
+  }
+}
+
+/* A new hole settling onto the table. */
+@keyframes party-golf-course-in {
+  0% {
+    transform: scale(0.96);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* Ripples on a pond and chevrons down a slope, sliding one tile of their
+   pattern and starting over, which is seamless. The distance is set inline,
+   per hazard, in the course's own units: in an SVG a CSS pixel is one. */
+@keyframes party-golf-drift {
+  0% {
+    transform: translate(0, 0);
+  }
+  100% {
+    transform: translate(var(--golf-drift-x, 0), var(--golf-drift-y, 0));
+  }
+}
+
+/* The flag stirring in a breeze, from the pole. */
+@keyframes party-golf-flag {
+  0%,
+  100% {
+    transform: skewY(0deg) scaleX(1);
+  }
+  50% {
+    transform: skewY(-7deg) scaleX(0.9);
+  }
+}
+
+/* A ring breathing out from a ball that is ready to be hit. */
+@keyframes party-golf-ready {
+  0% {
+    transform: scale(1);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(2.2);
+    opacity: 0;
+  }
+}
+
+/* A ball dropping into the cup. */
+@keyframes party-golf-sink {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(0.2);
+    opacity: 0;
+  }
+}
+
+/* One piece of a burst: confetti from the cup, or a droplet from a splash.
+   Each piece reads where it flies to from inline custom properties. */
+@keyframes party-golf-burst {
+  0% {
+    transform: translate(0, 0) scale(1);
+    opacity: 1;
+  }
+  60% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--golf-burst-x, 0), var(--golf-burst-y, 0)) scale(0.75);
     opacity: 0;
   }
 }
