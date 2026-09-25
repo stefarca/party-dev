@@ -777,7 +777,7 @@ export function Dashboard({ tab }: { tab: HubTab | null }) {
             <p className="m-0 text-sm text-[var(--text-muted)]">{t("daily.sectionHint")}</p>
           </div>
           {daily ? (
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
               {dailyGames.map(({ meta, summary }, i) => (
                 <DailyTile key={meta.id} meta={meta} summary={summary} style={staggerStyle(i)} />
               ))}

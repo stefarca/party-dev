@@ -59,7 +59,7 @@ export function DailyTile({
       }}
       aria-label={t("daily.tile.label", { game: name, status })}
       style={style}
-      className={`party-pop group flex items-center gap-3 rounded-[var(--radius-lg)] border-2 bg-[var(--surface-1)] p-3 no-underline transition-[transform,box-shadow,border-color] duration-[var(--dur-base)] ease-[var(--ease-spring)] hover:-translate-y-1.5 hover:border-[var(--border-accent)] hover:shadow-[var(--shadow-3),var(--glow-accent)] active:translate-y-0 active:scale-[0.98] sm:flex-col sm:items-stretch sm:rounded-[var(--radius-xl)] sm:p-5 ${
+      className={`party-pop group flex items-center gap-3 rounded-[var(--radius-lg)] border-2 bg-[var(--surface-1)] px-3 py-2 no-underline transition-[transform,box-shadow,border-color] duration-[var(--dur-base)] ease-[var(--ease-spring)] hover:-translate-y-1.5 hover:border-[var(--border-accent)] hover:shadow-[var(--shadow-3),var(--glow-accent)] active:translate-y-0 active:scale-[0.98] sm:flex-col sm:items-stretch sm:rounded-[var(--radius-xl)] sm:p-5 ${
         fresh
           ? "border-[var(--border-accent)] shadow-[var(--shadow-2),var(--glow-accent)]"
           : "border-[var(--border-subtle)] shadow-[var(--shadow-2),var(--edge-highlight)]"

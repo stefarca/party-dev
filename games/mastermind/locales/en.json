@@ -1,0 +1,47 @@
+{
+  "name": "Mastermind",
+  "loading": "Loading the board…",
+  "board": "Board",
+  "stats": {
+    "label": "Your run",
+    "guesses": "Guesses",
+    "time": "Time"
+  },
+  "color": {
+    "0": "Orange",
+    "1": "Sky blue",
+    "2": "Green",
+    "3": "Yellow",
+    "4": "Blue",
+    "5": "Red",
+    "6": "Pink"
+  },
+  "guesses": "Your guesses",
+  "guess": "Guess {{number}}: {{pegs}}. {{marks}}.",
+  "marks": "{{exact}} in place, {{near}} misplaced",
+  "draft": {
+    "label": "Guess {{number}} of {{count}}",
+    "empty": "Slot {{slot}}: empty",
+    "filled": "Slot {{slot}}: {{color}}, press to take it out"
+  },
+  "palette": "Colours",
+  "erase": "Erase",
+  "check": "Check",
+  "legend": {
+    "exact": "right colour, right place",
+    "near": "right colour, wrong place"
+  },
+  "hint": "Pick five different colours, then check your guess. You have seven guesses to crack the code. On a keyboard, type 1 to 7 to pick a colour, Backspace to take one back and Enter to check.",
+  "solved_one": "Cracked in {{count}} guess!",
+  "solved_other": "Cracked in {{count}} guesses!",
+  "failed": "Out of guesses. The code stays secret: it is everyone's for the day.",
+  "ended": "This run is over.",
+  "announce": "Guess {{number}}: {{marks}}.",
+  "chart": {
+    "solved": "Cracked in {{time}}",
+    "failed_one": "Not cracked in {{count}} guess",
+    "failed_other": "Not cracked in {{count}} guesses",
+    "ended_one": "Ended after {{count}} guess",
+    "ended_other": "Ended after {{count}} guesses"
+  }
+}

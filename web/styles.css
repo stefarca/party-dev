@@ -81,10 +81,13 @@
  *   seat-1-contrast on board-hull (ring of a hit on a ship)  6.86    6.86   >= 3.0
  *   tile-ink on tile-1024 (a tile's number, tightest tile)   6.85    6.85   >= 4.5
  *   tile-512 on board-well (a tile on the board, tightest)   5.65    5.65   >= 3.0
+ *   code-5 on board-hole (a code peg in its hole, tightest)  3.76    3.76   >= 3.0
+ *   code-6-ink on code-6 (a peg's symbol, tightest dark ink) 4.87    4.87   >= 4.5
+ *   code-5-ink on code-5 (the blue peg's light symbol)       5.19    5.19   >= 4.5
  *
- * The seat ramp, the tile ramp and the board colours do not change between
- * themes (see the note on `--board-well` below), so both columns are
- * identical for those.
+ * The seat ramp, the tile ramp, the code pegs and the board colours do not
+ * change between themes (see the note on `--board-well` below), so both
+ * columns are identical for those.
  */
 :root {
   color-scheme: dark;
@@ -199,6 +202,26 @@
   --tile-1024: hsl(342, 88%, 70%);
   --tile-2048: hsl(300, 78%, 72%);
   --tile-super: hsl(268, 95%, 76%);
+
+  /* Mastermind's seven code pegs: the Okabe–Ito palette less its black,
+     chosen because its colours stay apart under every common colour-vision
+     deficiency. Pieces on a board, so the same in both themes. Colour is
+     still never the only signal: each peg also carries a symbol of its own,
+     drawn in its `-ink`, dark on every peg but the blue. */
+  --code-1: #e69f00;
+  --code-1-ink: hsl(268, 60%, 10%);
+  --code-2: #56b4e9;
+  --code-2-ink: hsl(268, 60%, 10%);
+  --code-3: #009e73;
+  --code-3-ink: hsl(268, 60%, 10%);
+  --code-4: #f0e442;
+  --code-4-ink: hsl(268, 60%, 10%);
+  --code-5: #0072b2;
+  --code-5-ink: #ffffff;
+  --code-6: #d55e00;
+  --code-6-ink: hsl(268, 60%, 10%);
+  --code-7: #cc79a7;
+  --code-7-ink: hsl(268, 60%, 10%);
 
   /* Seat colours: a game-agnostic ramp any game can assign to up to 4
      players. Colour is never the only signal — games pair these with a glyph

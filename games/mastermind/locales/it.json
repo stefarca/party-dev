@@ -1,0 +1,47 @@
+{
+  "name": "Mastermind",
+  "loading": "Caricamento del tabellone…",
+  "board": "Tabellone",
+  "stats": {
+    "label": "La tua partita",
+    "guesses": "Tentativi",
+    "time": "Tempo"
+  },
+  "color": {
+    "0": "Arancione",
+    "1": "Azzurro",
+    "2": "Verde",
+    "3": "Giallo",
+    "4": "Blu",
+    "5": "Rosso",
+    "6": "Rosa"
+  },
+  "guesses": "I tuoi tentativi",
+  "guess": "Tentativo {{number}}: {{pegs}}. {{marks}}.",
+  "marks": "{{exact}} al posto giusto, {{near}} fuori posto",
+  "draft": {
+    "label": "Tentativo {{number}} di {{count}}",
+    "empty": "Posizione {{slot}}: vuota",
+    "filled": "Posizione {{slot}}: {{color}}, premi per toglierlo"
+  },
+  "palette": "Colori",
+  "erase": "Cancella",
+  "check": "Verifica",
+  "legend": {
+    "exact": "colore giusto, al posto giusto",
+    "near": "colore giusto, fuori posto"
+  },
+  "hint": "Scegli cinque colori diversi, poi verifica il tentativo. Hai sette tentativi per indovinare il codice. Da tastiera: digita da 1 a 7 per scegliere un colore, Backspace per toglierlo e Invio per verificare.",
+  "solved_one": "Indovinato in {{count}} tentativo!",
+  "solved_other": "Indovinato in {{count}} tentativi!",
+  "failed": "Tentativi finiti. Il codice resta segreto: è lo stesso per tutti, per tutto il giorno.",
+  "ended": "Questa partita è finita.",
+  "announce": "Tentativo {{number}}: {{marks}}.",
+  "chart": {
+    "solved": "Indovinato in {{time}}",
+    "failed_one": "Non indovinato in {{count}} tentativo",
+    "failed_other": "Non indovinato in {{count}} tentativi",
+    "ended_one": "Finita dopo {{count}} tentativo",
+    "ended_other": "Finita dopo {{count}} tentativi"
+  }
+}
