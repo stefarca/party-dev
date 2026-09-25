@@ -1,0 +1,67 @@
+{
+  "name": "Minigolf",
+  "loading": "Preparazione del percorso…",
+  "field": "Buca {{hole}} di {{holes}}, par {{par}}. La buca è a {{distance}}, a {{bearing}}.",
+  "fieldHoled": "Buca {{hole}} di {{holes}}, par {{par}}. La pallina è in buca.",
+  "hazards": "Su questa buca: {{list}}.",
+  "hazard": {
+    "water": "acqua",
+    "sand": "sabbia",
+    "slope": "una pendenza",
+    "blocks": "ostacoli"
+  },
+  "stats": {
+    "label": "Il tuo giro",
+    "hole": "Buca",
+    "par": "Par",
+    "strokes": "Colpi",
+    "total": "Sul par"
+  },
+  "holeOf": "{{hole}}/{{holes}}",
+  "even": "Par",
+  "controls": "Il tuo colpo",
+  "aim": "Mira",
+  "power": "Forza",
+  "shoot": "Tira",
+  "next": "Buca successiva",
+  "legend": {
+    "water": "Acqua: un colpo di penalità",
+    "sand": "La sabbia rallenta la pallina",
+    "slope": "Pendenza: si rotola dove puntano le frecce"
+  },
+  "cup": {
+    "ace": "Buca in uno!",
+    "holed": "In buca in {{strokes}}: {{term}}.",
+    "pickedUp": "Raccolta dopo {{max}} colpi: questa buca vale {{cap}}.",
+    "splash": "Splash! Un colpo di penalità, e la pallina torna da dove è partita.",
+    "rest": "Colpo {{strokes}}: la pallina si è fermata a {{distance}} dalla buca."
+  },
+  "term": {
+    "eagle": "eagle",
+    "birdie": "birdie",
+    "par": "par",
+    "bogey": "bogey",
+    "double": "doppio bogey",
+    "triple": "triplo bogey"
+  },
+  "scorecard": {
+    "caption": "Scheda dei punti",
+    "hole": "Buca",
+    "par": "Par",
+    "score": "Colpi",
+    "total": "Totale",
+    "none": "–"
+  },
+  "hint": "Trascina all'indietro da un punto qualsiasi del percorso e rilascia per tirare, oppure imposta mira e forza qui sotto. Una pallina ancora fuori dopo {{max}} colpi viene raccolta, e la buca vale {{cap}}.",
+  "over": "Giro completato.",
+  "ended": "Questa partita è finita.",
+  "chart": {
+    "even": "In par",
+    "under_one": "{{count}} sotto il par",
+    "under_other": "{{count}} sotto il par",
+    "over_one": "{{count}} sopra il par",
+    "over_other": "{{count}} sopra il par",
+    "ended_one": "Finita dopo {{count}} buca",
+    "ended_other": "Finita dopo {{count}} buche"
+  }
+}
