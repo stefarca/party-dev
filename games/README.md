@@ -42,6 +42,20 @@ optionally, one in `games/icons.ts`) — nothing else. Checklist, in order:
    render `view`, call `send(action)` for intents, and use the shared `TurnIndicator` (mounted by
    `MatchPage`, not by your UI) for the generic "whose turn / deadline" display — do not duplicate
    it.
+   - **Files:** `ui.tsx` is the entry the registry loads. It holds the namespace declaration
+     and the top-level component, which should read as a short outline of the page: it owns the
+     state several parts share, and hands each part what it shows through props. Every other
+     component has a file of its own under `games/<id>/components/` (PascalCase, named export),
+     and keeps any state only it uses (the hovered column, the drag on the course). Logic with
+     state that the page shares goes in a `use*.ts` hook beside `ui.tsx` (`games/checkers/useMove.ts`,
+     `games/mastermind/useDraft.ts`), and plain helpers (geometry, view types, colour tables) in
+     `.ts` files beside it too. Pieces more than one game uses live in `games/common/`: the
+     loading line, the status line, the result banner, the seat badge above a two-player board,
+     the stat row above a daily board, the on/off mode switch, the chunky button classes,
+     `useNow()`, a stopwatch `clock()`, and `useWindowKeys()` for keys pressed anywhere on the
+     page. A component there has no i18n namespace of its own, so it takes its words already
+     translated. Every one of these files is type-checked by the Worker's project as well, with
+     no DOM types, and none may import a `.css` file.
    - **UI:** the shell mounts your component inside its own cabinet, so a game UI must not render
      its own outer card — render the board/round content only. Style with Tailwind utility classes
      and the shared palette tokens declared in `web/styles.css` — colours in particular should read
@@ -68,7 +82,8 @@ optionally, one in `games/icons.ts`) — nothing else. Checklist, in order:
      `declare module "i18next"` block from another game) and read it with
      `useTranslation("<id>")`, never `common`: the Worker's type-check of your UI cannot see
      `web/`. Use `_one`/`_other` keys with a `count` for anything plural.
-     `web/translations.test.ts` fails if a language is missing a key. Tailwind only emits classes it can see statically, so never build a class name from
+     `web/translations.test.ts` fails if a language is missing a key. Tailwind only emits classes it can see statically (it reads every `.ts` and `.tsx` file
+     under `games/`), so never build a class name from
      a runtime value (e.g. `` `bg-seat-${n}` ``) — use a static lookup table of complete class
      strings, or set a CSS custom property inline instead.
 6. **Register it** — one line in each map in `games/registry.ts`:
@@ -150,8 +165,8 @@ same for every daily game (`web/routes/DailyPage.tsx`). `games/2048/` is the ref
    `reduce`, not an error. `status` is `"done"` once the run is over; stop taking input then. The
    styling rules, the string rules and the ban on importing a `.css` file are the same as for a
    match game (above). As there, `ui.tsx` is also type-checked by the Worker's project, with no
-   DOM types: reach anything global through a narrow type of your own (see how
-   `games/2048/ui.tsx` listens for arrow keys). Include a `name` string whose English value equals
+   DOM types: reach anything global through a narrow type of your own (see
+   `games/common/keyboard.ts`, which the daily games listen for keys through). Include a `name` string whose English value equals
    `meta.name`.
 4. **Register it** in `games/registry.ts`: `dailyGames` (server) and `dailyUi` (client, lazy).
    Its id must not also be a match game's. An icon goes in `games/icons.ts`, the same as for a
