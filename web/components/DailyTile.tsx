@@ -14,8 +14,10 @@ import { GameGlyph } from "./GameGlyph";
 // spend the day's only run. When the board changes is the same for every
 // daily game, so the section around the tiles says it once.
 //
-// On a phone it is a row, a list entry with a chevron, so every daily game
-// fits on one screen; from `sm` up it is a card with its action spelled out.
+// On a phone it is a row, a list entry with a chevron that names the game
+// and where the player's run stands, so every daily game fits on one screen;
+// from `sm` up it is a card that also names the day's leader and spells out
+// its action.
 export function DailyTile({
   meta,
   summary,
@@ -59,7 +61,7 @@ export function DailyTile({
       }}
       aria-label={t("daily.tile.label", { game: name, status })}
       style={style}
-      className={`party-pop group flex items-center gap-3 rounded-[var(--radius-lg)] border-2 bg-[var(--surface-1)] px-3 py-2 no-underline transition-[transform,box-shadow,border-color] duration-[var(--dur-base)] ease-[var(--ease-spring)] hover:-translate-y-1.5 hover:border-[var(--border-accent)] hover:shadow-[var(--shadow-3),var(--glow-accent)] active:translate-y-0 active:scale-[0.98] sm:flex-col sm:items-stretch sm:rounded-[var(--radius-xl)] sm:p-5 ${
+      className={`party-pop group flex items-center gap-3 rounded-[var(--radius-lg)] border-2 bg-[var(--surface-1)] px-3 py-1.5 no-underline transition-[transform,box-shadow,border-color] duration-[var(--dur-base)] ease-[var(--ease-spring)] hover:-translate-y-1.5 hover:border-[var(--border-accent)] hover:shadow-[var(--shadow-3),var(--glow-accent)] active:translate-y-0 active:scale-[0.98] sm:flex-col sm:items-stretch sm:rounded-[var(--radius-xl)] sm:p-5 ${
         fresh
           ? "border-[var(--border-accent)] shadow-[var(--shadow-2),var(--glow-accent)]"
           : "border-[var(--border-subtle)] shadow-[var(--shadow-2),var(--edge-highlight)]"
@@ -68,7 +70,7 @@ export function DailyTile({
       <div className="flex min-w-0 flex-1 items-start gap-3">
         <GameGlyph
           gameId={meta.id}
-          className="size-12 transition-transform duration-[var(--dur-base)] ease-[var(--ease-bounce)] group-hover:-rotate-12 group-hover:scale-110 sm:size-14"
+          className="size-10 transition-transform duration-[var(--dur-base)] ease-[var(--ease-bounce)] group-hover:-rotate-12 group-hover:scale-110 sm:size-14"
         />
         <div className="flex min-w-0 flex-1 flex-col gap-0.5 sm:gap-1">
           <span className="flex items-center gap-2">
@@ -83,7 +85,7 @@ export function DailyTile({
             </span>
           </span>
           <span className="text-sm text-[var(--text-secondary)]">{status}</span>
-          <span className="truncate text-xs text-[var(--text-muted)]">
+          <span className="hidden truncate text-xs text-[var(--text-muted)] sm:block">
             {leader
               ? t("daily.tile.leader", {
                   name: leader.nickname,

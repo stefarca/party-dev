@@ -84,10 +84,17 @@
  *   code-5 on board-hole (a code peg in its hole, tightest)  3.76    3.76   >= 3.0
  *   code-6-ink on code-6 (a peg's symbol, tightest dark ink) 4.87    4.87   >= 4.5
  *   code-5-ink on code-5 (the blue peg's light symbol)       5.19    5.19   >= 4.5
+ *   golf-wall on golf-green (a wall around the course)       4.05    4.05   >= 3.0
+ *   golf-wall on golf-water (a wall beside a pond)           3.66    3.66   >= 3.0
+ *   golf-ball on golf-stripe (the ball, tightest turf)       3.53    3.53   >= 3.0
+ *   golf-ball-ring on golf-sand (the ball in a bunker)      11.70   11.70   >= 3.0
+ *   board-hole on golf-green (the cup)                       4.48    4.48   >= 3.0
+ *   golf-flag on golf-green (the flag, before its outline)   3.02    3.02   >= 3.0
+ *   golf-wave on golf-water (the ripples marking water)      3.28    3.28   >= 3.0
  *
- * The seat ramp, the tile ramp, the code pegs and the board colours do not
- * change between themes (see the note on `--board-well` below), so both
- * columns are identical for those.
+ * The seat ramp, the tile ramp, the code pegs, the golf course and the board
+ * colours do not change between themes (see the note on `--board-well`
+ * below), so both columns are identical for those.
  */
 :root {
   color-scheme: dark;
@@ -222,6 +229,27 @@
   --code-6-ink: hsl(268, 60%, 10%);
   --code-7: #cc79a7;
   --code-7-ink: hsl(268, 60%, 10%);
+
+  /* Mini golf's course: mown turf in two stripes, dark walls, and hazards
+     that each carry a texture of their own (grains in sand, ripples on
+     water, chevrons down a slope), so none is told apart by colour alone.
+     A course is a board, so the same in both themes. The ball is ringed in
+     the dark ink, which is what keeps it visible in a light bunker. */
+  --golf-green: hsl(136, 50%, 36%);
+  --golf-stripe: hsl(136, 48%, 40%);
+  --golf-tee: hsl(136, 46%, 26%);
+  --golf-wall: hsl(266, 44%, 13%);
+  --golf-sand: hsl(42, 62%, 72%);
+  --golf-sand-grain: hsl(34, 45%, 50%);
+  --golf-water: hsl(206, 76%, 42%);
+  --golf-wave: hsl(198, 90%, 80%);
+  --golf-slope: hsla(0, 0%, 100%, 0.55);
+  --golf-slope-tint: hsla(0, 0%, 100%, 0.08);
+  --golf-ball: hsl(0, 0%, 98%);
+  --golf-ball-ring: hsl(268, 60%, 10%);
+  --golf-shadow: hsla(268, 60%, 5%, 0.4);
+  --golf-pole: hsl(0, 0%, 92%);
+  --golf-flag: hsl(48, 96%, 60%);
 
   /* Seat colours: a game-agnostic ramp any game can assign to up to 4
      players. Colour is never the only signal — games pair these with a glyph
@@ -611,6 +639,18 @@ body {
   }
   100% {
     transform: scale(1);
+  }
+}
+
+/* A ring spreading out from where a golf ball dropped or splashed. */
+@keyframes party-golf-ripple {
+  0% {
+    transform: scale(0.4);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(2.6);
+    opacity: 0;
   }
 }
 

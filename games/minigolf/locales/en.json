@@ -1,0 +1,67 @@
+{
+  "name": "Mini Golf",
+  "loading": "Setting out the course…",
+  "field": "Hole {{hole}} of {{holes}}, par {{par}}. The cup is {{distance}} away, at {{bearing}}.",
+  "fieldHoled": "Hole {{hole}} of {{holes}}, par {{par}}. The ball is in the cup.",
+  "hazards": "On this hole: {{list}}.",
+  "hazard": {
+    "water": "water",
+    "sand": "sand",
+    "slope": "a slope",
+    "blocks": "obstacles"
+  },
+  "stats": {
+    "label": "Your round",
+    "hole": "Hole",
+    "par": "Par",
+    "strokes": "Strokes",
+    "total": "To par"
+  },
+  "holeOf": "{{hole}}/{{holes}}",
+  "even": "E",
+  "controls": "Your shot",
+  "aim": "Aim",
+  "power": "Power",
+  "shoot": "Shoot",
+  "next": "Next hole",
+  "legend": {
+    "water": "Water: a penalty stroke",
+    "sand": "Sand slows the ball",
+    "slope": "Slope: rolls the way the arrows point"
+  },
+  "cup": {
+    "ace": "Hole in one!",
+    "holed": "In the cup in {{strokes}}: {{term}}.",
+    "pickedUp": "Picked up after {{max}} strokes: this hole scores {{cap}}.",
+    "splash": "Splash! A penalty stroke, and the ball goes back where it was hit from.",
+    "rest": "Stroke {{strokes}}: the ball stopped {{distance}} from the cup."
+  },
+  "term": {
+    "eagle": "eagle",
+    "birdie": "birdie",
+    "par": "par",
+    "bogey": "bogey",
+    "double": "double bogey",
+    "triple": "triple bogey"
+  },
+  "scorecard": {
+    "caption": "Scorecard",
+    "hole": "Hole",
+    "par": "Par",
+    "score": "Score",
+    "total": "Total",
+    "none": "–"
+  },
+  "hint": "Drag back from anywhere on the course and let go to shoot, or set your aim and power below. A ball still out after {{max}} strokes is picked up, and the hole scores {{cap}}.",
+  "over": "Round complete.",
+  "ended": "This run is over.",
+  "chart": {
+    "even": "Level par",
+    "under_one": "{{count}} under par",
+    "under_other": "{{count}} under par",
+    "over_one": "{{count}} over par",
+    "over_other": "{{count}} over par",
+    "ended_one": "Ended after {{count}} hole",
+    "ended_other": "Ended after {{count}} holes"
+  }
+}

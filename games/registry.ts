@@ -5,6 +5,7 @@ import { battleshipGame } from "./battleship/game";
 import { checkersGame } from "./checkers/game";
 import { connect4Game } from "./connect4/game";
 import { mastermindGame } from "./mastermind/game";
+import { minigolfGame } from "./minigolf/game";
 import { minesweeperGame } from "./minesweeper/game";
 import { sudokuGame } from "./sudoku/game";
 import { tictactoeGame } from "./tictactoe/game";
@@ -57,6 +58,7 @@ export function getGame(id: string): GameModule<any, any> | undefined {
 export const dailyGames: Record<string, DailyGameModule<any, any>> = {
   "2048": g2048Game,
   mastermind: mastermindGame,
+  minigolf: minigolfGame,
   minesweeper: minesweeperGame,
   sudoku: sudokuGame,
 };
@@ -64,6 +66,7 @@ export const dailyGames: Record<string, DailyGameModule<any, any>> = {
 export const dailyUi: Record<string, () => Promise<{ default: ComponentType<DailyUiProps> }>> = {
   "2048": () => import("./2048/ui"),
   mastermind: () => import("./mastermind/ui"),
+  minigolf: () => import("./minigolf/ui"),
   minesweeper: () => import("./minesweeper/ui"),
   sudoku: () => import("./sudoku/ui"),
 };
