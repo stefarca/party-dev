@@ -249,7 +249,11 @@ Registering a game is one line in each of `serverGames` and `gameUi` in `games/r
 — that would pull React into the Worker. `gameUi` is lazily imported so the client bundle does not
 grow with every game. A game's tile icon is optional and lives in a third, client-only map,
 `gameIcons` in `games/icons.ts`, kept out of the registry for the same reason; a game without one
-falls back to a hash-picked motif.
+falls back to a hash-picked motif. The lazy entry is `games/<id>/ui.tsx`; each other component of
+a game has a file of its own under `games/<id>/components/`, and UI pieces several games share
+(loading and status lines, result banner, seat badge, stat row, mode switch, button classes,
+`useNow`, `clock`, `useWindowKeys`) live in `games/common/`, taking their words already translated
+since they have no namespace of their own.
 
 **Two transports, one shape.** The WebSocket at `/ws/:id` and the HTTP routes
 (`GET /api/matches/:id/snapshot`, `GET /api/matches/:id/events`, `POST /api/matches/:id/actions`,

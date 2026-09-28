@@ -2,7 +2,7 @@
 @import "@heroui/styles";
 
 @source "./**/*.{ts,tsx}";
-@source "../games/**/*.tsx";
+@source "../games/**/*.{ts,tsx}";
 @source "../index.html";
 
 /* `@heroui/styles` already ships a `dark` custom variant keyed off the same

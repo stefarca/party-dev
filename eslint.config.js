@@ -41,7 +41,7 @@ export default tseslint.config(
   // web/useMatch.ts and friends. Refactoring those is a separate, non-tooling change, so only
   // the two stable rules are enabled here.
   {
-    files: ["web/**/*.{ts,tsx}", "games/**/*.tsx"],
+    files: ["web/**/*.{ts,tsx}", "games/**/*.{ts,tsx}"],
     plugins: { "react-hooks": reactHooks },
     languageOptions: { globals: globals.browser },
     rules: {

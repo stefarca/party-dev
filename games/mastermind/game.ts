@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { shuffle } from "../../shared/prng";
 import type { DailyGameModule, DailyScore } from "../../shared/game";
+import { clock } from "../common/clock";
 
 // Mastermind, as a daily game. The day's code is five pegs, each a different
 // one of seven colours, in order. A player has seven guesses to crack it, and
@@ -119,17 +120,6 @@ export function view(state: MastermindState): MastermindView {
     startedAt: state.startedAt,
     solvedAt: state.solvedAt,
   };
-}
-
-// A time as a stopwatch reads one: "4:05", "1:02:09".
-export function clock(ms: number): string {
-  const total = Math.floor(ms / 1000);
-  const hours = Math.floor(total / 3600);
-  const minutes = Math.floor((total % 3600) / 60);
-  const seconds = String(total % 60).padStart(2, "0");
-  return hours > 0
-    ? `${hours}:${String(minutes).padStart(2, "0")}:${seconds}`
-    : `${minutes}:${seconds}`;
 }
 
 // Cracked codes rank by guesses, and say how long they took. Any other run
