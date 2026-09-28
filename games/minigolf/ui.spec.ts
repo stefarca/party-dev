@@ -86,6 +86,10 @@ test("a shot is pulled back on the course, or set on the sliders", async ({ newP
   await expect(stat(ada, "Strokes")).toHaveText(/Strokes\s*1$/);
   await expect(course(ada)).not.toHaveAttribute("aria-label", tee!);
 
+  // The aim slider is centred on straight up: left of centre aims left.
+  await aim(ada).fill("-90");
+  await expect(aim(ada)).toHaveAttribute("aria-valuetext", "-90°");
+
   // The sliders play the same shot a drag would.
   await aim(ada).fill("90");
   await expect(aim(ada)).toHaveAttribute("aria-valuetext", "90°");
