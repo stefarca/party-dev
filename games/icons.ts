@@ -4,6 +4,7 @@ import G2048Icon from "./2048/icon";
 import BattleshipIcon from "./battleship/icon";
 import CheckersIcon from "./checkers/icon";
 import Connect4Icon from "./connect4/icon";
+import LightsOutIcon from "./lightsout/icon";
 import MastermindIcon from "./mastermind/icon";
 import MinigolfIcon from "./minigolf/icon";
 import MinesweeperIcon from "./minesweeper/icon";
@@ -23,6 +24,7 @@ export const gameIcons: Record<string, ComponentType> = {
   battleship: BattleshipIcon,
   checkers: CheckersIcon,
   connect4: Connect4Icon,
+  lightsout: LightsOutIcon,
   mastermind: MastermindIcon,
   minigolf: MinigolfIcon,
   minesweeper: MinesweeperIcon,

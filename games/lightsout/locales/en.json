@@ -1,0 +1,31 @@
+{
+  "name": "Lights Out",
+  "loading": "Loading the board…",
+  "board": "Lights",
+  "stats": {
+    "label": "Your run",
+    "presses": "Presses",
+    "par": "Par",
+    "time": "Time"
+  },
+  "cell": {
+    "label": "Row {{row}}, column {{col}}: {{state}}",
+    "on": "on",
+    "off": "off"
+  },
+  "hint": "Turn every light off. Pressing a light flips it and the lights above, below and beside it; pressing it again flips them back. Par is the fewest presses that can do it. On a keyboard, move with the arrow keys and press with Space or Enter.",
+  "solved_one": "Lights out in {{count}} press!",
+  "solved_other": "Lights out in {{count}} presses!",
+  "atPar": "Right on par: nobody can do it in fewer.",
+  "overPar_one": "{{count}} press over par.",
+  "overPar_other": "{{count}} presses over par.",
+  "ended": "This run is over.",
+  "announce_one": "{{count}} light still on.",
+  "announce_other": "{{count}} lights still on.",
+  "chart": {
+    "par": "At par, in {{time}}",
+    "solved": "Solved in {{time}}",
+    "ended_one": "{{count}} light left on",
+    "ended_other": "{{count}} lights left on"
+  }
+}
