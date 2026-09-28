@@ -774,7 +774,10 @@ export function Dashboard({ tab }: { tab: HubTab | null }) {
                 </span>
               )}
             </div>
-            <p className="m-0 text-sm text-[var(--text-muted)]">{t("daily.sectionHint")}</p>
+            {/* On a phone the rows below need the height, so there it is only for screen readers. */}
+            <p className="m-0 text-sm text-[var(--text-muted)] max-sm:sr-only">
+              {t("daily.sectionHint")}
+            </p>
           </div>
           {daily ? (
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">

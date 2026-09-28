@@ -1,0 +1,31 @@
+{
+  "name": "Luci spente",
+  "loading": "Caricamento del tabellone…",
+  "board": "Luci",
+  "stats": {
+    "label": "La tua partita",
+    "presses": "Tocchi",
+    "par": "Par",
+    "time": "Tempo"
+  },
+  "cell": {
+    "label": "Riga {{row}}, colonna {{col}}: {{state}}",
+    "on": "accesa",
+    "off": "spenta"
+  },
+  "hint": "Spegni tutte le luci. Toccare una luce inverte lei e le luci sopra, sotto e ai lati; toccarla di nuovo le rimette com'erano. Il par è il minor numero di tocchi che basta. Da tastiera: spostati con le frecce e tocca con Spazio o Invio.",
+  "solved_one": "Luci spente in {{count}} tocco!",
+  "solved_other": "Luci spente in {{count}} tocchi!",
+  "atPar": "Esattamente il par: nessuno può fare meglio.",
+  "overPar_one": "{{count}} tocco sopra il par.",
+  "overPar_other": "{{count}} tocchi sopra il par.",
+  "ended": "Questa partita è finita.",
+  "announce_one": "Resta accesa {{count}} luce.",
+  "announce_other": "Restano accese {{count}} luci.",
+  "chart": {
+    "par": "Al par, in {{time}}",
+    "solved": "Risolto in {{time}}",
+    "ended_one": "{{count}} luce rimasta accesa",
+    "ended_other": "{{count}} luci rimaste accese"
+  }
+}
