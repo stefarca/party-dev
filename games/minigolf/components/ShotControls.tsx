@@ -7,6 +7,12 @@ import { MIN_POWER } from "../game";
 // type-check of this game has no DOM.
 const valueOf = (input: unknown) => (input as { value: string }).value;
 
+// The aim slider is centred on straight up, which is where most shots go:
+// right of centre turns clockwise, left of centre anticlockwise, and both ends
+// point straight down. The shot itself stays a compass bearing, 0 to 359.
+const toSlider = (bearing: number) => (bearing > 180 ? bearing - 360 : bearing);
+const toBearing = (slider: number) => (slider + 360) % 360;
+
 // The shot as two sliders, aim and power, and the button that hits it: the
 // way to play for anyone not dragging on the course.
 export function ShotControls({
@@ -36,6 +42,7 @@ export function ShotControls({
     unitDisplay: "narrow",
   });
   const percent = new Intl.NumberFormat(language, { style: "percent" });
+  const turn = toSlider(angle);
 
   return (
     <div role="group" aria-label={t("controls")} className="flex w-full flex-col gap-3">
@@ -43,17 +50,17 @@ export function ShotControls({
         <span className="w-14 shrink-0">{t("aim")}</span>
         <input
           type="range"
-          min={0}
-          max={359}
+          min={-180}
+          max={180}
           step={1}
-          value={angle}
+          value={turn}
           disabled={!canShoot}
-          aria-valuetext={degrees.format(angle)}
-          onChange={(event) => onAngle(Number(valueOf(event.currentTarget)))}
+          aria-valuetext={degrees.format(turn)}
+          onChange={(event) => onAngle(toBearing(Number(valueOf(event.currentTarget))))}
           className="h-11 min-w-0 flex-1 cursor-pointer accent-[var(--accent)] disabled:cursor-not-allowed"
         />
         <span aria-hidden="true" className="w-12 text-right tabular-nums">
-          {degrees.format(angle)}
+          {degrees.format(turn)}
         </span>
       </label>
       <label className="flex items-center gap-3 text-sm font-bold text-[var(--text-secondary)]">
