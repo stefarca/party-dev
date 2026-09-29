@@ -1,0 +1,76 @@
+{
+  "name": "Yahtzee",
+  "loading": "Loading the dice…",
+  "stats": {
+    "label": "Your run",
+    "round": "Round",
+    "score": "Score"
+  },
+  "dice": "Dice",
+  "die": {
+    "face": "Die {{number}}: {{face}}",
+    "blank": "Die {{number}}: not rolled yet"
+  },
+  "held": "Held",
+  "roll": {
+    "action": "Roll",
+    "label_one": "Roll ({{count}} left)",
+    "label_other": "Roll ({{count}} left)",
+    "left_one": "{{count}} left",
+    "left_other": "{{count}} left"
+  },
+  "card": {
+    "label": "Scorecard",
+    "upper": "Upper section",
+    "lower": "Lower section",
+    "choose": "Score {{points}} in {{box}}",
+    "open": "open",
+    "subtotal": "Subtotal",
+    "bonus": "Bonus",
+    "yahtzeeBonus": "Yahtzee bonus",
+    "total": "Total"
+  },
+  "box": {
+    "ones": "Ones",
+    "twos": "Twos",
+    "threes": "Threes",
+    "fours": "Fours",
+    "fives": "Fives",
+    "sixes": "Sixes",
+    "threeKind": "Three of a kind",
+    "fourKind": "Four of a kind",
+    "fullHouse": "Full house",
+    "smallStraight": "Small straight",
+    "largeStraight": "Large straight",
+    "yahtzee": "Yahtzee",
+    "chance": "Chance"
+  },
+  "hint": "Roll up to three times a round, holding the dice you want to keep between rolls, then score them in an open box. Thirteen rounds fill the card, and 63 or more in the upper section earns a 35-point bonus. On a keyboard, 1 to 5 hold the dice and R rolls.",
+  "next": "Round {{round}} of {{count}}: roll the dice.",
+  "hold": "Tap the dice to hold them and roll again, or score them now.",
+  "pick": "No rolls left: score the dice in an open box.",
+  "joker": {
+    "upper": "Joker! This Yahtzee must go in {{box}}.",
+    "lower": "Joker! Any open lower box scores this Yahtzee in full.",
+    "zero": "Joker! This Yahtzee must go in an open upper box, for zero."
+  },
+  "yahtzee": "Yahtzee!",
+  "yahtzeeBonus": "Yahtzee! It comes with a 100-point bonus.",
+  "final_one": "Card full: {{count}} point!",
+  "final_other": "Card full: {{count}} points!",
+  "ended": "This run is over.",
+  "announce": {
+    "roll": "Roll {{number}}: {{dice}}.",
+    "scored": "{{points}} in {{box}}."
+  },
+  "chart": {
+    "bonus_zero": "Upper bonus",
+    "bonus_one": "Upper bonus · {{count}} Yahtzee",
+    "bonus_other": "Upper bonus · {{count}} Yahtzees",
+    "plain_zero": "Every box filled",
+    "plain_one": "{{count}} Yahtzee",
+    "plain_other": "{{count}} Yahtzees",
+    "ended_one": "Ended with {{count}} box empty",
+    "ended_other": "Ended with {{count}} boxes empty"
+  }
+}

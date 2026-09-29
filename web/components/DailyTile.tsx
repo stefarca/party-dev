@@ -15,9 +15,9 @@ import { GameGlyph } from "./GameGlyph";
 // daily game, so the section around the tiles says it once.
 //
 // On a phone it is a row, a list entry with a chevron that names the game
-// and where the player's run stands, so every daily game fits on one screen;
-// from `sm` up it is a card that also names the day's leader and spells out
-// its action.
+// and where the player's run stands, its icon and lines kept tight so every
+// daily game fits on one screen; from `sm` up it is a card that also names
+// the day's leader and spells out its action.
 export function DailyTile({
   meta,
   summary,
@@ -70,11 +70,11 @@ export function DailyTile({
       <div className="flex min-w-0 flex-1 items-start gap-3">
         <GameGlyph
           gameId={meta.id}
-          className="size-10 transition-transform duration-[var(--dur-base)] ease-[var(--ease-bounce)] group-hover:-rotate-12 group-hover:scale-110 sm:size-14"
+          className="size-9 transition-transform duration-[var(--dur-base)] ease-[var(--ease-bounce)] group-hover:-rotate-12 group-hover:scale-110 sm:size-14"
         />
         <div className="flex min-w-0 flex-1 flex-col gap-0.5 sm:gap-1">
           <span className="flex items-center gap-2">
-            <span className="truncate font-display text-base font-bold text-[var(--text-primary)] sm:text-lg">
+            <span className="truncate font-display text-base font-bold text-[var(--text-primary)] max-sm:leading-5 sm:text-lg">
               {name}
             </span>
             <span
@@ -84,7 +84,7 @@ export function DailyTile({
               {t("daily.chip")}
             </span>
           </span>
-          <span className="text-sm text-[var(--text-secondary)]">{status}</span>
+          <span className="text-sm text-[var(--text-secondary)] max-sm:leading-4">{status}</span>
           <span className="hidden truncate text-xs text-[var(--text-muted)] sm:block">
             {leader
               ? t("daily.tile.leader", {

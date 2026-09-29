@@ -11,6 +11,7 @@ import MinesweeperIcon from "./minesweeper/icon";
 import SudokuIcon from "./sudoku/icon";
 import TicTacToeIcon from "./tictactoe/icon";
 import TriviaIcon from "./trivia/icon";
+import YahtzeeIcon from "./yahtzee/icon";
 
 // id -> the icon on the game's tile: the contents of a 24×24 `<svg>`, drawn in `currentColor`
 // over the game's gradient (see `web/components/GameGlyph.tsx`). Optional — a game left out of
@@ -31,4 +32,5 @@ export const gameIcons: Record<string, ComponentType> = {
   sudoku: SudokuIcon,
   tictactoe: TicTacToeIcon,
   trivia: TriviaIcon,
+  yahtzee: YahtzeeIcon,
 };

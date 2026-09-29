@@ -11,6 +11,7 @@ import { minesweeperGame } from "./minesweeper/game";
 import { sudokuGame } from "./sudoku/game";
 import { tictactoeGame } from "./tictactoe/game";
 import { triviaGame } from "./trivia/game";
+import { yahtzeeGame } from "./yahtzee/game";
 import type { DailyGameModule, GameModule } from "../shared/game";
 import type { DailyUiProps, GameUiProps } from "../shared/protocol";
 
@@ -63,6 +64,7 @@ export const dailyGames: Record<string, DailyGameModule<any, any>> = {
   minigolf: minigolfGame,
   minesweeper: minesweeperGame,
   sudoku: sudokuGame,
+  yahtzee: yahtzeeGame,
 };
 
 export const dailyUi: Record<string, () => Promise<{ default: ComponentType<DailyUiProps> }>> = {
@@ -72,6 +74,7 @@ export const dailyUi: Record<string, () => Promise<{ default: ComponentType<Dail
   minigolf: () => import("./minigolf/ui"),
   minesweeper: () => import("./minesweeper/ui"),
   sudoku: () => import("./sudoku/ui"),
+  yahtzee: () => import("./yahtzee/ui"),
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- lookup is intentionally generic over each game's state/action types

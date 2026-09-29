@@ -232,6 +232,11 @@
   --code-7: #cc79a7;
   --code-7-ink: hsl(268, 60%, 10%);
 
+  /* Yahtzee's dice: ivory faces shading to a warm edge, their pips in the
+     one dark `--tile-ink`. Pieces on a board, so the same in both themes. */
+  --die-face: hsl(40, 40%, 97%);
+  --die-shade: hsl(34, 22%, 80%);
+
   /* Mini golf's course: cross-mown turf inside pale rails, raised bumpers,
      and hazards that each carry a texture of their own (grains in sand,
      ripples on water, chevrons down a slope), so none is told apart by
@@ -656,6 +661,40 @@ body {
   }
   100% {
     transform: scale(1);
+  }
+}
+
+/* A die thrown onto the tray: it drops in spinning and settles with a
+   bounce. */
+@keyframes party-dice-tumble {
+  0% {
+    transform: translateY(-45%) rotate(-240deg) scale(0.7);
+    opacity: 0;
+  }
+  55% {
+    transform: translateY(6%) rotate(14deg) scale(1.05);
+    opacity: 1;
+  }
+  80% {
+    transform: translateY(-3%) rotate(-4deg) scale(0.98);
+  }
+  100% {
+    transform: translateY(0) rotate(0deg) scale(1);
+    opacity: 1;
+  }
+}
+
+/* A die rattling in the cup while its roll is on its way. */
+@keyframes party-dice-shake {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  25% {
+    transform: translate(-4%, -2%) rotate(-9deg);
+  }
+  75% {
+    transform: translate(4%, 2%) rotate(9deg);
   }
 }
 
