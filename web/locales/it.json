@@ -208,12 +208,13 @@
       "play": "▸ Gioca la sfida di oggi",
       "continue": "▸ Continua",
       "seeChart": "▸ Vedi la classifica",
-      "fresh": "La tua partita ti aspetta.",
-      "inProgress": "La tua partita è in corso.",
+      "fresh": "La tua partita ti aspetta",
+      "inProgress": "La tua partita è in corso",
       "scored": "Hai fatto {{score}}",
       "placed": "{{rank}}º su {{count}}",
+      "unranked": "Finita senza punteggio",
       "leader": "In testa oggi: {{name}}, {{score}}",
-      "noScores": "Ancora nessun punteggio nella classifica di oggi."
+      "noScores": "Classifica di oggi ancora vuota."
     },
     "start": {
       "title": "La sfida di oggi",

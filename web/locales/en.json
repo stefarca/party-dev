@@ -208,10 +208,11 @@
       "play": "▸ Play today's",
       "continue": "▸ Continue",
       "seeChart": "▸ See the chart",
-      "fresh": "Your run is waiting.",
-      "inProgress": "Your run is under way.",
+      "fresh": "Your run is waiting",
+      "inProgress": "Your run is under way",
       "scored": "You scored {{score}}",
       "placed": "#{{rank}} of {{count}}",
+      "unranked": "Finished with no score",
       "leader": "Top today: {{name}}, {{score}}",
       "noScores": "No scores on today's chart yet."
     },
