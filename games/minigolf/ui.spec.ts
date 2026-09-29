@@ -116,9 +116,20 @@ test("five strokes pick the ball up, and six holes end the round", async ({ newP
     ).toBeVisible();
     await expect(shoot(ada)).toBeDisabled();
     if (hole < 6) {
-      await page.getByRole("button", { name: "Next hole" }).click();
+      // Next floats over the course, and takes the keyboard without moving
+      // the page away from it.
+      const next = page.getByRole("button", { name: "Next hole" });
+      await expect(next).toBeFocused();
+      const field = (await course(ada).boundingBox())!;
+      const button = (await next.boundingBox())!;
+      expect(button.y).toBeGreaterThanOrEqual(field.y);
+      expect(button.y + button.height).toBeLessThanOrEqual(field.y + field.height);
+      await next.scrollIntoViewIfNeeded();
+      const scrolled = await page.evaluate(() => window.scrollY);
+      await next.click();
       // Moving on hands the keyboard straight back to the next shot.
       await expect(shoot(ada)).toBeFocused();
+      expect(await page.evaluate(() => window.scrollY)).toBe(scrolled);
     }
   }
 

@@ -43,7 +43,7 @@ export function useWindowKeys(active: boolean, onKey: (event: KeyLike) => void):
 // and narrowed to this: the Worker's type-check has an element type with no
 // `focus()`.
 export interface Focusable {
-  focus(): void;
+  focus(options?: { preventScroll?: boolean }): void;
 }
 
 // Keys typed into a field, or pressed inside a dialog, are someone else's.
