@@ -11,7 +11,7 @@ import { HazardLegend } from "./components/HazardLegend";
 import { Outcome } from "./components/Outcome";
 import { Scorecard } from "./components/Scorecard";
 import { ShotControls } from "./components/ShotControls";
-import { HOLE_CAP, MAX_STROKES } from "./game";
+import { FIELD_H, FIELD_W, HOLE_CAP, MAX_STROKES } from "./game";
 import type { LastShot, MinigolfView, Point } from "./game";
 import { bearing, distance } from "./geometry";
 import type strings from "./locales/en.json";
@@ -41,6 +41,11 @@ declare module "i18next" {
 // chevrons slide down a slope, the flag stirs and the ball waiting to be hit
 // breathes a ring. None of it is needed to play, so none of it runs for a
 // player who prefers reduced motion.
+
+// Which side of the field's bottom edge the outcome pill floats on: the
+// middle, unless the cup is down there too, and then the corner away from it.
+const outcomeSide = ([x, y]: Point) =>
+  y < FIELD_H * 0.6 ? "center" : x > FIELD_W / 2 ? "left" : "right";
 
 export default function MinigolfUi({ view, status, send }: DailyUiProps) {
   const { t, i18n } = useTranslation("minigolf");
@@ -189,40 +194,45 @@ export default function MinigolfUi({ view, status, send }: DailyUiProps) {
         label={t("stats.label")}
         stats={stats.map(([key, value]) => ({ key, label: t(`stats.${key}`), value }))}
       />
-      <Field
-        ids={ids}
-        label={fieldName}
-        hole={hole}
-        holeIndex={holeIndex}
-        holeNumber={number.format(holeIndex + 1)}
-        shots={v.shots}
-        canShoot={canShoot}
-        ball={ball}
-        angle={angle}
-        power={power}
-        flying={flying}
-        landing={landing}
-        holed={settled?.outcome === "holed"}
-        onAim={(shotAngle, shotPower) => {
-          setAngle(shotAngle);
-          setPower(shotPower);
-        }}
-        onShoot={shoot}
-        onLanded={landed}
-      />
-      {bannerShot && (
-        <Outcome
-          text={outcomeText(bannerShot)}
-          holed={bannerShot.outcome === "holed"}
-          onNext={
-            finished &&
-            (() => {
-              moveOn();
-              (shootButton.current as Focusable | null)?.focus();
-            })
-          }
+      <div className="relative w-full">
+        <Field
+          ids={ids}
+          label={fieldName}
+          hole={hole}
+          holeIndex={holeIndex}
+          holeNumber={number.format(holeIndex + 1)}
+          shots={v.shots}
+          canShoot={canShoot}
+          ball={ball}
+          angle={angle}
+          power={power}
+          flying={flying}
+          landing={landing}
+          holed={settled?.outcome === "holed"}
+          onAim={(shotAngle, shotPower) => {
+            setAngle(shotAngle);
+            setPower(shotPower);
+          }}
+          onShoot={shoot}
+          onLanded={landed}
         />
-      )}
+        {bannerShot && (
+          <Outcome
+            text={outcomeText(bannerShot)}
+            holed={bannerShot.outcome === "holed"}
+            side={outcomeSide(hole.cup)}
+            onNext={
+              finished &&
+              (() => {
+                moveOn();
+                // Without scrolling: the button sits below the course, and the
+                // player is looking at the course.
+                (shootButton.current as Focusable | null)?.focus({ preventScroll: true });
+              })
+            }
+          />
+        )}
+      </div>
       <ShotControls
         angle={angle}
         power={power}
