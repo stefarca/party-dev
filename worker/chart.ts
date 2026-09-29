@@ -165,7 +165,12 @@ export function dailySummaries(
       return {
         gameId: game.id,
         mine: chart.mine
-          ? { status: chart.mine.status, score: chart.mine.score, rank: chart.mine.rank }
+          ? {
+              status: chart.mine.status,
+              score: chart.mine.score,
+              rank: chart.mine.rank,
+              detail: chart.mine.detail,
+            }
           : null,
         finished: chart.finished,
         leader:

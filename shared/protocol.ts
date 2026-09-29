@@ -332,8 +332,14 @@ export interface DailyChart {
 // One daily game on the hub.
 export interface DailyGameSummary {
   gameId: string;
-  // The caller's run today, or null until they start one.
-  mine: { status: DailyRunStatus; score: number | null; rank: number | null } | null;
+  // The caller's run today, or null until they start one. `detail` is the
+  // chart's line for it, in the game's own words, once it has ended.
+  mine: {
+    status: DailyRunStatus;
+    score: number | null;
+    rank: number | null;
+    detail: ActionDescription | null;
+  } | null;
   finished: number;
   // Whoever tops today's chart, or null before anyone has a ranked score.
   leader: { playerId: PlayerId; nickname: string; score: number } | null;

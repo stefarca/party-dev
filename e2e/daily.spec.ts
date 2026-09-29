@@ -39,6 +39,7 @@ test("the hub offers today's run, which starts from the game's own page", async 
     "page",
   );
   await expect(dailyTile(ada)).toHaveAccessibleName(/Your run is waiting/);
+  await expect(ada.page.getByText(/^0 of \d+ played$/)).toBeVisible();
   await dailyTile(ada).click();
   await expect(ada.page).toHaveURL(/\/daily\/2048$/);
   await expect(ada.page.getByRole("heading", { name: "2048", level: 1 })).toBeVisible();
@@ -107,6 +108,11 @@ test("an ended run goes on the chart, and there is no second one today", async (
 
   await ada.page.goto("/daily");
   await expect(dailyTile(ada)).toHaveAccessibleName(/You scored 0/);
+  await expect(ada.page.getByText(/^1 of \d+ played$/)).toBeVisible();
+  // What is still to play comes first, so the finished run goes to the end.
+  await expect(
+    ada.page.getByRole("link", { name: /today's daily challenge/ }).last(),
+  ).toHaveAccessibleName(/^2048, /);
 });
 
 test("the chart steps back through earlier days, never past today", async ({ newPlayer }) => {
