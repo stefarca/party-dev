@@ -757,10 +757,10 @@ export function Dashboard({ tab }: { tab: HubTab | null }) {
         </section>
       )}
 
-      {/* The day's single-player games. However many there are, each is a
-          row on a phone, so they all fit on one screen. Until the first read
-          of them lands this says so; after that, a poll that fails keeps
-          them as they were, so a hiccup never blanks the section. */}
+      {/* The day's single-player games, a row each on a phone, in a list
+          that scrolls out from under the tab bar. Until the first read of
+          them lands this says so; after that, a poll that fails keeps them
+          as they were, so a hiccup never blanks the section. */}
       {section === "daily" && (
         <section>
           <div className="mb-3 flex flex-col gap-1">
@@ -780,7 +780,7 @@ export function Dashboard({ tab }: { tab: HubTab | null }) {
             </p>
           </div>
           {daily ? (
-            <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
               {dailyGames.map(({ meta, summary }, i) => (
                 <DailyTile key={meta.id} meta={meta} summary={summary} style={staggerStyle(i)} />
               ))}

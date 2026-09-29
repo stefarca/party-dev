@@ -55,9 +55,10 @@ test("the hub offers today's run, which starts from the game's own page", async 
   await expect(ada.page.getByRole("link", { name: "Daily", exact: true })).toBeVisible();
 });
 
-// On a phone each daily game is a row, so every one of them is on the screen at once, above the
-// tab bar that sits over the bottom of the page.
-test("on a phone every daily game fits on one screen", async ({ newPlayer }) => {
+// On a phone each daily game is a row, in a list that scrolls under the tab bar that sits over
+// the bottom of the page. However many games there are, the page scrolls far enough to bring
+// the last one out from under it.
+test("on a phone the last daily game scrolls clear of the tab bar", async ({ newPlayer }) => {
   const ada = await newPlayer("Ada", devices["iPhone 15"]);
   await ada.page.goto("/daily");
 
@@ -70,14 +71,15 @@ test("on a phone every daily game fits on one screen", async ({ newPlayer }) => 
     Promise.all(els.flatMap((el) => el.getAnimations().map((a) => a.finished))),
   );
 
+  await ada.page.evaluate(() =>
+    window.scrollTo({ top: document.documentElement.scrollHeight, behavior: "instant" }),
+  );
   const nav = await ada.page.getByRole("navigation", { name: "Hub" }).boundingBox();
+  const last = await tiles.last().boundingBox();
   expect(nav, "the tab bar is laid out").not.toBeNull();
-  for (const tile of await tiles.all()) {
-    const box = await tile.boundingBox();
-    expect(box, "the daily tile is laid out").not.toBeNull();
-    expect(box!.y).toBeGreaterThanOrEqual(0);
-    expect(box!.y + box!.height).toBeLessThanOrEqual(nav!.y);
-  }
+  expect(last, "the last daily tile is laid out").not.toBeNull();
+  expect(last!.y).toBeGreaterThanOrEqual(0);
+  expect(last!.y + last!.height).toBeLessThanOrEqual(nav!.y);
 });
 
 test("an ended run goes on the chart, and there is no second one today", async ({ newPlayer }) => {
