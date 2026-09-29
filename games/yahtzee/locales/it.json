@@ -1,0 +1,76 @@
+{
+  "name": "Yahtzee",
+  "loading": "Caricamento dei dadi…",
+  "stats": {
+    "label": "La tua partita",
+    "round": "Turno",
+    "score": "Punti"
+  },
+  "dice": "Dadi",
+  "die": {
+    "face": "Dado {{number}}: {{face}}",
+    "blank": "Dado {{number}}: non ancora lanciato"
+  },
+  "held": "Tenuto",
+  "roll": {
+    "action": "Lancia",
+    "label_one": "Lancia (ne resta {{count}})",
+    "label_other": "Lancia (ne restano {{count}})",
+    "left_one": "ne resta {{count}}",
+    "left_other": "ne restano {{count}}"
+  },
+  "card": {
+    "label": "Segnapunti",
+    "upper": "Sezione superiore",
+    "lower": "Sezione inferiore",
+    "choose": "Segna {{points}} in {{box}}",
+    "open": "libera",
+    "subtotal": "Subtotale",
+    "bonus": "Bonus",
+    "yahtzeeBonus": "Bonus Yahtzee",
+    "total": "Totale"
+  },
+  "box": {
+    "ones": "Uno",
+    "twos": "Due",
+    "threes": "Tre",
+    "fours": "Quattro",
+    "fives": "Cinque",
+    "sixes": "Sei",
+    "threeKind": "Tris",
+    "fourKind": "Poker",
+    "fullHouse": "Full",
+    "smallStraight": "Scala minore",
+    "largeStraight": "Scala maggiore",
+    "yahtzee": "Yahtzee",
+    "chance": "Chance"
+  },
+  "hint": "Lancia fino a tre volte per turno, tenendo tra un lancio e l'altro i dadi che vuoi conservare, poi segnali in una casella libera. Tredici turni riempiono il segnapunti, e 63 punti o più nella sezione superiore valgono un bonus di 35. Da tastiera: da 1 a 5 tieni i dadi e R lancia.",
+  "next": "Turno {{round}} di {{count}}: lancia i dadi.",
+  "hold": "Tocca i dadi per tenerli e lancia di nuovo, oppure segnali adesso.",
+  "pick": "Niente più lanci: segna i dadi in una casella libera.",
+  "joker": {
+    "upper": "Jolly! Questo Yahtzee va segnato in {{box}}.",
+    "lower": "Jolly! Qualsiasi casella libera della sezione inferiore segna questo Yahtzee per intero.",
+    "zero": "Jolly! Questo Yahtzee va segnato a zero in una casella libera della sezione superiore."
+  },
+  "yahtzee": "Yahtzee!",
+  "yahtzeeBonus": "Yahtzee! Porta con sé un bonus di 100 punti.",
+  "final_one": "Segnapunti completo: {{count}} punto!",
+  "final_other": "Segnapunti completo: {{count}} punti!",
+  "ended": "Questa partita è finita.",
+  "announce": {
+    "roll": "Lancio {{number}}: {{dice}}.",
+    "scored": "{{points}} in {{box}}."
+  },
+  "chart": {
+    "bonus_zero": "Bonus superiore",
+    "bonus_one": "Bonus superiore · {{count}} Yahtzee",
+    "bonus_other": "Bonus superiore · {{count}} Yahtzee",
+    "plain_zero": "Tutte le caselle segnate",
+    "plain_one": "{{count}} Yahtzee",
+    "plain_other": "{{count}} Yahtzee",
+    "ended_one": "Finita con {{count}} casella libera",
+    "ended_other": "Finita con {{count}} caselle libere"
+  }
+}

@@ -757,10 +757,10 @@ export function Dashboard({ tab }: { tab: HubTab | null }) {
         </section>
       )}
 
-      {/* The day's single-player games. However many there are, each is a
-          row on a phone, so they all fit on one screen. Until the first read
-          of them lands this says so; after that, a poll that fails keeps
-          them as they were, so a hiccup never blanks the section. */}
+      {/* The day's single-player games, a row each on a phone, in a list
+          that scrolls out from under the tab bar. Until the first read of
+          them lands this says so; after that, a poll that fails keeps them
+          as they were, so a hiccup never blanks the section. */}
       {section === "daily" && (
         <section>
           <div className="mb-3 flex flex-col gap-1">

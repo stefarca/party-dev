@@ -15,9 +15,8 @@ import { GameGlyph } from "./GameGlyph";
 // daily game, so the section around the tiles says it once.
 //
 // On a phone it is a row, a list entry with a chevron that names the game
-// and where the player's run stands, so every daily game fits on one screen;
-// from `sm` up it is a card that also names the day's leader and spells out
-// its action.
+// and where the player's run stands; from `sm` up it is a card that also
+// names the day's leader and spells out its action.
 export function DailyTile({
   meta,
   summary,
