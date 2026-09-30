@@ -343,6 +343,17 @@ export interface DailyChart {
   playing: number;
 }
 
+// Reply to GET /api/daily/:gameId/:day/players/:playerId: one player's run
+// that day, which is what a challenge link points at.
+export interface DailyStanding {
+  gameId: string;
+  day: string;
+  // Ranked the way the chart ranks it. Null if they have no run that day.
+  run: DailyChartEntry | null;
+  // How many runs are on that day's chart.
+  finished: number;
+}
+
 // One daily game on the hub.
 export interface DailyGameSummary {
   gameId: string;

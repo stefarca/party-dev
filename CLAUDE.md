@@ -191,7 +191,7 @@ A push service answering 404 or 410 means that subscription is gone for good, an
 deleted; anything else is transient and the row stays. Rotating the VAPID key pair invalidates
 every existing subscription, because a subscription is bound to the key it was created with.
 
-**A notification is the one player-facing string that cannot go through i18next.** It is composed
+**A notification cannot go through i18next** (nor can a link preview, below). It is composed
 in the Worker, in the language the device stored when it subscribed (`push_subscriptions.language`),
 from the `COPY` table in `worker/push.ts`, which has one set of strings per nudge kind; a language
 `web/locales/` ships and that table lacks is a test failure. The game's name comes from the same locale files the client reads, through
@@ -298,9 +298,29 @@ so a rename made elsewhere reaches this device. A cookie whose player has no reg
 pre-registry session that never played, or one minted by the old Worker during a deploy) is
 registered under its own nickname if that is free, and dropped if it is not.
 
-`wrangler.jsonc`'s `run_worker_first` limits the Worker to `/api/*` and `/ws/*`; every other path,
-including deep-linked SPA routes like `/m/ABCDEF` and `/daily/2048`, is served by Static Assets
-with SPA fallback.
+`wrangler.jsonc`'s `run_worker_first` limits the Worker to `/api/*`, `/ws/*`, `/m/*` and
+`/daily/*`; every other path, including deep-linked SPA routes like `/stats`, is served by Static
+Assets with SPA fallback.
+
+**Shared links carry a preview of their own.** A chat app (WhatsApp, Telegram, iMessage) draws a
+link's card from the page's Open Graph tags and never runs its JavaScript, so the two kinds of
+page a player sends — a match link and a daily game's link — are served by the Worker
+(`sharedPage()` in `worker/index.ts`): the SPA's `index.html`, fetched through the `ASSETS`
+binding exactly as the assets would serve it, with its `<title>` and `og:*` tags filled in by
+`HTMLRewriter` (`withPreview()` in `worker/preview.ts`). The tags themselves live in `index.html`
+with generic values, and the rewriter selects them by attribute, so each stays one tag with the
+same attribute names. The preview is read from the D1 index (a preview only has to be about right)
+beside the asset fetch, never before it, and a preview that fails leaves the page as it is. A match
+link names the host, the game and the seats left. A daily link with `?from=<playerId>&day=<day>`
+is a challenge: `dailyStanding()` in `worker/chart.ts` ranks that run as the chart does, the
+preview says what it scored, and `DailyPage` shows the friend who opens it what to beat, then how
+their own run on the same board compared. Its wording is composed in the Worker, like a push
+notification, from `PREVIEW_COPY`, in the language the link's `lang` parameter names (the app adds
+the sharer's when it is not English), else the crawler's `Accept-Language`, else English; a
+language `web/locales/` ships and that table lacks is a test failure. The card's image is
+`public/og-image.png`, rendered from `public/og-image.svg`, and kept out of the service worker's
+precache since only crawlers fetch it. On the client, `web/share.ts` offers a link through the
+share sheet where there is one and the clipboard where there is not.
 
 **The app is installable.** `vite build` generates a Workbox service worker (`vite-plugin-pwa`)
 into the client output, and only `vite build` does: no dev server registers one, so `npm run dev`,
@@ -354,8 +374,9 @@ when they drift. The icons are in `public/`: `icon-192.png` and `icon-512.png` a
 full-bleed variant whose buddy spans about half the canvas — an Android launcher shows only the
 middle two thirds of a maskable icon, so a buddy sized just to the 80% safe zone looks zoomed in.
 Render them with `sharp` at the target size (`density: 72 * size / 32`), not by upscaling. Both SVGs draw the same buddy
-as `web/components/Brand.tsx`, as literals — a plain file cannot import the component — so a
-change to the mark has to be made in all three.
+as `web/components/Brand.tsx`, as literals — a plain file cannot import the component — and so
+does `og-image.svg`, the link-preview card, so a change to the mark has to be made in all four.
+The card's text is set in Fredoka and Nunito, so render it with both fonts installed.
 
 ## Conventions
 
@@ -414,8 +435,9 @@ change to the mark has to be made in all three.
   `{{variable}}`, and when a game's English `name` differs from its `meta.name`. Dates, times and
   durations go through `Intl` with `useLanguage()`, never through a translated string. Server
   error messages are English, for logs. The client shows `errors.<code>` through `errorText()` in
-  `web/errors.ts` instead. The one player-facing exception is push notification copy, which the
-  Worker composes and so cannot read from `web/locales/` — see the notification section above. Playwright pins `locale: "en-US"` because specs match English labels.
+  `web/errors.ts` instead. The player-facing exceptions are push notification copy and link
+  previews, which the Worker composes and so cannot read from `web/locales/` — see those sections
+  above. Playwright pins `locale: "en-US"` because specs match English labels.
 - Client routing is hand-rolled in `web/router.tsx` with `useSyncExternalStore` and has no router
   dependency. Add new routes to its `parseRoute` table.
 - Prettier: `printWidth` 100; `.claude/` and generated files are ignored. ESLint flat

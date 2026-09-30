@@ -20,6 +20,7 @@ import {
 import type {
   DailyHub,
   DailyRunSnapshot,
+  DailyStanding,
   DailyToday,
   HubMatch,
   Leaderboard,
@@ -34,7 +35,7 @@ import {
   sessionMiddleware,
   writeSession,
 } from "./auth";
-import { dailyChart, dailySummaries } from "./chart";
+import { dailyChart, dailyStanding, dailySummaries } from "./chart";
 import { runName } from "./daily";
 import { HUB_LIST_LIMIT, myMatches, openMatches } from "./hub";
 import {
@@ -674,6 +675,16 @@ api.get("/daily/:gameId/:day/chart", requireSession(), async (c) => {
   if (!meta) return c.json({ error: "unknown_game" }, 404);
   if (!isDay(day) || day > dayOf(Date.now())) return c.json({ error: "not_found" }, 404);
   return c.json(await dailyChart(c.env.DB, meta, day, session.pid));
+});
+
+// Another player's run at `gameId` on `day`, for the page a challenge link
+// opens. It says no more than that day's chart already shows to every player.
+api.get("/daily/:gameId/:day/players/:playerId", requireSession(), async (c) => {
+  const meta = getDailyMeta(c.req.param("gameId"));
+  const day = c.req.param("day");
+  if (!meta) return c.json({ error: "unknown_game" }, 404);
+  if (!isDay(day) || day > dayOf(Date.now())) return c.json({ error: "not_found" }, 404);
+  return c.json<DailyStanding>(await dailyStanding(c.env.DB, meta, day, c.req.param("playerId")));
 });
 
 api.notFound((c) => c.json({ ok: false, error: "not found" }, 404));

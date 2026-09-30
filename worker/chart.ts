@@ -6,6 +6,7 @@ import type {
   DailyChart,
   DailyChartEntry,
   DailyGameSummary,
+  DailyStanding,
   DailyRunStatus,
   PlayerId,
 } from "../shared/protocol";
@@ -180,4 +181,18 @@ export function dailySummaries(
       };
     }),
   );
+}
+
+// One player's run at `game` on `day`, ranked as the chart ranks it, and how
+// many runs that chart has: what a challenge link is about. A chart read with
+// an empty page, so a challenge can never rank a run differently from the
+// chart it points at.
+export async function dailyStanding(
+  db: D1Database,
+  game: DailyGameMeta,
+  day: string,
+  playerId: PlayerId,
+): Promise<DailyStanding> {
+  const chart = await dailyChart(db, game, day, playerId, 0);
+  return { gameId: game.id, day, run: chart.mine, finished: chart.finished };
 }

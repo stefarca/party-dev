@@ -250,6 +250,22 @@
       "rank": "{{rank}}º",
       "unranked": "Nessun punteggio",
       "loadFailed": "Impossibile caricare la classifica."
+    },
+    "challenge": {
+      "action": "Sfida i tuoi amici",
+      "copied": "Link copiato! ✓",
+      "share": "Ho fatto {{score}} a {{game}} di oggi su Pimpom. Riesci a battermi?",
+      "shareRanked": "Ho fatto {{score}} a {{game}} di oggi su Pimpom, {{rank}}º su {{count}}. Riesci a battermi?",
+      "label": "Sfida",
+      "title": "{{name}} ti sfida",
+      "theirScore": "{{name}} ha fatto {{score}}.",
+      "theirScoreRanked": "{{name}} ha fatto {{score}}, {{rank}}º su {{count}} nella classifica di quel giorno.",
+      "toBeat": "Batti {{score}} per vincere.",
+      "noScore": "La tua partita è finita senza punteggio: {{score}} resta imbattuto.",
+      "won": "Hai battuto {{name}}! 🎉",
+      "lost": "{{name}} è ancora avanti. Domani è un altro giorno.",
+      "tie": "Pareggio con {{name}}!",
+      "otherDay": "Era {{day}}. Oggi la sfida è nuova: fai un punteggio tutto tuo."
     }
   },
   "join": {
@@ -304,7 +320,9 @@
     "linkLabel": "Link della partita",
     "copy": "Copia link",
     "copied": "Copiato!",
-    "copiedCheck": "Copiato! ✓"
+    "copiedCheck": "Copiato! ✓",
+    "send": "Condividi",
+    "invite": "Vieni a giocare a {{game}} con me su Pimpom!"
   },
   "visibility": {
     "private": "Partita privata",

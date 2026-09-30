@@ -29,9 +29,10 @@ import { TurnIndicator } from "../components/TurnIndicator";
 import { VisibilitySwitch } from "../components/VisibilitySwitch";
 import { errorText } from "../errors";
 import { playerRange } from "../format";
-import { useGameName } from "../i18n";
+import { useGameName, useLanguage } from "../i18n";
 import { navigate } from "../router";
 import { useSession } from "../session";
+import { canShareNatively, copyText, shareLink, shareUrl } from "../share";
 import type { ConnectionState, MatchError } from "../useMatch";
 import { useMatch } from "../useMatch";
 
@@ -107,35 +108,44 @@ function GameSurfaceSkeleton() {
 }
 
 // `children` goes at the foot of the full panel, and is dropped once it has
-// collapsed: whatever it holds is about getting people into the lobby.
+// collapsed: whatever it holds is about getting people into the lobby. Where
+// the browser has a share sheet, the full panel offers it first: it sends the
+// link straight into a chat, where its preview names the game and the host.
 function ShareCode({
   code,
+  game,
   collapsed,
   children,
 }: {
   code: string;
+  game: string;
   collapsed: boolean;
   children?: ReactNode;
 }) {
   const { t } = useTranslation();
+  const language = useLanguage();
   const [copied, setCopied] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
-  const url = `${window.location.origin}/m/${code}`;
+  const url = shareUrl(`/m/${code}`, language);
 
   async function copy() {
-    if (navigator.clipboard) {
-      try {
-        await navigator.clipboard.writeText(url);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-        return;
-      } catch {
-        // Fall through to the selection fallback below.
-      }
+    if (await copyText(url)) {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+      return;
     }
-    // Clipboard API needs a secure context; on plain http (non-localhost) or
-    // if it's unavailable, select the text so the user can copy manually.
+    // No clipboard: select the text so the user can copy it by hand.
     inputRef.current?.select();
+  }
+
+  async function share() {
+    const outcome = await shareLink({ title: game, text: t("share.invite", { game }), url });
+    if (outcome === "copied") {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } else if (outcome === "failed") {
+      inputRef.current?.select();
+    }
   }
 
   const shareInput = (
@@ -192,12 +202,23 @@ function ShareCode({
         ))}
       </div>
       {shareInput}
-      <Button
-        onPress={copy}
-        className="rounded-[var(--radius-pill)] px-6 font-display font-bold transition-transform duration-[var(--dur-fast)] ease-[var(--ease-spring)] hover:scale-105 active:scale-95"
-      >
-        {copied ? t("share.copiedCheck") : t("share.copy")}
-      </Button>
+      <div className="flex flex-wrap justify-center gap-2">
+        {canShareNatively() && (
+          <Button
+            onPress={() => void share()}
+            className="rounded-[var(--radius-pill)] px-6 font-display font-bold transition-transform duration-[var(--dur-fast)] ease-[var(--ease-spring)] hover:scale-105 active:scale-95"
+          >
+            {t("share.send")}
+          </Button>
+        )}
+        <Button
+          onPress={copy}
+          variant={canShareNatively() ? "tertiary" : "primary"}
+          className="rounded-[var(--radius-pill)] px-6 font-display font-bold transition-transform duration-[var(--dur-fast)] ease-[var(--ease-spring)] hover:scale-105 active:scale-95"
+        >
+          {copied ? t("share.copiedCheck") : t("share.copy")}
+        </Button>
+      </div>
       {children}
     </section>
   );
@@ -635,7 +656,11 @@ export function MatchPage({ code }: { code: string }) {
 
       {!loading && !error && match && (
         <div className="flex flex-col gap-4">
-          <ShareCode code={code} collapsed={status !== "lobby"}>
+          <ShareCode
+            code={code}
+            game={gameName(match.gameId, meta?.name)}
+            collapsed={status !== "lobby"}
+          >
             {match.hostId === myPlayerId && (
               <HostVisibility code={code} visibility={match.visibility} onChanged={setMatch} />
             )}

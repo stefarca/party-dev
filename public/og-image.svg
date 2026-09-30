@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <!--
+    The source og-image.png is rendered from: the card a chat app shows under
+    a shared link. 1200x630 is the 1.91:1 that WhatsApp, Telegram and the rest
+    draw as a large card. The buddy is the same as favicon.svg's, as literals.
+    Its text is set in Fredoka and Nunito, so render it with both installed
+    (sharp at density 72); a missing font falls back silently.
+  -->
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#9d5cfa" />
+      <stop offset="1" stop-color="#f25ca8" />
+    </linearGradient>
+    <filter id="s" filterUnits="userSpaceOnUse" x="0" y="0" width="1200" height="630">
+      <feDropShadow dx="0" dy="14" stdDeviation="16" flood-color="#1a0e2b" flood-opacity="0.28" />
+    </filter>
+  </defs>
+  <rect width="1200" height="630" fill="url(#g)" />
+  <g fill="#ffffff" opacity="0.16">
+    <circle cx="90" cy="80" r="26" />
+    <rect x="1040" y="60" width="70" height="70" rx="18" transform="rotate(18 1075 95)" />
+    <circle cx="1120" cy="540" r="40" />
+    <rect x="60" y="500" width="56" height="56" rx="14" transform="rotate(-14 88 528)" />
+    <circle cx="640" cy="560" r="18" />
+    <circle cx="560" cy="70" r="14" />
+    <rect x="990" y="380" width="36" height="36" rx="9" transform="rotate(30 1008 398)" />
+  </g>
+  <g filter="url(#s)"><g transform="translate(110 147) scale(14)">
+    <g transform="rotate(-7 12 12)">
+      <rect x="2.6" y="4.2" width="18.8" height="16.4" rx="7" fill="#ffffff" />
+      <circle cx="8.8" cy="11.4" r="1.8" fill="#1a0e2b" />
+      <path d="M13.6 11.7a2.7 2.7 0 0 1 3.6 0" fill="none" stroke="#1a0e2b" stroke-width="1.85" stroke-linecap="round" />
+      <path d="M9.4 15.2a3.1 3.1 0 0 0 5.6 0" fill="none" stroke="#1a0e2b" stroke-width="1.95" stroke-linecap="round" />
+    </g>
+  </g>
+  </g>
+  <text x="500" y="318" font-family="Fredoka" font-weight="700" font-size="150" fill="#ffffff" filter="url(#s)">Pimpom</text>
+  <text x="506" y="392" font-family="Nunito" font-weight="700" font-size="40" fill="#ffffff" opacity="0.95">Async party games,</text>
+  <text x="506" y="442" font-family="Nunito" font-weight="700" font-size="40" fill="#ffffff" opacity="0.95">one move at a time.</text>
+</svg>
