@@ -6,7 +6,13 @@ import { useTranslation } from "react-i18next";
 import type { DailyGameMeta } from "../../games/catalog";
 import { getDailyMeta } from "../../games/catalog";
 import { dailyUi } from "../../games/registry";
-import type { DailyChart as Chart, DailyRunSnapshot, DailyUiProps } from "../../shared/protocol";
+import type {
+  DailyChart as Chart,
+  DailyRunSnapshot,
+  DailyStanding,
+  DailyUiProps,
+} from "../../shared/protocol";
+import { getDailyStanding } from "../api";
 import { Confetti } from "../components/Confetti";
 import { DailyChart } from "../components/DailyChart";
 import { GameErrorBoundary } from "../components/GameErrorBoundary";
@@ -18,6 +24,7 @@ import { dayLabel, relativeTime, scoreText } from "../format";
 import { useGameName, useLanguage } from "../i18n";
 import { navigate } from "../router";
 import { useSession } from "../session";
+import { shareLink, shareUrl } from "../share";
 import { useDailyChart, useDailyRun } from "../useDaily";
 
 // Today's run at one daily game, beside the day's chart. The game's own UI
@@ -170,11 +177,13 @@ function EndRun({ onEnd }: { onEnd: () => Promise<void> }) {
 function RunResult({
   run,
   meta,
+  name,
   chart,
   now,
 }: {
   run: DailyRunSnapshot;
   meta: DailyGameMeta;
+  name: string;
   chart: Chart | null;
   now: number;
 }) {
@@ -200,6 +209,163 @@ function RunResult({
       <p className="m-0 text-sm text-[var(--text-muted)]">
         {t("daily.result.comeBack", { when: relativeTime(language, run.endsAt, now) })}
       </p>
+      {run.score.value !== null && (
+        <ChallengeFriends
+          meta={meta}
+          name={name}
+          day={run.day}
+          score={run.score.value}
+          rank={standing?.rank ?? null}
+          count={chart?.finished ?? 0}
+        />
+      )}
+    </section>
+  );
+}
+
+// Sends this run to friends as a challenge: a link to the game that names
+// this player's run, so its preview in the chat reads "Ada scored 2,048 at
+// 2048. Can you beat it?", and the page it opens says what there is to beat.
+function ChallengeFriends({
+  meta,
+  name,
+  day,
+  score,
+  rank,
+  count,
+}: {
+  meta: DailyGameMeta;
+  name: string;
+  day: string;
+  score: number;
+  rank: number | null;
+  count: number;
+}) {
+  const { t } = useTranslation();
+  const language = useLanguage();
+  const { player } = useSession();
+  const [copied, setCopied] = useState(false);
+  if (!player) return null;
+
+  async function handlePress() {
+    const params = new URLSearchParams({ from: player!.playerId, day });
+    const url = shareUrl(`/daily/${encodeURIComponent(meta.id)}?${params}`, language);
+    const values = { game: name, score: scoreText(language, score, meta.format) };
+    const text =
+      rank !== null
+        ? t("daily.challenge.shareRanked", { ...values, rank, count })
+        : t("daily.challenge.share", values);
+    if ((await shareLink({ title: name, text, url })) === "copied") {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  }
+
+  return (
+    <Button
+      onPress={() => void handlePress()}
+      className="mt-2 self-start rounded-[var(--radius-pill)] px-6 font-display font-bold transition-transform duration-[var(--dur-fast)] ease-[var(--ease-spring)] hover:scale-105 active:scale-95"
+    >
+      {copied ? t("daily.challenge.copied") : t("daily.challenge.action")}
+    </Button>
+  );
+}
+
+// The challenge a link carried in, as `?from=<playerId>&day=<day>`: read once,
+// when the page opens. The player's own link, sent back to them, is no
+// challenge.
+function useChallenge(gameId: string, myPlayerId: string | undefined): DailyStanding | null {
+  const [challenge] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    const from = params.get("from");
+    const day = params.get("day");
+    return from && day ? { from, day } : null;
+  });
+  const [standing, setStanding] = useState<DailyStanding | null>(null);
+  const from = challenge?.from === myPlayerId ? null : challenge?.from;
+  const day = challenge?.day;
+  useEffect(() => {
+    if (!from || !day) return;
+    let cancelled = false;
+    // A challenge that cannot be read is simply not shown: the page is still
+    // the game's, and today's run is still there to play.
+    getDailyStanding(gameId, day, from).then(
+      (result) => !cancelled && setStanding(result),
+      () => undefined,
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [gameId, from, day]);
+  return standing;
+}
+
+// Whether `a` beats `b` on a chart ranked in `order`.
+function beats(order: DailyGameMeta["order"], a: number, b: number): boolean {
+  return order === "asc" ? a < b : a > b;
+}
+
+// What a challenge link asks: whose run, what it scored, and, once this
+// player's own run on the same board is over, how the two compare. A
+// challenge from another day is still shown, but can only be admired: today's
+// board is a different one.
+function ChallengeCard({
+  standing,
+  meta,
+  today,
+  run,
+}: {
+  standing: DailyStanding;
+  meta: DailyGameMeta;
+  today: string;
+  run: DailyRunSnapshot | null;
+}) {
+  const { t } = useTranslation();
+  const language = useLanguage();
+  const theirs = standing.run;
+  if (!theirs || theirs.status !== "done" || theirs.score === null) return null;
+  const name = theirs.nickname;
+  const score = scoreText(language, theirs.score, meta.format);
+  const sameBoard = standing.day === today;
+  const mine = sameBoard && run?.status === "done" ? run.score.value : null;
+
+  let verdict: string;
+  let won = false;
+  if (!sameBoard) {
+    verdict = t("daily.challenge.otherDay", { day: dayLabel(language, standing.day) });
+  } else if (mine === null) {
+    verdict = t(run?.status === "done" ? "daily.challenge.noScore" : "daily.challenge.toBeat", {
+      score,
+    });
+  } else if (mine === theirs.score) {
+    verdict = t("daily.challenge.tie", { name });
+  } else if (beats(meta.order, mine, theirs.score)) {
+    verdict = t("daily.challenge.won", { name });
+    won = true;
+  } else {
+    verdict = t("daily.challenge.lost", { name });
+  }
+
+  return (
+    <section
+      aria-label={t("daily.challenge.label")}
+      className="party-pop flex flex-col gap-1.5 rounded-[var(--radius-xl)] border-2 border-[var(--border-accent)] bg-[var(--surface-1)] p-5 shadow-[var(--shadow-2),var(--glow-accent)]"
+    >
+      <Confetti fire={won} />
+      <h2 className="m-0 font-display text-xl font-bold text-[var(--text-primary)]">
+        {t("daily.challenge.title", { name })}
+      </h2>
+      <p className="m-0 text-[var(--text-secondary)]">
+        {theirs.rank !== null
+          ? t("daily.challenge.theirScoreRanked", {
+              name,
+              score,
+              rank: theirs.rank,
+              count: standing.finished,
+            })
+          : t("daily.challenge.theirScore", { name, score })}
+      </p>
+      <p className="m-0 font-bold text-[var(--text-primary)]">{verdict}</p>
     </section>
   );
 }
@@ -259,6 +425,8 @@ function DailyGame({ meta }: { meta: DailyGameMeta }) {
     if (runStatus === "done") void reloadChart();
   }, [runStatus, reloadChart]);
 
+  const challenge = useChallenge(meta.id, player?.playerId);
+
   const name = gameName(meta.id, meta.name);
   const run = today?.run ?? null;
   const Lazy = getLazyUi(meta.id);
@@ -279,7 +447,9 @@ function DailyGame({ meta }: { meta: DailyGameMeta }) {
     // the final board below it.
     main = (
       <>
-        {run.status === "done" && <RunResult run={run} meta={meta} chart={chart} now={now} />}
+        {run.status === "done" && (
+          <RunResult run={run} meta={meta} name={name} chart={chart} now={now} />
+        )}
         <GameSurface title={name}>
           <GameErrorBoundary
             key={meta.id}
@@ -340,6 +510,9 @@ function DailyGame({ meta }: { meta: DailyGameMeta }) {
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
         <div className="flex min-w-0 flex-col gap-4">
           {closedDay && <Notice tone="info">{t("daily.dayOver")}</Notice>}
+          {challenge && today && (
+            <ChallengeCard standing={challenge} meta={meta} today={today.day} run={run} />
+          )}
           {main}
         </div>
         {today && chartDay && (

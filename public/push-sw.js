@@ -68,9 +68,10 @@ self.addEventListener("push", (event) => {
       // stacking another line on someone's lock screen.
       tag: message.tag,
       icon: "/icon-192.png",
-      // Android draws this tiny and monochrome in the status bar; it is the
-      // same file because the app ships no separate badge asset.
-      badge: "/icon-192.png",
+      // Android draws this tiny in the status bar, from its alpha channel
+      // alone, so it is the buddy's silhouette on a transparent canvas: the
+      // opaque app icon would show there as a plain white square.
+      badge: "/badge-96.png",
       data: { url: sameOriginUrl(message.url).href },
     }),
   );

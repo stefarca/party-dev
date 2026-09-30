@@ -38,7 +38,8 @@ const e2e: PluginConfig = {
 // `importScripts`ed rather than bundled, because Workbox generates this worker's source and
 // there is nowhere to put app code inside it; that is also why it is plain JavaScript with no
 // imports. It is left out of the precache (`globIgnores`) since the generated worker already
-// pulls it in at install time.
+// pulls it in at install time. So are the link-preview image and its source, which only a chat
+// app's crawler ever fetches.
 const pwa = VitePWA({
   registerType: "prompt",
   manifest: false,
@@ -46,7 +47,7 @@ const pwa = VitePWA({
   injectRegister: null,
   workbox: {
     globPatterns: ["**/*.{js,css,html,svg,png,webmanifest}"],
-    globIgnores: ["push-sw.js"],
+    globIgnores: ["push-sw.js", "og-image.*"],
     importScripts: ["push-sw.js"],
     // Deep-linked SPA routes like /m/ABCDEF are served by Static Assets' single-page-application
     // fallback online; this is the same fallback for an installed app that is offline.

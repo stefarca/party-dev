@@ -7,13 +7,18 @@
     // @cloudflare/vite-plugin populates it automatically with the client build
     // output path (dist/client) when it generates dist/party-dev/wrangler.json.
     "not_found_handling": "single-page-application",
-    // Only run this Worker's own fetch handler for /api/* and /ws/* — every
-    // other path (including deep-linked SPA routes like /m/ABCDEF) goes
-    // straight to the assets handler, which applies not_found_handling above
-    // instead of falling through to Hono's default 404. /ws/* is needed
-    // for the WebSocket upgrade route — without it,
-    // requests to /ws/* never reach the Worker at all.
-    "run_worker_first": ["/api/*", "/ws/*"]
+    // The Worker reads the SPA's index.html through this binding to serve the
+    // pages players share with a link preview of their own (worker/preview.ts).
+    "binding": "ASSETS",
+    // Only run this Worker's own fetch handler for /api/*, /ws/* and the two
+    // kinds of page a player shares — every other path (including deep-linked
+    // SPA routes like /stats) goes straight to the assets handler, which
+    // applies not_found_handling above instead of falling through to Hono's
+    // default 404. /ws/* is needed for the WebSocket upgrade route — without
+    // it, requests to /ws/* never reach the Worker at all. /m/* and /daily/*
+    // are served by the Worker as index.html with their Open Graph tags
+    // filled in, so a chat app's link preview names the game.
+    "run_worker_first": ["/api/*", "/ws/*", "/m/*", "/daily/*"]
   },
   "durable_objects": {
     // MATCH holds one multiplayer match per object; DAILY one player's run at

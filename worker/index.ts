@@ -1,9 +1,11 @@
 import { Hono } from "hono";
+import type { Context } from "hono";
 
 import { api } from "./api";
 import { sessionMiddleware, type SessionBindings } from "./auth";
 import { DailyDO } from "./daily";
 import { MatchDO } from "./match";
+import { previewFor, withPreview } from "./preview";
 import { RECAP_CRON, sendWeeklyRecap } from "./recap";
 import { sweepLobbies } from "./sweep";
 import { MATCH_CODE_RE, normalizeMatchCode } from "../shared/ids";
@@ -48,9 +50,32 @@ app.get("/ws/:id", async (c) => {
   return stub.fetch(forwarded);
 });
 
+// The pages players send each other: a match link and a daily game's link
+// (a challenge, when it names a player's run). Each is the SPA's own
+// index.html, served through the assets binding exactly as it would be
+// without the Worker, with its link-preview tags filled in for that page. The
+// preview is read beside the page, not before it, and a preview that fails
+// leaves the page as it is.
+async function sharedPage(c: Context<SessionBindings>): Promise<Response> {
+  const url = new URL(c.req.url);
+  // No conditional headers: the page that comes back is rewritten, so a 304
+  // for the file underneath would say nothing about it.
+  const headers = new Headers(c.req.raw.headers);
+  headers.delete("if-none-match");
+  headers.delete("if-modified-since");
+  const [page, preview] = await Promise.all([
+    c.env.ASSETS.fetch(new Request(url, { headers })),
+    previewFor(c.env.DB, url, c.req.header("Accept-Language") ?? null),
+  ]);
+  return withPreview(page, url, preview);
+}
+
+app.get("/m/*", sharedPage);
+app.get("/daily/*", sharedPage);
+
 // Requests that fall through here (anything not matched above, i.e. not
-// under /api or /ws) are handled by the Static Assets binding automatically
-// — there is no hand-rolled asset fallback in this Worker.
+// under /api, /ws, /m or /daily) are handled by the Static Assets binding
+// automatically — there is no hand-rolled asset fallback in this Worker.
 export default {
   fetch: app.fetch,
   // Both crons in wrangler.jsonc land here, told apart by their schedule: the

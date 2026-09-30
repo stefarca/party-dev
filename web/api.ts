@@ -3,6 +3,7 @@ import type {
   DailyChart,
   DailyHub,
   DailyRunSnapshot,
+  DailyStanding,
   DailyToday,
   EventsResponse,
   HubMatch,
@@ -262,5 +263,16 @@ export function finishDailyRun(gameId: string, day: string): Promise<DailyRunSna
 export function getDailyChart(gameId: string, day: string): Promise<DailyChart> {
   return request<DailyChart>(
     `/api/daily/${encodeURIComponent(gameId)}/${encodeURIComponent(day)}/chart`,
+  );
+}
+
+// Another player's run on `day`, for the page a challenge link opens.
+export function getDailyStanding(
+  gameId: string,
+  day: string,
+  playerId: string,
+): Promise<DailyStanding> {
+  return request<DailyStanding>(
+    `/api/daily/${encodeURIComponent(gameId)}/${encodeURIComponent(day)}/players/${encodeURIComponent(playerId)}`,
   );
 }

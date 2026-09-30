@@ -250,6 +250,22 @@
       "rank": "#{{rank}}",
       "unranked": "No score",
       "loadFailed": "Failed to load the chart."
+    },
+    "challenge": {
+      "action": "Challenge your friends",
+      "copied": "Link copied! ✓",
+      "share": "I scored {{score}} at today's {{game}} on Pimpom. Can you beat me?",
+      "shareRanked": "I scored {{score}} at today's {{game}} on Pimpom, #{{rank}} of {{count}}. Can you beat me?",
+      "label": "Challenge",
+      "title": "{{name}} challenges you",
+      "theirScore": "{{name}} scored {{score}}.",
+      "theirScoreRanked": "{{name}} scored {{score}}, #{{rank}} of {{count}} on that day's chart.",
+      "toBeat": "Beat {{score}} to win.",
+      "noScore": "Your run ended without a score, so {{score}} still stands.",
+      "won": "You beat {{name}}! 🎉",
+      "lost": "{{name}} is still ahead. There's always tomorrow.",
+      "tie": "Dead heat with {{name}}!",
+      "otherDay": "That was on {{day}}. Today's board is a new one, so set a score of your own."
     }
   },
   "join": {
@@ -304,7 +320,9 @@
     "linkLabel": "Match link",
     "copy": "Copy link",
     "copied": "Copied!",
-    "copiedCheck": "Copied! ✓"
+    "copiedCheck": "Copied! ✓",
+    "send": "Share",
+    "invite": "Come play {{game}} with me on Pimpom!"
   },
   "visibility": {
     "private": "Private match",

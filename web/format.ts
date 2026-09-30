@@ -1,6 +1,6 @@
 import type { TFunction } from "i18next";
 
-import type { DailyGameMeta, GameMeta } from "../games/catalog";
+import type { GameMeta } from "../games/catalog";
 
 // Small display-only formatting helpers. Pure: each takes the language to format in (or `t`)
 // rather than reading it. Times and units go through `Intl`, so they need no strings of their own
@@ -93,22 +93,7 @@ export function playerRange(t: TFunction, meta: GameMeta): string {
     : t("tile.playerRange", { min: meta.minPlayers, max: meta.maxPlayers });
 }
 
-// A daily game's score as its chart shows it: a count with the language's own digit grouping, or a
-// time as a stopwatch reads one ("1:05", "1:02:09").
-export function scoreText(
-  language: string,
-  value: number,
-  format: DailyGameMeta["format"],
-): string {
-  if (format === "number") return new Intl.NumberFormat(language).format(value);
-  const totalSeconds = Math.floor(value / SECOND);
-  const hours = Math.floor(totalSeconds / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-  const seconds = (totalSeconds % 60).toString().padStart(2, "0");
-  return hours > 0
-    ? `${hours}:${minutes.toString().padStart(2, "0")}:${seconds}`
-    : `${minutes}:${seconds}`;
-}
+export { scoreText } from "../shared/score";
 
 // A daily game's day ("2026-09-21") as a date a player reads. Days are UTC dates, so they are
 // formatted in UTC too, or a player west of Greenwich would see the day before.

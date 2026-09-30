@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, test } from "vitest";
 import type { DailyGameMeta } from "../games/catalog";
 import { UNKNOWN_NICKNAME } from "../shared/nickname";
 import { createMigratedDb } from "./__fixtures__/d1";
-import { dailyChart, dailySummaries } from "./chart";
+import { dailyChart, dailyStanding, dailySummaries } from "./chart";
 
 const DAY = "2026-09-21";
 
@@ -165,5 +165,28 @@ describe("dailySummaries", () => {
 
     const [fresh] = await dailySummaries(db, "2026-09-22", "bob");
     expect(fresh).toEqual({ gameId: "2048", mine: null, finished: 0, leader: null });
+  });
+});
+
+describe("dailyStanding", () => {
+  beforeEach(async () => {
+    await addPlayer("ada", "Ada");
+    await addPlayer("bob", "Bob");
+    await addPlayer("cy", "Cy");
+  });
+
+  test("ranks one player's run as the chart does, however far down it is", async () => {
+    await addRun("points", "ada", { score: 900 });
+    await addRun("points", "bob", { score: 1200 });
+    await addRun("points", "cy", { score: 900 });
+
+    const standing = await dailyStanding(db, points, DAY, "cy");
+    expect(standing).toMatchObject({ gameId: "points", day: DAY, finished: 3 });
+    expect(standing.run).toMatchObject({ nickname: "Cy", score: 900, rank: 2 });
+  });
+
+  test("has no run for a player who did not play that day", async () => {
+    await addRun("points", "ada", { score: 900 });
+    expect(await dailyStanding(db, points, DAY, "bob")).toMatchObject({ run: null, finished: 1 });
   });
 });
