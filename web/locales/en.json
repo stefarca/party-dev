@@ -202,18 +202,21 @@
     "sectionHint": "The same board for everyone, one run each.",
     "chip": "Daily",
     "newBoard": "New board {{when}}",
+    "progress": "{{done}} of {{total}} played",
+    "allDone": "All done for today 🎉",
     "loadFailed": "Failed to load today's daily challenge.",
     "tile": {
-      "label": "{{game}}, today's daily challenge. {{status}}",
-      "play": "▸ Play today's",
-      "continue": "▸ Continue",
-      "seeChart": "▸ See the chart",
-      "fresh": "Your run is waiting.",
-      "inProgress": "Your run is under way.",
+      "label": "{{game}}, today's daily challenge. {{status}}. {{line}}",
+      "play": "Play",
+      "continue": "Continue",
+      "fresh": "Your run is waiting",
+      "inProgress": "Your run is under way",
       "scored": "You scored {{score}}",
       "placed": "#{{rank}} of {{count}}",
+      "unranked": "Finished with no score",
       "leader": "Top today: {{name}}, {{score}}",
-      "noScores": "No scores on today's chart yet."
+      "youLead": "You're top today",
+      "noScores": "No scores on today's chart yet"
     },
     "start": {
       "title": "Today's board",

@@ -7,10 +7,17 @@ import { useTranslation } from "react-i18next";
 import { getDailyMeta } from "../../games/catalog";
 import type { GameMeta } from "../../games/catalog";
 import { normalizeMatchCode } from "../../shared/ids";
-import type { DailyHub, MatchSummary, MatchVisibility, PlayerStreaks } from "../../shared/protocol";
+import type {
+  DailyGameSummary,
+  DailyHub,
+  MatchSummary,
+  MatchVisibility,
+  PlayerStreaks,
+} from "../../shared/protocol";
 import { ApiError, createMatch, getDailyHub, getGames, joinMatch, listMatches } from "../api";
 import type { MatchBuckets } from "../api";
 import { setDashboardYourTurn } from "../badge";
+import { DailyProgress } from "../components/DailyProgress";
 import { DailyTile } from "../components/DailyTile";
 import { GameGlyph } from "../components/GameGlyph";
 import { InstallPrompt } from "../components/InstallPrompt";
@@ -33,6 +40,12 @@ const STAGGER_STEP_MS = 45;
 
 // `.party-pop` reads its own delay from this custom property, so a grid can
 // be staggered without a class per position.
+// Where a daily game sorts on the hub: not started, under way, over.
+function dailyStage(summary: DailyGameSummary): number {
+  if (!summary.mine) return 0;
+  return summary.mine.status === "active" ? 1 : 2;
+}
+
 function staggerStyle(index: number): CSSProperties {
   return {
     "--pop-delay": `${Math.min(index * STAGGER_STEP_MS, MAX_STAGGER_MS)}ms`,
@@ -635,10 +648,14 @@ export function Dashboard({ tab }: { tab: HubTab | null }) {
   // sits together at the front of the shelf.
   const playable = games.filter((g) => !g.comingSoon);
   const comingSoon = games.filter((g) => g.comingSoon);
-  const dailyGames = (daily?.games ?? []).flatMap((summary) => {
-    const meta = getDailyMeta(summary.gameId);
-    return meta ? [{ meta, summary }] : [];
-  });
+  // What is left to play today comes first, then runs under way, then the
+  // ones already over, each group in catalog order.
+  const dailyGames = (daily?.games ?? [])
+    .flatMap((summary) => {
+      const meta = getDailyMeta(summary.gameId);
+      return meta ? [{ meta, summary }] : [];
+    })
+    .sort((a, b) => dailyStage(a.summary) - dailyStage(b.summary));
 
   return (
     <main id="main-content" className="app-container">
@@ -757,32 +774,48 @@ export function Dashboard({ tab }: { tab: HubTab | null }) {
         </section>
       )}
 
-      {/* The day's single-player games, a row each on a phone, in a list
-          that scrolls out from under the tab bar. Until the first read of
-          them lands this says so; after that, a poll that fails keeps them
-          as they were, so a hiccup never blanks the section. */}
+      {/* The day's single-player games: on a phone the rows of one grouped
+          list that scrolls out from under the tab bar, from `sm` up a grid of
+          cards. Until the first read of them lands this says so; after that,
+          a poll that fails keeps them as they were, so a hiccup never blanks
+          the section. */}
       {section === "daily" && (
         <section>
-          <div className="mb-3 flex flex-col gap-1">
-            <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-              <h2 className="m-0 font-display text-sm font-bold tracking-[0.15em] text-[var(--text-muted)] uppercase">
-                {t("daily.section")}
-              </h2>
-              {daily && (
-                <span className="text-xs font-bold text-[var(--text-muted)]">
-                  {t("daily.newBoard", { when: relativeTime(language, daily.endsAt, Date.now()) })}
-                </span>
-              )}
-            </div>
-            {/* On a phone the rows below need the height, so there it is only for screen readers. */}
+          <div className="mb-3 flex flex-col gap-1 sm:mb-4">
+            {/* On a phone the tab bar already names this section and the rows
+                below need the height, so there the heading and its hint are
+                only for screen readers, and the day's progress leads. */}
+            <h2 className="m-0 font-display text-sm font-bold tracking-[0.15em] text-[var(--text-muted)] uppercase max-sm:sr-only">
+              {t("daily.section")}
+            </h2>
             <p className="m-0 text-sm text-[var(--text-muted)] max-sm:sr-only">
               {t("daily.sectionHint")}
             </p>
+            {daily && (
+              <div className="sm:mt-3 sm:max-w-md">
+                <DailyProgress
+                  games={daily.games}
+                  aside={
+                    <span className="text-xs font-bold text-[var(--text-muted)]">
+                      {t("daily.newBoard", {
+                        when: relativeTime(language, daily.endsAt, Date.now()),
+                      })}
+                    </span>
+                  }
+                />
+              </div>
+            )}
           </div>
           {daily ? (
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
+            <div className="overflow-hidden rounded-[var(--radius-lg)] border-2 border-[var(--border-subtle)] bg-[var(--surface-1)] shadow-[var(--shadow-2),var(--edge-highlight)] sm:grid sm:grid-cols-2 sm:gap-4 sm:overflow-visible sm:rounded-none sm:border-0 sm:bg-transparent sm:shadow-none">
               {dailyGames.map(({ meta, summary }, i) => (
-                <DailyTile key={meta.id} meta={meta} summary={summary} style={staggerStyle(i)} />
+                <DailyTile
+                  key={meta.id}
+                  meta={meta}
+                  summary={summary}
+                  divided={i > 0}
+                  style={staggerStyle(i)}
+                />
               ))}
             </div>
           ) : (

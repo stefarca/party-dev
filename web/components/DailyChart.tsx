@@ -20,7 +20,7 @@ import { EmptyState, Notice, Skeleton } from "./states";
 // namespace are the game's, known only at runtime.
 type GameT = (key: string, options: Record<string, unknown>) => string;
 
-const MEDALS: Record<number, string> = { 1: "🥇", 2: "🥈", 3: "🥉" };
+export const MEDALS: Record<number, string> = { 1: "🥇", 2: "🥈", 3: "🥉" };
 
 function Rank({ rank }: { rank: number | null }) {
   const { t } = useTranslation();

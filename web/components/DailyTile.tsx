@@ -6,50 +6,78 @@ import type { DailyGameSummary } from "../../shared/protocol";
 import { scoreText } from "../format";
 import { useGameName, useLanguage } from "../i18n";
 import { navigate } from "../router";
+import { MEDALS } from "./DailyChart";
 import { GameGlyph } from "./GameGlyph";
 
-// One daily game on the hub: where the player's run stands today, and who
-// leads the day's chart. Opening it goes to the game's daily page, which is
-// where a run is started — never from here, so a stray tap on the hub cannot
-// spend the day's only run. When the board changes is the same for every
-// daily game, so the section around the tiles says it once.
+// `t` is typed against the app's `common` strings; a run's detail line is the
+// game's own, in a namespace known only at runtime.
+type GameT = (key: string, options: Record<string, unknown>) => string;
+
+// One daily game on the hub. Opening it goes to the game's daily page, which
+// is where a run is started — never from here, so a stray tap on the hub
+// cannot spend the day's only run. When the board changes is the same for
+// every daily game, so the section around the tiles says it once — and so
+// does the fact that they are daily games, which is why no tile says so.
 //
-// On a phone it is a row, a list entry with a chevron that names the game
-// and where the player's run stands; from `sm` up it is a card that also
-// names the day's leader and spells out its action.
+// It reads like a store listing: the game, one line of context, and on the
+// right what there is to do (play, continue) or, once the run is over, how it
+// went. The context line is the day's leader, which is what makes a player
+// want to beat it, except where the run itself has more to say: a run with
+// no score says how far it got, and a run on top says so.
+//
+// On a phone the tiles are rows of one grouped list, so `divided` draws the
+// line between a row and the one above it, inset past the badge; from `sm`
+// up each is a card of its own.
 export function DailyTile({
   meta,
   summary,
+  divided,
   style,
 }: {
   meta: DailyGameMeta;
   summary: DailyGameSummary;
+  divided: boolean;
   style?: CSSProperties;
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const language = useLanguage();
   const name = useGameName()(meta.id, meta.name);
   const { mine, leader } = summary;
+  const done = mine?.status === "done";
 
+  // Said in full to screen readers, where the right-hand column is folded in.
   let status: string;
-  let action: string;
-  if (!mine) {
-    status = t("daily.tile.fresh");
-    action = t("daily.tile.play");
-  } else if (mine.status === "active") {
-    status = t("daily.tile.inProgress");
-    action = t("daily.tile.continue");
-  } else {
+  if (!mine) status = t("daily.tile.fresh");
+  else if (mine.status === "active") status = t("daily.tile.inProgress");
+  else {
     status =
       mine.score !== null
         ? t("daily.tile.scored", { score: scoreText(language, mine.score, meta.format) })
-        : t("daily.result.unranked");
+        : t("daily.tile.unranked");
     if (mine.rank !== null) {
       status += ` · ${t("daily.tile.placed", { rank: mine.rank, count: summary.finished })}`;
     }
-    action = t("daily.tile.seeChart");
   }
-  const fresh = !mine;
+
+  let context: string;
+  let highlight = false;
+  if (done && mine.score === null && mine.detail) {
+    const getFixedT = i18n.getFixedT as unknown as (lng: null, ns: string) => GameT;
+    context = getFixedT(null, meta.id)(mine.detail.key, {
+      ...mine.detail.values,
+      defaultValue: t("daily.tile.unranked"),
+    });
+  } else if (done && mine.rank === 1) {
+    context = t("daily.tile.youLead");
+    highlight = true;
+  } else if (leader) {
+    context = t("daily.tile.leader", {
+      name: leader.nickname,
+      score: scoreText(language, leader.score, meta.format),
+    });
+  } else {
+    context = t("daily.tile.noScores");
+  }
 
   return (
     <a
@@ -58,61 +86,85 @@ export function DailyTile({
         e.preventDefault();
         navigate(`/daily/${meta.id}`);
       }}
-      aria-label={t("daily.tile.label", { game: name, status })}
+      aria-label={t("daily.tile.label", { game: name, status, line: context })}
       style={style}
-      className={`party-pop group flex items-center gap-3 rounded-[var(--radius-lg)] border-2 bg-[var(--surface-1)] px-3 py-1 no-underline transition-[transform,box-shadow,border-color] duration-[var(--dur-base)] ease-[var(--ease-spring)] hover:-translate-y-1.5 hover:border-[var(--border-accent)] hover:shadow-[var(--shadow-3),var(--glow-accent)] active:translate-y-0 active:scale-[0.98] sm:flex-col sm:items-stretch sm:rounded-[var(--radius-xl)] sm:p-5 ${
-        fresh
-          ? "border-[var(--border-accent)] shadow-[var(--shadow-2),var(--glow-accent)]"
-          : "border-[var(--border-subtle)] shadow-[var(--shadow-2),var(--edge-highlight)]"
-      }`}
+      className="party-pop group flex items-stretch gap-3 pl-4 no-underline transition-[transform,box-shadow,border-color,background-color] duration-[var(--dur-base)] ease-[var(--ease-spring)] hover:bg-[var(--surface-2)] active:bg-[var(--surface-2)] sm:rounded-[var(--radius-xl)] sm:border-2 sm:border-[var(--border-subtle)] sm:bg-[var(--surface-1)] sm:py-4 sm:shadow-[var(--shadow-2),var(--edge-highlight)] sm:hover:-translate-y-1 sm:hover:border-[var(--border-accent)] sm:hover:bg-[var(--surface-1)] sm:hover:shadow-[var(--shadow-3),var(--glow-accent)] sm:active:translate-y-0"
     >
-      <div className="flex min-w-0 flex-1 items-start gap-3">
-        <GameGlyph
-          gameId={meta.id}
-          className="size-10 transition-transform duration-[var(--dur-base)] ease-[var(--ease-bounce)] group-hover:-rotate-12 group-hover:scale-110 sm:size-14"
-        />
-        <div className="flex min-w-0 flex-1 flex-col gap-0.5 sm:gap-1">
-          <span className="flex items-center gap-2">
-            <span className="truncate font-display text-base font-bold text-[var(--text-primary)] sm:text-lg">
-              {name}
-            </span>
-            <span
-              className="flex-none rounded-[var(--radius-pill)] px-2 py-0.5 text-xs font-bold"
-              style={{ background: "var(--party-pink-soft)", color: "var(--party-pink-on-soft)" }}
-            >
-              {t("daily.chip")}
-            </span>
+      <GameGlyph
+        gameId={meta.id}
+        className="size-10 self-center transition-transform duration-[var(--dur-base)] ease-[var(--ease-bounce)] group-hover:-rotate-12 group-hover:scale-110 sm:size-12"
+      />
+      <span
+        className={`flex min-w-0 flex-1 items-center gap-3 py-2.5 pr-4 sm:py-0 ${
+          divided ? "max-sm:border-t max-sm:border-[var(--border-subtle)]" : ""
+        }`}
+      >
+        <span className="flex min-w-0 flex-1 flex-col">
+          <span className="truncate font-display text-base font-bold text-[var(--text-primary)] sm:text-lg">
+            {name}
           </span>
-          <span className="text-sm text-[var(--text-secondary)]">{status}</span>
-          <span className="hidden truncate text-xs text-[var(--text-muted)] sm:block">
-            {leader
-              ? t("daily.tile.leader", {
-                  name: leader.nickname,
-                  score: scoreText(language, leader.score, meta.format),
-                })
-              : t("daily.tile.noScores")}
+          <span
+            className={`truncate text-xs sm:text-sm ${
+              highlight ? "font-bold text-[var(--accent-on-soft)]" : "text-[var(--text-muted)]"
+            }`}
+          >
+            {context}
           </span>
-        </div>
-      </div>
+        </span>
+        <Outcome meta={meta} summary={summary} />
+      </span>
+    </a>
+  );
+}
+
+// The right-hand column: what to do next, or how the run went.
+function Outcome({ meta, summary }: { meta: DailyGameMeta; summary: DailyGameSummary }) {
+  const { t } = useTranslation();
+  const language = useLanguage();
+  const { mine } = summary;
+
+  if (!mine || mine.status === "active") {
+    const fresh = !mine;
+    return (
       <span
         aria-hidden="true"
-        className="hidden w-fit items-center rounded-[var(--radius-pill)] px-3 py-1.5 text-sm font-bold transition-transform duration-[var(--dur-base)] ease-[var(--ease-spring)] group-hover:scale-105 sm:inline-flex"
-        style={{ background: "var(--accent-soft)", color: "var(--accent-on-soft)" }}
+        className="flex-none rounded-[var(--radius-pill)] px-3.5 py-1.5 text-sm font-bold transition-transform duration-[var(--dur-base)] ease-[var(--ease-spring)] group-hover:scale-105"
+        style={
+          fresh
+            ? { background: "var(--accent)", color: "var(--text-on-accent)" }
+            : { background: "var(--accent-soft)", color: "var(--accent-on-soft)" }
+        }
       >
-        {action}
+        {fresh ? t("daily.tile.play") : t("daily.tile.continue")}
       </span>
-      <svg
-        viewBox="0 0 24 24"
-        className="size-5 flex-none text-[var(--text-muted)] sm:hidden"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth={2.5}
-        strokeLinecap="round"
-        strokeLinejoin="round"
+    );
+  }
+
+  // No score to show: a dash where it would go, as on the chart. The line
+  // beside it says how far the run got.
+  if (mine.score === null) {
+    return (
+      <span
         aria-hidden="true"
+        className="flex-none font-display text-base font-bold text-[var(--text-muted)] sm:text-lg"
       >
-        <path d="m9 6 6 6-6 6" />
-      </svg>
-    </a>
+        –
+      </span>
+    );
+  }
+
+  const medal = mine.rank !== null ? MEDALS[mine.rank] : undefined;
+  return (
+    <span aria-hidden="true" className="flex flex-none flex-col items-end">
+      <span className="font-display text-base font-bold text-[var(--text-primary)] tabular-nums sm:text-lg">
+        {scoreText(language, mine.score, meta.format)}
+      </span>
+      {mine.rank !== null && (
+        <span className="text-xs whitespace-nowrap text-[var(--text-muted)] tabular-nums">
+          {medal && <span className="mr-1">{medal}</span>}
+          {t("daily.tile.placed", { rank: mine.rank, count: summary.finished })}
+        </span>
+      )}
+    </span>
   );
 }

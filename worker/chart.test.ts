@@ -153,7 +153,12 @@ describe("dailySummaries", () => {
     const [game] = await dailySummaries(db, DAY, "bob");
     expect(game).toEqual({
       gameId: "2048",
-      mine: { status: "done", score: 1500, rank: 2 },
+      mine: {
+        status: "done",
+        score: 1500,
+        rank: 2,
+        detail: { key: "chart.detail", values: { count: 3 } },
+      },
       finished: 2,
       leader: { playerId: "ada", nickname: "Ada", score: 2000 },
     });
