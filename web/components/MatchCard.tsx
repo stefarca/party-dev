@@ -1,44 +1,82 @@
-import type { CSSProperties } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
-import type { MatchStatus, MatchSummary } from "../../shared/protocol";
+import type { GameMeta } from "../../games/catalog";
+import type { HubMatch, MatchOutcome } from "../../shared/protocol";
 import { relativeTime } from "../format";
 import { useLanguage } from "../i18n";
 import { navigate } from "../router";
 import { GameGlyph } from "./GameGlyph";
-import { PlayerAvatar } from "./PlayerAvatar";
+import { HUB_ROW, HUB_ROW_BADGE, HubRowAction, hubRowBody } from "./HubList";
 
-const STATUS_STYLE: Record<MatchStatus, { fill: string; ink: string }> = {
-  lobby: { fill: "var(--party-pink-soft)", ink: "var(--party-pink-on-soft)" },
-  active: { fill: "var(--ok-soft)", ink: "var(--ok-fg)" },
-  done: { fill: "var(--surface-3)", ink: "var(--text-muted)" },
+// Which of the hub's lists a match is in, which decides what its row leads
+// with: the move to make, whose move it is instead, how it ended, or the seat
+// on offer.
+export type MatchListKind = "yourTurn" | "open" | "waiting" | "finished";
+
+// How close a deadline has to be before a row warns about it.
+const URGENT_MS = 3 * 60 * 60 * 1000;
+
+const OUTCOME_STYLE: Record<MatchOutcome | "unknown", { fill: string; ink: string }> = {
+  won: { fill: "var(--ok-soft)", ink: "var(--ok-fg)" },
+  lost: { fill: "var(--surface-3)", ink: "var(--text-secondary)" },
+  draw: { fill: "var(--warn-soft)", ink: "var(--warn-fg)" },
+  unknown: { fill: "var(--surface-3)", ink: "var(--text-muted)" },
 };
 
-// One match in any of the hub's buckets. `accent` lifts the card for the
-// "your turn" bucket — it is paired with the section heading and the card's
-// own "Your move" line, so the colour is never the only thing saying so.
-// `callToAction` says what opening the card does when that is not just
-// looking, like joining a public lobby.
+// One match on the hub, as a row of a `HubList`: the game, who it is with
+// (or, while it waits on someone else, who), and on the right what opening it
+// is for. The list it sits in already says whose turn it is, so the row says
+// only what that list leaves out. `divided` says whether a phone draws a line
+// between it and the row above.
 export function MatchCard({
   match,
+  game,
   gameName,
+  kind,
   myPlayerId,
-  accent = false,
-  callToAction,
+  divided,
   style,
 }: {
-  match: MatchSummary;
+  match: HubMatch;
+  game: GameMeta | undefined;
   gameName: string;
+  kind: MatchListKind;
   myPlayerId: string;
-  accent?: boolean;
-  callToAction?: string;
+  divided: boolean;
   style?: CSSProperties;
 }) {
   const { t } = useTranslation();
   const language = useLanguage();
   const now = Date.now();
-  const others = match.players.filter((p) => p.id !== myPlayerId);
-  const status = STATUS_STYLE[match.status];
+  const names = (ids: string[]) =>
+    new Intl.ListFormat(language, { style: "long", type: "conjunction" }).format(
+      match.players.filter((p) => ids.includes(p.id)).map((p) => p.nickname),
+    );
+  const others = match.players.filter((p) => p.id !== myPlayerId).map((p) => p.id);
+  const waitingOnOthers = match.waitingOn.filter((id) => id !== myPlayerId);
+
+  // The line under the game's name.
+  let context: string;
+  if (kind === "waiting" && match.status === "active" && waitingOnOthers.length > 0) {
+    context = t("card.turnOf", { names: names(waitingOnOthers) });
+  } else if (others.length > 0) {
+    context = names(others);
+  } else {
+    context = t("card.waitingForOthers");
+  }
+  let due: ReactNode = null;
+  if (match.deadline !== null && kind !== "finished") {
+    // Only a deadline close enough to act on is told in the warning colour.
+    const urgent = match.deadline - now < URGENT_MS;
+    due = (
+      <span className={urgent ? "font-bold text-[var(--warn-fg)]" : undefined}>
+        {match.deadline <= now
+          ? t("card.deadlinePassed")
+          : t("card.due", { when: relativeTime(language, match.deadline, now) })}
+      </span>
+    );
+  }
 
   return (
     <a
@@ -48,58 +86,80 @@ export function MatchCard({
         e.preventDefault();
         navigate(`/m/${match.id}`);
       }}
-      className={`party-pop group flex flex-col gap-3 rounded-[var(--radius-lg)] border-2 p-4 no-underline transition-[transform,box-shadow,border-color] duration-[var(--dur-base)] ease-[var(--ease-spring)] hover:-translate-y-1 hover:shadow-[var(--shadow-3),var(--edge-highlight)] active:translate-y-0 ${
-        accent
-          ? "border-[var(--border-accent)] bg-[var(--surface-1)] shadow-[var(--shadow-2),var(--glow-accent)]"
-          : "border-[var(--border-subtle)] bg-[var(--surface-1)] shadow-[var(--shadow-1),var(--edge-highlight)]"
-      }`}
+      className={HUB_ROW}
     >
-      <div className="flex items-start gap-3">
-        <GameGlyph
-          gameId={match.gameId}
-          className="size-11 transition-transform duration-[var(--dur-base)] ease-[var(--ease-bounce)] group-hover:-rotate-6 group-hover:scale-110"
-        />
-        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-          <span className="truncate font-display text-base font-bold text-[var(--text-primary)]">
+      <GameGlyph gameId={match.gameId} className={HUB_ROW_BADGE} />
+      <span className={hubRowBody(divided)}>
+        <span className="flex min-w-0 flex-1 flex-col">
+          <span className="truncate font-display text-base font-bold text-[var(--text-primary)] sm:text-lg">
             {gameName}
           </span>
-          <span className="truncate text-sm text-[var(--text-muted)]">
-            {others.length > 0
-              ? others.map((p) => p.nickname).join(", ")
-              : t("card.waitingForOthers")}
+          <span className="truncate text-xs text-[var(--text-muted)] sm:text-sm">
+            {context}
+            {due && (
+              <>
+                <span aria-hidden="true"> · </span>
+                {due}
+              </>
+            )}
           </span>
-        </div>
-        <span
-          className="flex-none rounded-[var(--radius-pill)] px-2.5 py-1 text-xs font-bold"
-          style={{ background: status.fill, color: status.ink }}
-        >
-          {t(`status.${match.status}`)}
         </span>
-      </div>
-
-      <div className="flex items-center justify-between gap-2">
-        <span className="flex -space-x-2" aria-hidden="true">
-          {others.slice(0, 4).map((p) => (
-            <PlayerAvatar key={p.id} id={p.id} nickname={p.nickname} size="sm" />
-          ))}
-        </span>
-        <span className="flex items-center gap-3 text-xs text-[var(--text-muted)]">
-          {accent && (
-            <span className="font-bold text-[var(--accent-on-soft)]">{t("card.yourMove")}</span>
-          )}
-          {callToAction && (
-            <span className="font-bold text-[var(--accent-on-soft)]">{callToAction}</span>
-          )}
-          <span>{relativeTime(language, match.updatedAt, now)}</span>
-          {match.deadline !== null && (
-            <span className="font-mono tabular-nums">
-              {match.deadline <= now
-                ? t("card.deadlinePassed")
-                : t("card.due", { when: relativeTime(language, match.deadline, now) })}
-            </span>
-          )}
-        </span>
-      </div>
+        <Trailing match={match} game={game} kind={kind} now={now} />
+      </span>
     </a>
   );
+}
+
+// The right-hand column: the move to make or the seat to take, and otherwise
+// where the match stands and when it last moved.
+function Trailing({
+  match,
+  game,
+  kind,
+  now,
+}: {
+  match: HubMatch;
+  game: GameMeta | undefined;
+  kind: MatchListKind;
+  now: number;
+}) {
+  const { t } = useTranslation();
+  const language = useLanguage();
+
+  if (kind === "yourTurn") return <HubRowAction strong>{t("card.play")}</HubRowAction>;
+  if (kind === "open") return <HubRowAction strong={false}>{t("card.join")}</HubRowAction>;
+
+  const when = (
+    <span className="text-xs whitespace-nowrap text-[var(--text-muted)]">
+      {relativeTime(language, match.updatedAt, now)}
+    </span>
+  );
+  if (kind === "finished") {
+    const outcome = match.outcome ?? "unknown";
+    const { fill, ink } = OUTCOME_STYLE[outcome];
+    return (
+      <span className="flex flex-none flex-col items-end gap-1">
+        <span
+          className="rounded-[var(--radius-pill)] px-2.5 py-0.5 text-xs font-bold"
+          style={{ background: fill, color: ink }}
+        >
+          {t(`card.outcome.${outcome}`)}
+        </span>
+        {when}
+      </span>
+    );
+  }
+
+  // Under way, or a lobby of the player's own still filling up.
+  if (match.status === "lobby" && game) {
+    return (
+      <span className="flex flex-none flex-col items-end gap-1">
+        <span className="rounded-[var(--radius-pill)] bg-[var(--surface-3)] px-2.5 py-0.5 text-xs font-bold text-[var(--text-secondary)] tabular-nums">
+          {t("card.seats", { taken: match.players.length, max: game.maxPlayers })}
+        </span>
+        {when}
+      </span>
+    );
+  }
+  return when;
 }

@@ -3,17 +3,23 @@ import type { Page } from "@playwright/test";
 import { createMatch, expect, test } from "./fixtures";
 import type { Player } from "./fixtures";
 
-// A public lobby is listed under the hub's Public tab, so anyone can join it without being sent
-// the code. The e2e database outlives a run and is shared by parallel workers, so the tab can hold
-// other specs' lobbies too: a card is always picked out by its host's unique nickname.
+// A public lobby is listed on the hub, under Public lobbies in the Matches section, so anyone can
+// join it without being sent the code. The e2e database outlives a run and is shared by parallel
+// workers, so the list can hold other specs' lobbies too: a row is always picked out by its host's
+// unique nickname.
 
-async function openPublicTab(page: Page): Promise<void> {
+// Waits for the hub to have loaded, since the list is left out altogether while it has nothing in
+// it, and a check that a lobby is not listed must not pass just because nothing has loaded yet.
+async function openMatches(page: Page): Promise<void> {
   await page.goto("/matches");
-  await page.getByRole("tab", { name: /^Public/ }).click();
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
 }
 
 function publicCardHostedBy(page: Page, host: Player) {
-  return page.getByRole("tabpanel").getByRole("link").filter({ hasText: host.nickname });
+  return page
+    .getByRole("region", { name: /^Public lobbies/ })
+    .getByRole("link")
+    .filter({ hasText: host.nickname });
 }
 
 // The switch's label names the current setting, so it reads "Private match" while off.
@@ -53,7 +59,7 @@ test("a match started as public is listed on the hub, and anyone can join it fro
   await expect(publicSwitch(alice.page)).toHaveAccessibleName("Public match");
   await alice.page.getByRole("button", { name: "What private and public mean" }).hover();
   await expect(alice.page.getByRole("tooltip")).toContainText(
-    "Listed under Public on everyone's hub",
+    "Listed under Public lobbies on everyone's hub",
   );
 
   await alice.page.getByRole("button", { name: "Start a new Tic-tac-toe match" }).click();
@@ -62,7 +68,7 @@ test("a match started as public is listed on the hub, and anyone can join it fro
   await expect(publicSwitch(alice.page)).toBeChecked();
   await expect(alice.live).toBeVisible();
 
-  await openPublicTab(bob.page);
+  await openMatches(bob.page);
   const card = publicCardHostedBy(bob.page, alice);
   await expect(card).toContainText("Tic-tac-toe");
   await expect(card).toContainText("Join");
@@ -85,16 +91,16 @@ test("a match is private unless the host makes it public, and can go back", asyn
   await expect(alice.live).toBeVisible();
   await expect(publicSwitch(alice.page)).not.toBeChecked();
 
-  await openPublicTab(bob.page);
+  await openMatches(bob.page);
   await expect(publicCardHostedBy(bob.page, alice)).toHaveCount(0);
 
   await flipVisibility(alice);
-  await openPublicTab(bob.page);
+  await openMatches(bob.page);
   await expect(publicCardHostedBy(bob.page, alice)).toBeVisible();
 
   await flipVisibility(alice);
   await expect(publicSwitch(alice.page)).not.toBeChecked();
-  await openPublicTab(bob.page);
+  await openMatches(bob.page);
   await expect(publicCardHostedBy(bob.page, alice)).toHaveCount(0);
 });
 
@@ -107,10 +113,10 @@ test("a public lobby leaves the list once it is full", async ({ newPlayer }) => 
   });
   await expect(res).toBeOK();
 
-  await openPublicTab(bob.page);
+  await openMatches(bob.page);
   await publicCardHostedBy(bob.page, alice).click();
   await expect(bob.page.getByText("Waiting for the host to start.")).toBeVisible();
 
-  await openPublicTab(carol.page);
+  await openMatches(carol.page);
   await expect(publicCardHostedBy(carol.page, alice)).toHaveCount(0);
 });

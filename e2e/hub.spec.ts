@@ -36,7 +36,9 @@ test("the same nickname in another browser is the same player", async ({ newPlay
     await expect(page.getByRole("heading", { name: `Hey ${alice.nickname} 👋` })).toBeVisible();
     // Alice's match followed her here, and so did the record it counts towards.
     await page.getByRole("link", { name: "Matches" }).click();
-    await expect(page.getByRole("tabpanel").getByRole("link")).toContainText(bob.nickname);
+    await expect(page.getByRole("region", { name: /^Their turn/ }).getByRole("link")).toContainText(
+      bob.nickname,
+    );
     await page.getByRole("link", { name: "Stats & rivals ▸" }).click();
     await expect(page.getByText("1 played")).toBeVisible();
   } finally {
@@ -129,7 +131,7 @@ test("a rename reaches the matches the player is already in", async ({ startMatc
   await expect(first.page.getByRole("heading", { name: `Hey ${renamed} 👋` })).toBeVisible();
 
   await second.page.goto("/matches");
-  const card = second.page.getByRole("tabpanel").getByRole("link");
+  const card = second.page.getByRole("link").filter({ hasText: "Tic-tac-toe" });
   await expect(card).toContainText(renamed);
   await expect(card).not.toContainText(first.nickname);
 
@@ -162,7 +164,9 @@ test("a player can reset their record and keep their matches", async ({ newPlaye
   await expect(alice.page.getByText("0 played")).toBeVisible();
 
   await alice.page.goto("/matches");
-  await expect(alice.page.getByRole("tabpanel").getByRole("link")).toContainText(bob.nickname);
+  await expect(
+    alice.page.getByRole("region", { name: /^Their turn/ }).getByRole("link"),
+  ).toContainText(bob.nickname);
 });
 
 test("the shelf offers every playable game and greys out shelved ones", async ({ newPlayer }) => {
@@ -230,30 +234,58 @@ test("the hub files a match under whoever's move it is", async ({ startMatch }) 
   await expect(
     mover.page.getByRole("link", { name: "Matches, 1 needs your move" }),
   ).toHaveAttribute("aria-current", "page");
-  await expect(mover.page.getByRole("tab", { name: /^Your turn/ })).toHaveAttribute(
-    "aria-selected",
-    "true",
-  );
-  const card = mover.page.getByRole("tabpanel").getByRole("link");
+  const card = mover.page.getByRole("region", { name: /^Your turn/ }).getByRole("link");
   await expect(card).toContainText("Tic-tac-toe");
   await expect(card).toContainText(waiter.nickname);
-  await expect(card).toContainText("Your move");
+  await expect(card).toContainText("Play");
+  await expect(mover.page.getByRole("region", { name: /^Their turn/ })).toHaveCount(0);
 
   // Nothing is waiting on the other player, so their hub opens on the games to start, and their
-  // matches open on the bucket that has the match.
+  // matches list the match as waiting on the one who moves.
   await expect(waiter.page).toHaveURL("/play");
   await expect(waiter.page.getByText("Nothing needs your move.")).toBeVisible();
   await waiter.page.getByRole("link", { name: "Matches", exact: true }).click();
   await expect(waiter.page).toHaveURL("/matches");
-  await expect(waiter.page.getByRole("tab", { name: /^Their turn/ })).toHaveAttribute(
-    "aria-selected",
-    "true",
-  );
-  await expect(waiter.page.getByRole("tabpanel").getByRole("link")).toContainText(mover.nickname);
+  await expect(waiter.page.getByRole("region", { name: /^Your turn/ })).toHaveCount(0);
+  await expect(
+    waiter.page.getByRole("region", { name: /^Their turn/ }).getByRole("link"),
+  ).toContainText(`Waiting on ${mover.nickname}`);
 
   await card.click();
   await expect(mover.page).toHaveURL(`/m/${code}`);
   await expect(mover.yourTurn).toBeVisible();
+});
+
+// A finished match says how it went for whoever is looking. The moves go over the HTTP API, the
+// same route a page without a socket uses, so the spec is about the hub rather than the board.
+test("a finished match says who won", async ({ startMatch }) => {
+  const {
+    code,
+    players: [winner, loser],
+  } = await startMatch("tictactoe");
+  const place = (player: typeof winner, cell: number) =>
+    player.context.request.post(`/api/matches/${code}/actions`, {
+      data: { action: { t: "place", cell } },
+    });
+  for (const [player, cell] of [
+    [winner, 0],
+    [loser, 3],
+    [winner, 1],
+    [loser, 4],
+    [winner, 2],
+  ] as const) {
+    await expect(await place(player, cell), `${player.nickname} places ${cell}`).toBeOK();
+  }
+
+  for (const [player, outcome] of [
+    [winner, "Won"],
+    [loser, "Lost"],
+  ] as const) {
+    await player.page.goto("/matches");
+    const row = player.page.getByRole("region", { name: /^Finished/ }).getByRole("link");
+    await expect(row).toContainText("Tic-tac-toe");
+    await expect(row).toContainText(outcome);
+  }
 });
 
 test("a code that matches nothing says so, and can be corrected", async ({ newPlayer }) => {

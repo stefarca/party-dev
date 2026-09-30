@@ -86,19 +86,14 @@
       "matchesWaiting_other": "Partite, {{count}} aspettano la tua mossa",
       "dailyWaiting": "Sfida del giorno, non ancora giocata oggi"
     },
-    "tabsLabel": "Partite",
-    "tabs": {
+    "lists": {
       "yourTurn": "Tocca a te",
+      "open": "Partite pubbliche",
       "waiting": "Tocca agli altri",
-      "finished": "Finite",
-      "open": "Pubbliche"
+      "finished": "Finite"
     },
-    "empty": {
-      "yourTurn": "Per ora nessuna partita aspetta la tua mossa. Iniziane una da Gioca.",
-      "waiting": "Nessuna partita in attesa di qualcun altro.",
-      "finished": "Ancora nessuna partita finita.",
-      "open": "Al momento nessuna partita pubblica cerca giocatori. Attiva Partita pubblica in Gioca per ospitarne una."
-    },
+    "noMatches": "Ancora nessuna partita. Iniziane una da Gioca, o entra con un codice.",
+    "showAll": "Mostra tutte ({{total}})",
     "stats": {
       "played": "giocate",
       "finished": "concluse",
@@ -272,10 +267,18 @@
   },
   "card": {
     "waitingForOthers": "in attesa di altri giocatori",
-    "yourMove": "Tocca a te",
     "due": "scade {{when}}",
     "deadlinePassed": "tempo scaduto",
-    "join": "Entra ▸"
+    "play": "Gioca",
+    "join": "Entra",
+    "turnOf": "Tocca a {{names}}",
+    "seats": "{{taken}} su {{max}}",
+    "outcome": {
+      "won": "Vinta",
+      "lost": "Persa",
+      "draw": "Pari",
+      "unknown": "Finita"
+    }
   },
   "connection": {
     "connecting": "Connessione…",
@@ -309,7 +312,7 @@
     "about": "Cosa vuol dire privata e pubblica",
     "hint": {
       "private": "Solo su invito: per entrare serve il codice. Chiude un giorno dopo la creazione, se non la inizi.",
-      "public": "Elencata in Pubbliche nella home di tutti: chiunque può entrare. Chiude un giorno dopo essere diventata pubblica, se non la inizi."
+      "public": "Elencata in Partite pubbliche nella home di tutti: chiunque può entrare. Chiude un giorno dopo essere diventata pubblica, se non la inizi."
     },
     "failed": "Impossibile cambiare chi può entrare."
   },
