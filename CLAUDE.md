@@ -375,7 +375,10 @@ full-bleed variant whose buddy spans about half the canvas — an Android launch
 middle two thirds of a maskable icon, so a buddy sized just to the 80% safe zone looks zoomed in.
 Render them with `sharp` at the target size (`density: 72 * size / 32`), not by upscaling. Both SVGs draw the same buddy
 as `web/components/Brand.tsx`, as literals — a plain file cannot import the component — and so
-does `og-image.svg`, the link-preview card, so a change to the mark has to be made in all four.
+does `og-image.svg`, the link-preview card, and `badge.svg`, the notification badge (rendered to
+`badge-96.png`), so a change to the mark has to be made in all five. Android draws a notification
+badge from its alpha channel alone, so the badge is the buddy's silhouette with the face cut out,
+on a transparent canvas; an opaque icon there shows as a white square.
 The card's text is set in Fredoka and Nunito, so render it with both fonts installed.
 
 ## Conventions
