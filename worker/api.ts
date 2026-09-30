@@ -21,8 +21,8 @@ import type {
   DailyHub,
   DailyRunSnapshot,
   DailyToday,
+  HubMatch,
   Leaderboard,
-  MatchSummary,
   PlayerStatsDetail,
   PushKeyResponse,
 } from "../shared/protocol";
@@ -36,8 +36,7 @@ import {
 } from "./auth";
 import { dailyChart, dailySummaries } from "./chart";
 import { runName } from "./daily";
-import { HUB_LIST_LIMIT, openMatches, summarize } from "./hub";
-import type { MatchIndexRow } from "./hub";
+import { HUB_LIST_LIMIT, myMatches, openMatches } from "./hub";
 import {
   NicknameTakenError,
   findPlayerById,
@@ -530,42 +529,23 @@ api.post("/matches/:id/actions", requireSession(), async (c) => {
 api.get("/matches", requireSession(), async (c) => {
   const session = c.get("session") as Session;
 
-  // One D1 query for the caller's matches, joined against match_players
-  // twice: once to find the caller's own matches + waiting flag, once more
-  // to pull every player row for those matches, so the dashboard needs no
-  // per-match follow-up query. The index holds player ids only; each name
-  // comes from the registry, so a rename shows on every card at once.
-  const mine = c.env.DB.prepare(
-    `SELECT m.id AS id, m.game_id AS game_id, m.status AS status, m.host_id AS host_id,
-            m.updated_at AS updated_at, m.deadline AS deadline, m.visibility AS visibility,
-            mine.waiting AS my_waiting,
-            p.player_id AS player_id, pl.nickname AS nickname
-     FROM matches m
-     JOIN match_players mine ON mine.match_id = m.id AND mine.player_id = ?
-     JOIN match_players p ON p.match_id = m.id
-     LEFT JOIN players pl ON pl.id = p.player_id
-     ORDER BY m.updated_at DESC`,
-  )
-    .bind(session.pid)
-    .all<MatchIndexRow>();
-
   // The record travels with the player id, so it follows them onto a new
   // device the moment the nickname signs them back in. Fetched alongside
   // the buckets rather than from a route of its own — it reads the same two
   // tables, and the hub draws both in one pass. So are the player's streaks,
-  // which the hub shows beside it, and the list of public lobbies, which
-  // fills the hub's last tab.
-  const [{ results }, open, stats, streaks] = await Promise.all([
-    mine,
+  // which the hub shows beside it, and the list of public lobbies it offers
+  // to join.
+  const [mine, open, stats, streaks] = await Promise.all([
+    myMatches(c.env.DB, session.pid),
     openMatches(c.env.DB, session.pid),
     playerStats(c.env.DB, session.pid),
     playerStreaks(c.env.DB, session.pid, Date.now()),
   ]);
 
-  const yourTurn: MatchSummary[] = [];
-  const waiting: MatchSummary[] = [];
-  const finished: MatchSummary[] = [];
-  for (const summary of summarize(results)) {
+  const yourTurn: HubMatch[] = [];
+  const waiting: HubMatch[] = [];
+  const finished: HubMatch[] = [];
+  for (const summary of mine) {
     if (summary.status === "done") {
       if (finished.length < HUB_LIST_LIMIT) finished.push(summary);
     } else if (summary.waiting) {

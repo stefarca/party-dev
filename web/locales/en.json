@@ -86,19 +86,14 @@
       "matchesWaiting_other": "Matches, {{count}} need your move",
       "dailyWaiting": "Daily, not played today"
     },
-    "tabsLabel": "Matches",
-    "tabs": {
+    "lists": {
       "yourTurn": "Your turn",
+      "open": "Public lobbies",
       "waiting": "Their turn",
-      "finished": "Finished",
-      "open": "Public"
+      "finished": "Finished"
     },
-    "empty": {
-      "yourTurn": "Nothing needs your move right now. Start a match from Play.",
-      "waiting": "No matches waiting on someone else.",
-      "finished": "No finished matches yet.",
-      "open": "No public lobbies are looking for players right now. Turn on Public match under Play to host one."
-    },
+    "noMatches": "No matches yet. Start one from Play, or join one with a code.",
+    "showAll": "Show all ({{total}})",
     "stats": {
       "played": "played",
       "finished": "finished",
@@ -272,10 +267,18 @@
   },
   "card": {
     "waitingForOthers": "waiting for others to join",
-    "yourMove": "Your move",
     "due": "due {{when}}",
     "deadlinePassed": "deadline passed",
-    "join": "Join ▸"
+    "play": "Play",
+    "join": "Join",
+    "turnOf": "Waiting on {{names}}",
+    "seats": "{{taken}} of {{max}}",
+    "outcome": {
+      "won": "Won",
+      "lost": "Lost",
+      "draw": "Draw",
+      "unknown": "Finished"
+    }
   },
   "connection": {
     "connecting": "Connecting…",
@@ -309,7 +312,7 @@
     "about": "What private and public mean",
     "hint": {
       "private": "Invite only — people need the code to join. Closes a day after it's created unless you start it.",
-      "public": "Listed under Public on everyone's hub, so anyone can join. Closes a day after it goes public unless you start it."
+      "public": "Listed under Public lobbies on everyone's hub, so anyone can join. Closes a day after it goes public unless you start it."
     },
     "failed": "Could not change who can join."
   },

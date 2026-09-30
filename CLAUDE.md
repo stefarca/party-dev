@@ -71,13 +71,15 @@ in that file, is what makes a claim atomic, so each write there is written to lo
 gracefully. There is no password: whoever claims a nickname first owns it, and whoever types it
 afterwards is signed in as them. The hub's record (`played`/`finished`/`won`) is read from the
 derived index — `match_players.won` is written by `writeIndexNow()` from `result()` — and follows
-the player id, so a rename keeps it. A reset sets `players.stats_since`, and the record then counts
-only matches created from that moment on. Nothing is deleted.
+the player id, so a rename keeps it. So does the won/lost/draw on each finished match the hub
+lists, read with `matches.result_kind`. A reset sets `players.stats_since`, and the record then
+counts only matches created from that moment on. Nothing is deleted.
 
 **Public lobbies.** A match's `visibility` (`private` by default, or `public`) lives on the DO
 record. The host picks it at creation and may change it through `/lobby/visibility` until the match
-starts. Anyone with the code can join either kind. A public one is also listed under the hub's
-Public tab, which `worker/hub.ts` reads from `matches.visibility` in the derived index. Only lobbies
+starts. Anyone with the code can join either kind. A public one is also listed on the hub, under
+Public lobbies in the Matches section, which `worker/hub.ts` reads from `matches.visibility` in the
+derived index. Only lobbies
 the caller is not in and that still have a seat are listed. The seat check runs in SQL, before the
 LIMIT, against seat counts taken from the game catalog. An index row whose `visibility` is NULL
 predates the column and counts as private.

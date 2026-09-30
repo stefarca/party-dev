@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { CSSProperties, FormEvent, ReactNode } from "react";
 
-import { Button, FieldError, Form, Input, Tabs, TextField } from "@heroui/react";
+import { Button, FieldError, Form, Input, TextField } from "@heroui/react";
 import { useTranslation } from "react-i18next";
 
 import { getDailyMeta } from "../../games/catalog";
@@ -10,7 +10,7 @@ import { normalizeMatchCode } from "../../shared/ids";
 import type {
   DailyGameSummary,
   DailyHub,
-  MatchSummary,
+  HubMatch,
   MatchVisibility,
   PlayerStreaks,
 } from "../../shared/protocol";
@@ -20,8 +20,10 @@ import { setDashboardYourTurn } from "../badge";
 import { DailyProgress } from "../components/DailyProgress";
 import { DailyTile } from "../components/DailyTile";
 import { GameGlyph } from "../components/GameGlyph";
+import { HubList } from "../components/HubList";
 import { InstallPrompt } from "../components/InstallPrompt";
 import { MatchCard } from "../components/MatchCard";
+import type { MatchListKind } from "../components/MatchCard";
 import { EmptyState, Notice, Skeleton } from "../components/states";
 import { VisibilitySwitch } from "../components/VisibilitySwitch";
 import { errorText } from "../errors";
@@ -203,41 +205,65 @@ function JoinStrip({
   );
 }
 
-function Bucket({
+// One of the lists on the Matches section, under a heading that names it
+// and counts it, so each is a landmark a screen reader can jump to. The
+// finished list can run long, so it shows its most recent few until asked
+// for the rest. `firstIndex` carries the pop-in cascade on from the lists
+// above.
+function MatchList({
+  kind,
   matches,
   games,
   myPlayerId,
-  accent,
-  callToAction,
-  emptyText,
-  emptyGlyph,
+  firstIndex,
 }: {
-  matches: MatchSummary[];
+  kind: MatchListKind;
+  matches: HubMatch[];
   games: GameMeta[];
   myPlayerId: string;
-  accent?: boolean;
-  callToAction?: string;
-  emptyText: string;
-  emptyGlyph?: string;
+  firstIndex: number;
 }) {
+  const { t } = useTranslation();
   const gameName = useGameName();
-  if (matches.length === 0) {
-    return <EmptyState glyph={emptyGlyph}>{emptyText}</EmptyState>;
-  }
+  const [expanded, setExpanded] = useState(false);
+  const headingId = `matches-${kind}`;
+  const shown = kind === "finished" && !expanded ? matches.slice(0, FINISHED_PREVIEW) : matches;
   return (
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-      {matches.map((m, i) => (
-        <MatchCard
-          key={m.id}
-          match={m}
-          gameName={gameName(m.gameId, games.find((g) => g.id === m.gameId)?.name)}
-          myPlayerId={myPlayerId}
-          accent={accent}
-          callToAction={callToAction}
-          style={staggerStyle(i)}
-        />
-      ))}
-    </div>
+    <section aria-labelledby={headingId} className="flex flex-col gap-2 sm:gap-3">
+      <h2
+        id={headingId}
+        className="m-0 flex items-baseline gap-2 font-display text-sm font-bold tracking-[0.15em] text-[var(--text-muted)] uppercase"
+      >
+        {t(`hub.lists.${kind}`)}
+        <span className="text-xs tracking-normal opacity-80 tabular-nums">{matches.length}</span>
+      </h2>
+      <HubList>
+        {shown.map((m, i) => {
+          const game = games.find((g) => g.id === m.gameId);
+          return (
+            <MatchCard
+              key={m.id}
+              match={m}
+              game={game}
+              gameName={gameName(m.gameId, game?.name)}
+              kind={kind}
+              myPlayerId={myPlayerId}
+              divided={i > 0}
+              style={staggerStyle(firstIndex + i)}
+            />
+          );
+        })}
+      </HubList>
+      {shown.length < matches.length && (
+        <button
+          type="button"
+          onClick={() => setExpanded(true)}
+          className="self-center rounded-[var(--radius-pill)] px-4 py-1.5 text-sm font-bold text-[var(--accent-on-soft)] hover:bg-[var(--accent-soft)]"
+        >
+          {t("hub.showAll", { total: matches.length })}
+        </button>
+      )}
+    </section>
   );
 }
 
@@ -433,16 +459,14 @@ function HubNav({
   );
 }
 
-type BucketKey = "yourTurn" | "waiting" | "finished" | "open";
+// The Matches section's lists, top to bottom: what waits on the player, then
+// lobbies anyone can join (they close within a day, so they sit above the
+// matches that can wait), then the rest in play, then the finished ones.
+// A list with nothing in it is left out.
+const MATCH_LISTS: MatchListKind[] = ["yourTurn", "open", "waiting", "finished"];
 
-// The first three are the player's own matches; `open` is everyone's public
-// lobbies they could join, which is why it comes last.
-const BUCKET_TABS: { key: BucketKey; glyph: string }[] = [
-  { key: "yourTurn", glyph: "✦" },
-  { key: "waiting", glyph: "⏳" },
-  { key: "finished", glyph: "🏁" },
-  { key: "open", glyph: "🌐" },
-];
+// How many finished matches show before the rest are asked for.
+const FINISHED_PREVIEW = 5;
 
 // The section `/` opens on: the matches when one waits on the player, the
 // daily games when one of them is what keeps a streak alive today, and
@@ -475,12 +499,6 @@ export function Dashboard({ tab }: { tab: HubTab | null }) {
   const [joining, setJoining] = useState(false);
   const [joinError, setJoinError] = useState<string | null>(null);
 
-  const [bucket, setBucket] = useState<BucketKey>("yourTurn");
-  // The opening bucket is chosen once, from the first load that returns
-  // anything: someone with nothing to play but three games in flight should
-  // land on a populated bucket. Later polls must not move it under them.
-  const pickedOpeningBucket = useRef(false);
-
   const refresh = useCallback(async () => {
     try {
       // The daily games are a section of their own, so failing to read them
@@ -497,11 +515,6 @@ export function Dashboard({ tab }: { tab: HubTab | null }) {
       // The tab badge: the dashboard's "your turn" bucket is the full,
       // authoritative set of matches awaiting this player.
       setDashboardYourTurn(nextBuckets.yourTurn.map((m) => m.id));
-      if (!pickedOpeningBucket.current) {
-        pickedOpeningBucket.current = true;
-        const firstFilled = BUCKET_TABS.find((tab) => nextBuckets[tab.key].length > 0);
-        if (firstFilled) setBucket(firstFilled.key);
-      }
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) {
         notifyUnauthorized();
@@ -638,16 +651,24 @@ export function Dashboard({ tab }: { tab: HubTab | null }) {
   };
   const section = tab ?? openingTab(data, daily);
   const turnCount = data.yourTurn.length;
+  const ownMatches = data.yourTurn.length + data.waiting.length + data.finished.length;
   // Someone who has not played anything yet has no reason to come back, so is not asked to install.
   const hasOwnMatches =
-    data.yourTurn.length + data.waiting.length + data.finished.length > 0 ||
-    (daily?.games.some((game) => game.mine !== null) ?? false);
+    ownMatches > 0 || (daily?.games.some((game) => game.mine !== null) ?? false);
   const dailyWaiting =
     !data.streaks.play.today && (daily?.games.some((game) => game.mine === null) ?? false);
   // Coming-soon games go at the very end, so every tile that does something
   // sits together at the front of the shelf.
   const playable = games.filter((g) => !g.comingSoon);
   const comingSoon = games.filter((g) => g.comingSoon);
+  let listed = 0;
+  const matchLists = MATCH_LISTS.flatMap((kind) => {
+    const matches = data[kind];
+    if (matches.length === 0) return [];
+    const firstIndex = listed;
+    listed += Math.min(matches.length, kind === "finished" ? FINISHED_PREVIEW : matches.length);
+    return [{ kind, matches, firstIndex }];
+  });
   // What is left to play today comes first, then runs under way, then the
   // ones already over, each group in catalog order.
   const dailyGames = (daily?.games ?? [])
@@ -669,52 +690,24 @@ export function Dashboard({ tab }: { tab: HubTab | null }) {
 
       <HubNav current={section} movesNeeded={turnCount} dailyWaiting={dailyWaiting} />
 
+      {/* The player's matches, as lists that each show only when there is
+          something in them, so whatever there is fits in one scroll. A
+          player with none of their own is told how to get one, above any
+          public lobby they could join. */}
       {section === "matches" && (
-        <section>
-          <Tabs
-            selectedKey={bucket}
-            onSelectionChange={(key) => setBucket(key as BucketKey)}
-            className="w-full"
-          >
-            {/* From `sm` up, the width overrides below undo HeroUI's own
-                `min-w-full` on the list and `w-full` on each tab, which would
-                otherwise stretch this pill across the whole page. A phone is
-                too narrow for all four tabs in one row, in either language, so
-                there they sit two by two, filling the width, rather than
-                wrapping inside a tab or scrolling one out of sight. */}
-            <Tabs.ListContainer className="w-full max-w-full self-start bg-transparent sm:w-fit">
-              <Tabs.List
-                aria-label={t("hub.tabsLabel")}
-                className="grid w-full min-w-0 grid-cols-2 gap-1 rounded-[var(--radius-lg)] border border-[var(--border-subtle)] bg-[var(--surface-2)] p-1 sm:flex sm:w-fit sm:gap-0 sm:rounded-[var(--radius-pill)]"
-              >
-                {BUCKET_TABS.map((tab) => (
-                  <Tabs.Tab
-                    key={tab.key}
-                    id={tab.key}
-                    className="gap-2 rounded-[var(--radius-pill)] whitespace-nowrap sm:w-auto"
-                  >
-                    {t(`hub.tabs.${tab.key}`)}
-                    <span className="text-xs font-bold opacity-70">{data[tab.key].length}</span>
-                    <Tabs.Indicator />
-                  </Tabs.Tab>
-                ))}
-              </Tabs.List>
-            </Tabs.ListContainer>
-            {BUCKET_TABS.map((tab) => (
-              <Tabs.Panel key={tab.key} id={tab.key} className="pt-4 sm:pt-5">
-                <Bucket
-                  matches={data[tab.key]}
-                  games={games}
-                  myPlayerId={myPlayerId}
-                  accent={tab.key === "yourTurn"}
-                  callToAction={tab.key === "open" ? t("card.join") : undefined}
-                  emptyText={t(`hub.empty.${tab.key}`)}
-                  emptyGlyph={tab.glyph}
-                />
-              </Tabs.Panel>
-            ))}
-          </Tabs>
-        </section>
+        <div className="flex flex-col gap-5 sm:gap-6">
+          {ownMatches === 0 && <EmptyState glyph="🎲">{t("hub.noMatches")}</EmptyState>}
+          {matchLists.map(({ kind, matches, firstIndex }) => (
+            <MatchList
+              key={kind}
+              kind={kind}
+              matches={matches}
+              games={games}
+              myPlayerId={myPlayerId}
+              firstIndex={firstIndex}
+            />
+          ))}
+        </div>
       )}
 
       {section === "play" && (
@@ -807,7 +800,7 @@ export function Dashboard({ tab }: { tab: HubTab | null }) {
             )}
           </div>
           {daily ? (
-            <div className="overflow-hidden rounded-[var(--radius-lg)] border-2 border-[var(--border-subtle)] bg-[var(--surface-1)] shadow-[var(--shadow-2),var(--edge-highlight)] sm:grid sm:grid-cols-2 sm:gap-4 sm:overflow-visible sm:rounded-none sm:border-0 sm:bg-transparent sm:shadow-none">
+            <HubList>
               {dailyGames.map(({ meta, summary }, i) => (
                 <DailyTile
                   key={meta.id}
@@ -817,7 +810,7 @@ export function Dashboard({ tab }: { tab: HubTab | null }) {
                   style={staggerStyle(i)}
                 />
               ))}
-            </div>
+            </HubList>
           ) : (
             <Notice tone="danger" action={{ label: t("retry"), onClick: () => refresh() }}>
               {t("daily.loadFailed")}

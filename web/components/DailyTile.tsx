@@ -8,6 +8,7 @@ import { useGameName, useLanguage } from "../i18n";
 import { navigate } from "../router";
 import { MEDALS } from "./DailyChart";
 import { GameGlyph } from "./GameGlyph";
+import { HUB_ROW, HUB_ROW_BADGE, HubRowAction, hubRowBody } from "./HubList";
 
 // `t` is typed against the app's `common` strings; a run's detail line is the
 // game's own, in a namespace known only at runtime.
@@ -25,9 +26,8 @@ type GameT = (key: string, options: Record<string, unknown>) => string;
 // want to beat it, except where the run itself has more to say: a run with
 // no score says how far it got, and a run on top says so.
 //
-// On a phone the tiles are rows of one grouped list, so `divided` draws the
-// line between a row and the one above it, inset past the badge; from `sm`
-// up each is a card of its own.
+// It is a row of a `HubList`, so `divided` says whether a phone draws a line
+// between it and the row above.
 export function DailyTile({
   meta,
   summary,
@@ -88,17 +88,10 @@ export function DailyTile({
       }}
       aria-label={t("daily.tile.label", { game: name, status, line: context })}
       style={style}
-      className="party-pop group flex items-stretch gap-3 pl-4 no-underline transition-[transform,box-shadow,border-color,background-color] duration-[var(--dur-base)] ease-[var(--ease-spring)] hover:bg-[var(--surface-2)] active:bg-[var(--surface-2)] sm:rounded-[var(--radius-xl)] sm:border-2 sm:border-[var(--border-subtle)] sm:bg-[var(--surface-1)] sm:py-4 sm:shadow-[var(--shadow-2),var(--edge-highlight)] sm:hover:-translate-y-1 sm:hover:border-[var(--border-accent)] sm:hover:bg-[var(--surface-1)] sm:hover:shadow-[var(--shadow-3),var(--glow-accent)] sm:active:translate-y-0"
+      className={HUB_ROW}
     >
-      <GameGlyph
-        gameId={meta.id}
-        className="size-10 self-center transition-transform duration-[var(--dur-base)] ease-[var(--ease-bounce)] group-hover:-rotate-12 group-hover:scale-110 sm:size-12"
-      />
-      <span
-        className={`flex min-w-0 flex-1 items-center gap-3 py-2.5 pr-4 sm:py-0 ${
-          divided ? "max-sm:border-t max-sm:border-[var(--border-subtle)]" : ""
-        }`}
-      >
+      <GameGlyph gameId={meta.id} className={HUB_ROW_BADGE} />
+      <span className={hubRowBody(divided)}>
         <span className="flex min-w-0 flex-1 flex-col">
           <span className="truncate font-display text-base font-bold text-[var(--text-primary)] sm:text-lg">
             {name}
@@ -124,19 +117,10 @@ function Outcome({ meta, summary }: { meta: DailyGameMeta; summary: DailyGameSum
   const { mine } = summary;
 
   if (!mine || mine.status === "active") {
-    const fresh = !mine;
     return (
-      <span
-        aria-hidden="true"
-        className="flex-none rounded-[var(--radius-pill)] px-3.5 py-1.5 text-sm font-bold transition-transform duration-[var(--dur-base)] ease-[var(--ease-spring)] group-hover:scale-105"
-        style={
-          fresh
-            ? { background: "var(--accent)", color: "var(--text-on-accent)" }
-            : { background: "var(--accent-soft)", color: "var(--accent-on-soft)" }
-        }
-      >
-        {fresh ? t("daily.tile.play") : t("daily.tile.continue")}
-      </span>
+      <HubRowAction strong={!mine}>
+        {mine ? t("daily.tile.continue") : t("daily.tile.play")}
+      </HubRowAction>
     );
   }
 

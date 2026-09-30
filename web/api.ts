@@ -5,6 +5,7 @@ import type {
   DailyRunSnapshot,
   DailyToday,
   EventsResponse,
+  HubMatch,
   Leaderboard,
   MatchEvent,
   MatchSnapshot,
@@ -137,11 +138,11 @@ export function getLeaderboard(): Promise<Leaderboard> {
 }
 
 export interface MatchBuckets {
-  yourTurn: MatchSummary[];
-  waiting: MatchSummary[];
-  finished: MatchSummary[];
+  yourTurn: HubMatch[];
+  waiting: HubMatch[];
+  finished: HubMatch[];
   // Public lobbies the player is not in, each with a seat left, newest first.
-  open: MatchSummary[];
+  open: HubMatch[];
   stats: PlayerStats;
   streaks: PlayerStreaks;
 }

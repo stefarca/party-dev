@@ -7,7 +7,7 @@ import type { MatchVisibility } from "../../shared/protocol";
 const VISIBILITIES: readonly MatchVisibility[] = ["private", "public"];
 
 // Private or public, as one switch: off is invite-only, on also lists the lobby
-// under the hub's Public tab. Its label names the current setting, and the info
+// under Public lobbies on the hub. Its label names the current setting, and the info
 // button beside it explains both. Used on the hub's shelf, for the next match,
 // and by the host in the lobby, for this one.
 export function VisibilitySwitch({

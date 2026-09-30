@@ -41,6 +41,20 @@ export interface MatchSummary {
   visibility: MatchVisibility;
 }
 
+// How a finished match went for one of its players.
+export type MatchOutcome = "won" | "lost" | "draw";
+
+// A match as the hub lists it: its summary, and what the match index knows
+// about it from the caller's side.
+export interface HubMatch extends MatchSummary {
+  // Who the match is waiting on. Empty in a lobby and once it is over.
+  waitingOn: PlayerId[];
+  // How it went for the caller once it is over. Null while it is not, in a
+  // lobby they are not in, and for a match that finished before results were
+  // indexed.
+  outcome: MatchOutcome | null;
+}
+
 // No control characters (U+0000-U+001F, U+007F). Coworkers will open
 // devtools, so the nickname is validated server-side regardless of what the
 // client UI already enforces.
