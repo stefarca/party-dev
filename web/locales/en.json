@@ -329,8 +329,8 @@
     "public": "Public match",
     "about": "What private and public mean",
     "hint": {
-      "private": "Invite only — people need the code to join. Closes a day after it's created unless you start it.",
-      "public": "Listed under Public lobbies on everyone's hub, so anyone can join. Closes a day after it goes public unless you start it."
+      "private": "Invite only — people need the code to join. Closes a day after it's created unless it starts.",
+      "public": "Listed under Public lobbies on everyone's hub, so anyone can join. Closes a day after it goes public unless it starts."
     },
     "failed": "Could not change who can join."
   },
@@ -343,6 +343,7 @@
     "roomFor_other": "Room for {{count}} more players.",
     "needs": "{{game}} needs {{players}}.",
     "waitingForHost": "Waiting for the host to start.",
+    "startsWhenFull": "The match starts as soon as every seat is taken.",
     "start": "Start match ▸"
   },
   "turn": {

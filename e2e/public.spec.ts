@@ -74,12 +74,10 @@ test("a match started as public is listed on the hub, and anyone can join it fro
   await expect(card).toContainText("Join");
   await card.click();
 
+  // Bob took the last seat, so the match started for both of them.
   await expect(bob.page).toHaveURL(`/m/${code}`);
-  await expect(bob.page.getByText("Waiting for the host to start.")).toBeVisible();
-  // Who can join is the host's call alone.
-  await expect(publicSwitch(bob.page)).toHaveCount(0);
-  await expect(alice.page.getByRole("listitem").filter({ hasText: bob.nickname })).toBeVisible();
-  await expect(alice.page.getByRole("button", { name: /^Start match/ })).toBeEnabled();
+  await expect(bob.yourTurn.or(bob.waitingOn(alice))).toBeVisible();
+  await expect(alice.yourTurn.or(alice.waitingOn(bob))).toBeVisible();
 });
 
 test("a match is private unless the host makes it public, and can go back", async ({
@@ -104,7 +102,7 @@ test("a match is private unless the host makes it public, and can go back", asyn
   await expect(publicCardHostedBy(bob.page, alice)).toHaveCount(0);
 });
 
-test("a public lobby leaves the list once it is full", async ({ newPlayer }) => {
+test("a public lobby leaves the list once its last seat starts it", async ({ newPlayer }) => {
   const [alice, bob, carol] = await Promise.all(
     ["Alice", "Bob", "Carol"].map((name) => newPlayer(name)),
   );
@@ -115,7 +113,7 @@ test("a public lobby leaves the list once it is full", async ({ newPlayer }) => 
 
   await openMatches(bob.page);
   await publicCardHostedBy(bob.page, alice).click();
-  await expect(bob.page.getByText("Waiting for the host to start.")).toBeVisible();
+  await expect(bob.yourTurn.or(bob.waitingOn(alice))).toBeVisible();
 
   await openMatches(carol.page);
   await expect(publicCardHostedBy(carol.page, alice)).toHaveCount(0);

@@ -101,11 +101,15 @@ export const test = base.extend<Fixtures>({
           // One at a time, because some games seat players in join order.
           for (const guest of guests) await joinMatch(guest, code);
 
-          const started = await host.context.request.post(`/api/matches/${code}/start`, {
-            data: {},
-          });
-          await expect(started, `${host.nickname} starts ${code}`).toBeOK();
-          const { waitingOn } = (await started.json()) as { waitingOn: string[] };
+          // The join that takes the last seat starts the match; anything short of a full
+          // lobby is the host's to start.
+          let snapshot = await host.context.request.get(`/api/matches/${code}/snapshot`);
+          await expect(snapshot, `${host.nickname} reads ${code}`).toBeOK();
+          if (((await snapshot.json()) as { status: string }).status === "lobby") {
+            snapshot = await host.context.request.post(`/api/matches/${code}/start`, { data: {} });
+            await expect(snapshot, `${host.nickname} starts ${code}`).toBeOK();
+          }
+          const { waitingOn } = (await snapshot.json()) as { waitingOn: string[] };
 
           await Promise.all(
             players.map(async (player) => {

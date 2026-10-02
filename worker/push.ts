@@ -197,7 +197,6 @@ async function forgetDeadEndpoint(db: D1Database, endpoint: string): Promise<voi
 // wants when it subscribes.
 //
 // One set per `NudgeKind`: "turn" when the game is waiting on the reader,
-// "lobbyFull" when the reader hosts a lobby whose last seat was just taken,
 // "lobbyExpiring" when the reader hosts a lobby that is deleted in an hour.
 //
 // The body names the reader's opponents rather than the match code: a code
@@ -219,11 +218,6 @@ export const COPY: Record<
       one: "{{names}} is waiting for your move.",
       many: "{{names}} are waiting for your move.",
     },
-    lobbyFull: {
-      title: "Your {{game}} lobby is full",
-      one: "{{names}} joined. Start the match when you're ready.",
-      many: "{{names}} joined. Start the match when you're ready.",
-    },
     lobbyExpiring: {
       title: "Your {{game}} lobby closes in an hour",
       one: "{{names}} is waiting for you to start.",
@@ -235,11 +229,6 @@ export const COPY: Record<
       title: "Tocca a te in {{game}}",
       one: "{{names}} aspetta la tua mossa.",
       many: "{{names}} aspettano la tua mossa.",
-    },
-    lobbyFull: {
-      title: "La tua lobby di {{game}} è piena",
-      one: "{{names}} è entrato. Inizia la partita quando vuoi.",
-      many: "{{names}} sono entrati. Inizia la partita quando vuoi.",
     },
     lobbyExpiring: {
       title: "La tua lobby di {{game}} chiude tra un'ora",
@@ -282,7 +271,7 @@ export function composeNudge(
     // Both the push service (as the Topic header) and the operating system
     // (as the notification tag) collapse on this, so a second nudge about a
     // match replaces the first rather than stacking on it — the first turn
-    // replaces the lobby's "ready to start" too.
+    // replaces the lobby's "closes in an hour" too.
     tag: `m-${match.matchId}`,
   };
 }
