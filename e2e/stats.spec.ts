@@ -12,8 +12,9 @@ const O_WINS = [0, 3, 1, 4, 8, 5];
 
 async function playToAWin(winner: Player, loser: Player): Promise<void> {
   const code = await createMatch(winner, "tictactoe");
+  // The second player's join fills the lobby and starts the match.
   await joinMatch(loser, code);
-  const started = await winner.context.request.post(`/api/matches/${code}/start`, { data: {} });
+  const started = await winner.context.request.get(`/api/matches/${code}/snapshot`);
   await expect(started).toBeOK();
   // Who plays X is drawn when the match starts.
   const { waitingOn } = (await started.json()) as { waitingOn: string[] };

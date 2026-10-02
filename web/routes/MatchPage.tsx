@@ -451,6 +451,9 @@ function MatchBody({
     const count = players.length;
     const canStart =
       isHost && meta !== undefined && count >= meta.minPlayers && count <= meta.maxPlayers;
+    // The join that takes the last seat starts the match, so a game that
+    // plays only at full strength has nothing for its host to start.
+    const startsWhenFull = meta !== undefined && meta.minPlayers === meta.maxPlayers;
 
     return (
       <section className="party-pop flex flex-col gap-4 rounded-[var(--radius-xl)] border border-[var(--border-subtle)] bg-[var(--surface-1)] p-5 shadow-[var(--shadow-2),var(--edge-highlight)]">
@@ -471,10 +474,14 @@ function MatchBody({
               game: gameName(match.gameId, meta.name),
               players: playerRange(t, meta),
             })}
-            {isHost ? "" : ` ${t("lobby.waitingForHost")}`}
+            {startsWhenFull
+              ? ` ${t("lobby.startsWhenFull")}`
+              : isHost
+                ? ""
+                : ` ${t("lobby.waitingForHost")}`}
           </p>
         )}
-        {isHost && (
+        {isHost && !startsWhenFull && (
           <Button
             onPress={start}
             isDisabled={!canStart}

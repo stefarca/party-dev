@@ -333,6 +333,11 @@ async function createMatch(
   return { matchDo, pauses, alarmController, db, ctx, sockets, env };
 }
 
+// The match as the lobby endpoint reports it, whatever its status.
+async function lobby(matchDo: MatchDOInstance): Promise<MatchSummary> {
+  return (await (await matchDo.fetch(new Request("http://do/snapshot"))).json()) as MatchSummary;
+}
+
 interface Move {
   playerId: string;
   action: unknown;
@@ -648,10 +653,6 @@ describe("MatchDO visibility", () => {
     delete serverGames.counter;
   });
 
-  async function lobby(matchDo: MatchDOInstance): Promise<MatchSummary> {
-    return (await (await matchDo.fetch(new Request("http://do/snapshot"))).json()) as MatchSummary;
-  }
-
   function setVisibility(matchDo: MatchDOInstance, playerId: string, visibility: string) {
     return matchDo.fetch(jsonRequest("/lobby/visibility", { playerId, visibility }));
   }
@@ -954,30 +955,40 @@ describe("MatchDO nudges", () => {
     expect(sent.map((text) => text.split(" ")[0])).toEqual(["Alice", "Bob", "Alice"]);
   });
 
-  // The counter seats up to four, so the lobby fills with the fourth player.
-  it("tells a host who has looked away once the last seat is taken, and only then", async () => {
+  // The counter seats up to four, so the lobby fills with the fourth player,
+  // and that join starts the match.
+  it("starts the match on the join that takes the last seat, and nudges whoever moves first", async () => {
     const { matchDo, db } = await awayMatch(["alice", "bob"]);
     db.registry.dave = "Dave";
     await matchDo.fetch(jsonRequest("/lobby/join", { playerId: "carol" }));
+    expect((await lobby(matchDo)).status).toBe("lobby");
     expect(await nudges()).toEqual([]);
 
-    await matchDo.fetch(jsonRequest("/lobby/join", { playerId: "dave" }));
-    const ready = [expect.stringMatching(/^Alice can start \w+, the lobby is full/)];
-    expect(await nudges()).toEqual(ready);
+    const join = await matchDo.fetch(jsonRequest("/lobby/join", { playerId: "dave" }));
+    expect(join.status).toBe(200);
+    expect(((await join.json()) as MatchSummary).status).toBe("active");
+    const events = (await (
+      await matchDo.fetch(new Request("http://do/events?playerId=alice"))
+    ).json()) as { events: { payload: { type: string } }[] };
+    expect(events.events.slice(-2).map((e) => e.payload.type)).toEqual([
+      "player_joined",
+      "match_started",
+    ]);
+    expect(await nudges()).toEqual([expect.stringMatching(/^Alice is up/)]);
 
-    // A lobby fills once: nothing else that happens to it while full says so again.
-    await matchDo.fetch(jsonRequest("/lobby/join", { playerId: "dave" }));
-    await matchDo.fetch(
-      jsonRequest("/lobby/visibility", { playerId: "alice", visibility: "public" }),
-    );
-    expect(await nudges()).toEqual(ready);
+    // The host has nothing left to start.
+    const start = await matchDo.fetch(jsonRequest("/start", { playerId: "alice" }));
+    expect(start.status).toBe(409);
   });
 
-  it("does not tell a host who is looking at the lobby that it is full", async () => {
-    const { matchDo, sockets, db } = await awayMatch(["alice", "bob", "carol"]);
-    db.registry.dave = "Dave";
-    sockets.alice.pingedAt = new Date();
+  it("does not nudge the player whose join started the match, though it is their move", async () => {
+    serverGames.counter = {
+      ...counterGame,
+      init: (players, seed) => counterGame.init([...players].reverse(), seed),
+    };
+    const { matchDo } = await awayMatch(["alice", "bob", "carol"]);
     await matchDo.fetch(jsonRequest("/lobby/join", { playerId: "dave" }));
+    expect((await lobby(matchDo)).status).toBe("active");
     expect(await nudges()).toEqual([]);
   });
 });

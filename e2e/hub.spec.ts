@@ -36,9 +36,10 @@ test("the same nickname in another browser is the same player", async ({ newPlay
     await expect(page.getByRole("heading", { name: `Hey ${alice.nickname} 👋` })).toBeVisible();
     // Alice's match followed her here, and so did the record it counts towards.
     await page.getByRole("link", { name: "Matches" }).click();
-    await expect(page.getByRole("region", { name: /^Their turn/ }).getByRole("link")).toContainText(
-      bob.nickname,
-    );
+    // Bob's join filled the lobby and started it, with either of them to move first.
+    await expect(
+      page.getByRole("region", { name: /^(Your|Their) turn/ }).getByRole("link"),
+    ).toContainText(bob.nickname);
     await page.getByRole("link", { name: "Stats & rivals ▸" }).click();
     await expect(page.getByText("1 played")).toBeVisible();
   } finally {
@@ -165,7 +166,7 @@ test("a player can reset their record and keep their matches", async ({ newPlaye
 
   await alice.page.goto("/matches");
   await expect(
-    alice.page.getByRole("region", { name: /^Their turn/ }).getByRole("link"),
+    alice.page.getByRole("region", { name: /^(Your|Their) turn/ }).getByRole("link"),
   ).toContainText(bob.nickname);
 });
 

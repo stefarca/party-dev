@@ -84,6 +84,12 @@ the caller is not in and that still have a seat are listed. The seat check runs 
 LIMIT, against seat counts taken from the game catalog. An index row whose `visibility` is NULL
 predates the column and counts as private.
 
+**A full lobby starts itself.** The join that takes a lobby's last seat (`maxPlayers`) also
+starts the match, in the same `commit()` (`player_joined` then `match_started`), since nobody can
+leave a lobby and a full one leaves the host nothing to decide. So a game whose `minPlayers` equals
+its `maxPlayers` never shows its host a Start button; only a game with a range of player counts
+does, for starting short of full. `/start` on a match that has started answers `already_started`.
+
 **Lobbies expire.** A lobby nobody starts is deleted at the record's `expiresAt`, whatever its
 visibility and however many players it has. That is a day after its creation, and going from
 private to public sets it to a day from then. Nothing else moves it: joins do not, and going back
@@ -120,7 +126,7 @@ and `alarm()`.
 Its seven stages run in a binding order: persist (the record and the turn-wait ledger) → append
 events → recompute
 `waitingOn`/`deadline` → reconcile the DO alarm → broadcast a per-player snapshot → sync the D1
-index → nudge newly-waited-on disconnected players (and the host of a lobby that commit filled). Two rules hold inside it:
+index → nudge newly-waited-on disconnected players. Two rules hold inside it:
 
 - Stages 1–2 are synchronous and protected by the DO input gate. Every stage after the first
   `await` must re-read `this.readMatch()` and recompute via `deriveWaitingAndDeadline()` before
@@ -167,11 +173,9 @@ waited-on, not watching, and past the rate limit (`shouldNudge` in `worker/nudge
 player per match per turn, plus a 10-minute floor under a nudge the player has not answered, with
 `nudgedAt` kept on the DO record). A move answers a nudge — `handleAction` drops the mover's
 `nudgedAt` entry — so a player who is actually playing hears about every turn, however quick; the
-floor only holds back a player whose `waitingOn` keeps flapping while they stay away. A lobby waits
-on nobody, so the one nudge `waitingOn` cannot produce has its own trigger: the join that takes a
-lobby's last seat (`maxPlayers`) nudges the host, if they are not watching, with kind `lobbyFull`
-instead of `turn` — no rate limit, since nobody leaves a lobby and it fills once. It is left out of
-`waitingOn` on purpose, since that also drives the hub's `waiting` flag and the app badge. "Watching"
+floor only holds back a player whose `waitingOn` keeps flapping while they stay away. The player
+whose own request made the commit (`commit()`'s `present`, the joiner whose join started the match)
+is never nudged by it, since they are looking at the match before their socket is. "Watching"
 is `MatchDO.isWatching()`: a socket counts only while its page keeps up the heartbeat (below), and
 a hidden page closes its socket, so neither a sleeping laptop's leftover socket nor a background
 tab spares its player a nudge. Both channels then get that same list, and the roster's names,
