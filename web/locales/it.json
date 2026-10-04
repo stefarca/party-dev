@@ -329,8 +329,8 @@
     "public": "Partita pubblica",
     "about": "Cosa vuol dire privata e pubblica",
     "hint": {
-      "private": "Solo su invito: per entrare serve il codice. Chiude un giorno dopo la creazione, se non la inizi.",
-      "public": "Elencata in Partite pubbliche nella home di tutti: chiunque può entrare. Chiude un giorno dopo essere diventata pubblica, se non la inizi."
+      "private": "Solo su invito: per entrare serve il codice. Chiude un giorno dopo la creazione, se la partita non inizia.",
+      "public": "Elencata in Partite pubbliche nella home di tutti: chiunque può entrare. Chiude un giorno dopo essere diventata pubblica, se la partita non inizia."
     },
     "failed": "Impossibile cambiare chi può entrare."
   },
@@ -343,6 +343,7 @@
     "roomFor_other": "C'è posto per altri {{count}} giocatori.",
     "needs": "{{game}}: servono {{players}}.",
     "waitingForHost": "In attesa che l'host avvii la partita.",
+    "startsWhenFull": "La partita inizia appena tutti i posti sono occupati.",
     "start": "Inizia la partita ▸"
   },
   "turn": {

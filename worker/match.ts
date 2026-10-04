@@ -134,12 +134,14 @@ function lobbyWakeAt(record: MatchRecord): number | null {
   return record.expiryWarnedFor === expiresAt ? expiresAt : expiresAt - LOBBY_EXPIRY_WARNING_MS;
 }
 
-// Whether `record` is a lobby with every seat taken, so all that is left is
-// for the host to start it. Every game's `maxPlayers` is at least its
-// `minPlayers`, so a full lobby can always be started.
-function lobbyIsFull(record: MatchRecord): boolean {
-  const maxPlayers = getGame(record.gameId)?.meta.maxPlayers ?? Infinity;
-  return record.status === "lobby" && record.players.length >= maxPlayers;
+// Turns a lobby into a match under way, seating its roster in join order.
+// The caller has checked the player count and commits the record.
+function beginGame(record: MatchRecord, module: GameModule<unknown, unknown>): void {
+  record.status = "active";
+  record.state = module.init(
+    record.players.map((p) => p.id),
+    record.seed,
+  );
 }
 
 // Maps an internal error `code` (see ActionResult/MutationResult above) to
@@ -535,7 +537,11 @@ export class MatchDO extends DurableObject<Env> {
   // join, start, action, alarm — funnels through this single method.
   // ---------------------------------------------------------------------
 
-  private async commit(record: MatchRecord, events: MatchEventPayload[]): Promise<void> {
+  private async commit(
+    record: MatchRecord,
+    events: MatchEventPayload[],
+    present?: PlayerId,
+  ): Promise<void> {
     const module = getGame(record.gameId) as GameModule<unknown, unknown> | undefined;
 
     // Read the previously-persisted waitingOn *before* overwriting the
@@ -543,7 +549,6 @@ export class MatchDO extends DurableObject<Env> {
     const priorRecord = this.readMatch();
     const previousWaiting =
       module && priorRecord?.state != null ? module.waitingOn(priorRecord.state) : [];
-    const wasFull = priorRecord !== null && lobbyIsFull(priorRecord);
 
     // Auto-finalize: whenever the state a caller just assigned to
     // `record.state` has a non-null result(), the match is done —
@@ -658,8 +663,7 @@ export class MatchDO extends DurableObject<Env> {
     current = this.readMatch() ?? record;
     derived = this.deriveWaitingAndDeadline(module, current);
 
-    // 7. Nudge players newly waited-on who are not watching, and the host of
-    // a lobby this commit filled.
+    // 7. Nudge players newly waited-on who are not watching.
     // `newlyWaiting` is computed from `current`/`derived` above — the
     // freshest truth after every prior stage's await — and from
     // `previousWaiting` captured before this commit touched anything, so a
@@ -669,20 +673,12 @@ export class MatchDO extends DurableObject<Env> {
     // next-round transition): `alarm()` funnels through this same `commit()`
     // (see its own comment), so a round of new waiters created there nudges
     // exactly like a normal move would.
-    const newlyWaiting = derived.waitingOn.filter((id) => !previousWaiting.includes(id));
-    // `priorRecord` is null only for the create itself, which seats the host
-    // alone and which the host is looking at.
-    if (priorRecord !== null && !wasFull && lobbyIsFull(current)) this.lobbyFullHook(current);
+    // `present` is never nudged: their own request is what this commit
+    // answers, so they are looking at the match even before their socket is.
+    const newlyWaiting = derived.waitingOn.filter(
+      (id) => !previousWaiting.includes(id) && id !== present,
+    );
     await this.nudgeHook(current, newlyWaiting);
-  }
-
-  // Tells the host of a lobby that has just filled that it is ready to start,
-  // unless they are watching it. A lobby waits on nobody (`waitingOn` is the
-  // game's, and there is no game until Start), so `nudgeHook` never covers
-  // this. It needs no rate limit: nobody leaves a lobby, so it fills once.
-  private lobbyFullHook(record: MatchRecord): void {
-    if (this.isWatching(record.hostId, Date.now())) return;
-    this.sendNudges(record, [record.hostId], "lobbyFull");
   }
 
   // Nudge every player in `newlyWaiting` who is not watching the match,
@@ -838,7 +834,16 @@ export class MatchDO extends DurableObject<Env> {
         return Response.json({ ok: false, error: "lobby_full" }, { status: 409 });
       }
       record.players.push({ id, joinedAt: Date.now() });
-      await this.commit(record, [{ type: "player_joined", id }]);
+      // The join that takes the last seat starts the match: a full lobby
+      // leaves the host nothing to decide, since nobody can leave it. Both
+      // happen in one commit, so no snapshot ever shows a full lobby.
+      const events: MatchEventPayload[] = [{ type: "player_joined", id }];
+      const module = getGame(record.gameId) as GameModule<unknown, unknown> | undefined;
+      if (module && record.players.length >= module.meta.maxPlayers) {
+        beginGame(record, module);
+        events.push({ type: "match_started" });
+      }
+      await this.commit(record, events, id);
     }
     return this.namedSummaryResponse();
   }
@@ -1034,8 +1039,7 @@ export class MatchDO extends DurableObject<Env> {
       return { ok: false, code: "wrong_player_count", message: "player count is out of range" };
     }
 
-    record.status = "active";
-    record.state = module.init(playerIds, record.seed);
+    beginGame(record, module);
     await this.commit(record, [{ type: "match_started" }]);
     return { ok: true };
   }
