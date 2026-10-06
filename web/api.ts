@@ -9,6 +9,7 @@ import type {
   HubMatch,
   Leaderboard,
   MatchEvent,
+  MatchReaction,
   MatchSnapshot,
   MatchSummary,
   MatchVisibility,
@@ -17,7 +18,9 @@ import type {
   PlayerStreaks,
   PushKeyResponse,
   PushSubscriptionPayload,
+  RematchResponse,
 } from "../shared/protocol";
+import type { Reaction } from "../shared/reactions";
 
 // Thin typed client over worker/api.ts. Every call goes through request()
 // so credentials, headers, and error shape are consistent in one place —
@@ -216,6 +219,24 @@ export function postMatchStart(id: string): Promise<MatchSnapshot> {
     method: "POST",
     body: JSON.stringify({}),
   });
+}
+
+export async function postMatchReaction(id: string, reaction: Reaction): Promise<MatchReaction> {
+  const body = await request<{ reaction: MatchReaction }>(
+    `/api/matches/${encodeURIComponent(id)}/reactions`,
+    { method: "POST", body: JSON.stringify({ reaction }) },
+  );
+  return body.reaction;
+}
+
+// The lobby of the next match between the same players: a new one, or the
+// one another of them already opened.
+export async function requestRematch(id: string): Promise<string> {
+  const body = await request<RematchResponse>(`/api/matches/${encodeURIComponent(id)}/rematch`, {
+    method: "POST",
+    body: JSON.stringify({}),
+  });
+  return body.matchId;
 }
 
 // ---------------------------------------------------------------------------

@@ -5,7 +5,8 @@ import { vi } from "vitest";
 import type { MockInstance } from "vitest";
 
 import { UNKNOWN_NICKNAME } from "../shared/nickname";
-import type { MatchSnapshot, MatchSummary, PlayerInfo } from "../shared/protocol";
+import type { MatchReaction, MatchSnapshot, MatchSummary, PlayerInfo } from "../shared/protocol";
+import { REACTION_COOLDOWN_MS, REACTION_LIMIT } from "../shared/reactions";
 
 // This repo has no @cloudflare/vitest-pool-workers setup (vitest.config.ts
 // runs plain "node"), so "cloudflare:workers" — a virtual module that only
@@ -34,7 +35,13 @@ vi.mock("cloudflare:workers", () => ({
   ) {}
 };
 
+// A rematch opens its lobby through `createMatch()`, which needs a D1 code
+// reservation and a second Durable Object. Neither exists here, so the tests
+// stand in for it and only count the lobbies it is asked for.
+vi.mock("./create", () => ({ createMatch: vi.fn() }));
+
 const { counterGame, ROUND_TIMEOUT_MS } = await import("../games/__fixtures__/counter");
+const { createMatch: openLobby } = await import("./create");
 const { createMigratedDb } = await import("./__fixtures__/d1");
 const { serverGames } = await import("../games/registry");
 const { MatchDO } = await import("./match");
@@ -1150,5 +1157,203 @@ describe("MatchDO turn-wait ledger", () => {
   it("writes no ledger for a lobby", async () => {
     const { db } = await createMatch(["alice", "bob"], { start: false });
     expect(db.batches.flat().filter((s) => s.sql.includes("turn_waits"))).toEqual([]);
+  });
+});
+
+describe("MatchDO reactions", () => {
+  const T0 = Date.UTC(2026, 9, 6, 12);
+
+  beforeEach(() => {
+    serverGames.counter = counterGame;
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(T0);
+  });
+
+  afterEach(() => {
+    delete serverGames.counter;
+    vi.useRealTimers();
+  });
+
+  function react(matchDo: MatchDOInstance, playerId: string, reaction: string) {
+    return matchDo.fetch(jsonRequest("/react", { playerId, reaction }));
+  }
+
+  async function reactionsIn(matchDo: MatchDOInstance, playerId: string) {
+    const res = await matchDo.fetch(new Request(`http://do/view?playerId=${playerId}`));
+    return ((await res.json()) as MatchSnapshot).reactions;
+  }
+
+  it("pushes a reaction to every socket, and keeps it for the snapshots that follow", async () => {
+    const { matchDo, sockets } = await createMatch(["alice", "bob"]);
+    const res = await react(matchDo, "alice", "laugh");
+    expect(res.status).toBe(200);
+
+    const expected: MatchReaction = { id: 1, ts: T0, by: "alice", reaction: "laugh" };
+    expect(await res.json()).toEqual({ reaction: expected });
+    for (const socket of Object.values(sockets)) {
+      expect(socket.sent.at(-1)).toEqual({ t: "reaction", reaction: expected });
+    }
+    expect(await reactionsIn(matchDo, "bob")).toEqual([expected]);
+  });
+
+  it("is not an event, and moves nothing the index holds", async () => {
+    const { matchDo, ctx, db } = await createMatch(["alice", "bob"]);
+    const eventsBefore = ctx.storage.sql.exec("SELECT count(*) AS n FROM events").one();
+    const batchesBefore = db.batches.length;
+    const updatedBefore = (await lobby(matchDo)).updatedAt;
+
+    vi.setSystemTime(T0 + 60_000);
+    await react(matchDo, "bob", "turtle");
+
+    expect(ctx.storage.sql.exec("SELECT count(*) AS n FROM events").one()).toEqual(eventsBefore);
+    expect(db.batches.length).toBe(batchesBefore);
+    expect((await lobby(matchDo)).updatedAt).toBe(updatedBefore);
+  });
+
+  it("refuses a second reaction from the same player inside the cooldown", async () => {
+    const { matchDo } = await createMatch(["alice", "bob"]);
+    await react(matchDo, "alice", "fire");
+
+    const tooSoon = await react(matchDo, "alice", "fire");
+    expect(tooSoon.status).toBe(429);
+    expect(await tooSoon.json()).toMatchObject({ error: "too_fast" });
+    // The cooldown is each player's own.
+    expect((await react(matchDo, "bob", "fire")).status).toBe(200);
+
+    vi.setSystemTime(T0 + REACTION_COOLDOWN_MS);
+    expect((await react(matchDo, "alice", "fire")).status).toBe(200);
+  });
+
+  it("keeps only the latest reactions", async () => {
+    const { matchDo } = await createMatch(["alice", "bob"]);
+    for (let i = 0; i < REACTION_LIMIT + 5; i++) {
+      vi.setSystemTime(T0 + i * REACTION_COOLDOWN_MS);
+      await react(matchDo, "alice", "clap");
+    }
+    const kept = await reactionsIn(matchDo, "alice");
+    expect(kept).toHaveLength(REACTION_LIMIT);
+    expect(kept[0].id).toBe(6);
+    expect(kept.at(-1)?.id).toBe(REACTION_LIMIT + 5);
+  });
+
+  it("refuses anyone outside the match, a lobby, and a reaction off the list", async () => {
+    const { matchDo } = await createMatch(["alice", "bob"]);
+    expect((await react(matchDo, "carol", "clap")).status).toBe(403);
+    expect((await react(matchDo, "alice", "poop")).status).toBe(400);
+
+    const { matchDo: waiting } = await createMatch(["alice", "bob", "carol"], { start: false });
+    expect((await react(waiting, "alice", "clap")).status).toBe(409);
+  });
+
+  it("takes a reaction over the socket, and answers a refusal there with an error", async () => {
+    const { matchDo, sockets } = await createMatch(["alice", "bob"]);
+    const ws = sockets.alice as unknown as WebSocket;
+    await matchDo.webSocketMessage(ws, JSON.stringify({ t: "react", reaction: "gg" }));
+    expect(sockets.bob.sent.at(-1)).toMatchObject({ t: "reaction", reaction: { reaction: "gg" } });
+
+    await matchDo.webSocketMessage(ws, JSON.stringify({ t: "react", reaction: "gg" }));
+    expect(sockets.alice.sent.at(-1)).toMatchObject({ t: "error", code: "too_fast" });
+  });
+});
+
+describe("MatchDO rematch", () => {
+  const HOOK = "http://slack.test/hook";
+  const LONG_AGO = Date.now() - 60 * 60 * 1000;
+  const mockedOpen = vi.mocked(openLobby);
+  let fetchSpy: MockInstance<typeof fetch>;
+
+  beforeEach(() => {
+    serverGames.counter = counterGame;
+    fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(null));
+    let next = 0;
+    mockedOpen.mockReset();
+    mockedOpen.mockImplementation(async () => ({ ok: true, matchId: `NEXT${++next}` }));
+  });
+
+  afterEach(() => {
+    delete serverGames.counter;
+    fetchSpy.mockRestore();
+  });
+
+  async function finishedMatch(players = ["alice", "bob"]) {
+    const created = await createMatch(players);
+    await reachSimultaneousPhase(created.matchDo, players);
+    for (const id of players) await play(created.matchDo, pick(id, 1));
+    expect((await lobby(created.matchDo)).status).toBe("done");
+    return created;
+  }
+
+  function askForRematch(matchDo: MatchDOInstance, playerId: string) {
+    return matchDo.fetch(jsonRequest("/rematch", { playerId }));
+  }
+
+  it("opens a private lobby hosted by whoever asked, and offers it to everyone watching", async () => {
+    const { matchDo, sockets } = await finishedMatch();
+    const res = await askForRematch(matchDo, "bob");
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ matchId: "NEXT1" });
+    expect(mockedOpen).toHaveBeenCalledWith(expect.anything(), {
+      gameId: "counter",
+      hostId: "bob",
+      visibility: "private",
+    });
+
+    const offered = snapshotsSentTo(sockets.alice).at(-1);
+    expect(offered?.rematch).toEqual({ matchId: "NEXT1", by: "bob" });
+  });
+
+  it("hands every later ask the same lobby, however close together they come", async () => {
+    const { matchDo } = await finishedMatch();
+    const answers = await Promise.all([
+      askForRematch(matchDo, "alice"),
+      askForRematch(matchDo, "bob"),
+    ]);
+    const later = await askForRematch(matchDo, "bob");
+
+    for (const res of [...answers, later]) expect(await res.json()).toEqual({ matchId: "NEXT1" });
+    expect(mockedOpen).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not touch when the match finished, nor its index rows", async () => {
+    const { matchDo, db } = await finishedMatch();
+    const before = await lobby(matchDo);
+    const batches = db.batches.length;
+    await askForRematch(matchDo, "alice");
+
+    expect((await lobby(matchDo)).updatedAt).toBe(before.updatedAt);
+    expect(db.batches.length).toBe(batches);
+  });
+
+  it("refuses a match still being played, and anyone who did not play it", async () => {
+    const { matchDo } = await createMatch(["alice", "bob"]);
+    const early = await askForRematch(matchDo, "alice");
+    expect(early.status).toBe(409);
+    expect(await early.json()).toMatchObject({ error: "not_finished" });
+
+    const { matchDo: done } = await finishedMatch();
+    expect((await askForRematch(done, "carol")).status).toBe(403);
+    expect(mockedOpen).not.toHaveBeenCalled();
+  });
+
+  it("can be asked again after a lobby could not be opened", async () => {
+    const { matchDo } = await finishedMatch();
+    mockedOpen.mockResolvedValueOnce({ ok: false, error: "create_failed" });
+    expect((await askForRematch(matchDo, "alice")).status).toBe(500);
+    expect(await (await askForRematch(matchDo, "alice")).json()).toEqual({ matchId: "NEXT1" });
+  });
+
+  it("tells a player who has looked away, with a link to the new lobby", async () => {
+    const { matchDo, env, sockets } = await finishedMatch(["alice", "bob", "carol"]);
+    env.SLACK_WEBHOOK_URL = HOOK;
+    (env as { PUBLIC_BASE_URL?: string }).PUBLIC_BASE_URL = "https://party.test";
+    sockets.carol.connectedAt = LONG_AGO;
+    sockets.alice.pingedAt = new Date();
+    await askForRematch(matchDo, "alice");
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    const sent = fetchSpy.mock.calls
+      .filter(([url]) => url === HOOK)
+      .map(([, init]) => (JSON.parse(String(init?.body)) as { text: string }).text);
+    expect(sent).toEqual(["Alice wants a counter rematch with Carol: https://party.test/m/NEXT1"]);
   });
 });

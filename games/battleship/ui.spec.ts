@@ -38,6 +38,9 @@ async function fire(player: Player, name: string) {
 test("both fleets are placed, then the first shot shows on both boards and passes the turn", async ({
   startMatch,
 }) => {
+  // Some forty steps between two browsers, which under parallel load (and on a dev server still
+  // compiling this game's UI for the first time) outrun the default test timeout.
+  test.slow();
   const {
     players: [a, b],
   } = await startMatch("battleship");

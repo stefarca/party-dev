@@ -2,7 +2,14 @@ import { Disclosure } from "@heroui/react";
 import type { TFunction } from "i18next";
 import { useTranslation } from "react-i18next";
 
-import type { MatchEvent, MatchEventPayload, PlayerId, PlayerInfo } from "../../shared/protocol";
+import type {
+  MatchEvent,
+  MatchEventPayload,
+  MatchReaction,
+  PlayerId,
+  PlayerInfo,
+} from "../../shared/protocol";
+import { REACTION_EMOJI } from "../../shared/reactions";
 import { useLanguage } from "../i18n";
 import { PlayerAvatar } from "./PlayerAvatar";
 
@@ -104,12 +111,33 @@ function lineFor(
   }
 }
 
+// One row of the panel: an event from the log, or a reaction. Reactions are
+// not in the log (see `MatchReaction`), so they are woven in by time.
+interface Row {
+  key: string;
+  ts: number;
+  line: Line;
+}
+
+function reactionLine(t: TFunction, players: PlayerInfo[], reaction: MatchReaction): Line {
+  return {
+    text: t("history.reacted", {
+      name: nameFor(players, reaction.by),
+      emoji: REACTION_EMOJI[reaction.reaction],
+    }),
+    glyph: REACTION_EMOJI[reaction.reaction],
+    actor: reaction.by,
+  };
+}
+
 export function HistoryPanel({
   events,
+  reactions = [],
   players,
   gameId,
 }: {
   events: MatchEvent[];
+  reactions?: MatchReaction[];
   players: PlayerInfo[];
   gameId: string;
 }) {
@@ -119,7 +147,21 @@ export function HistoryPanel({
   // next to the rest of that game's strings.
   const getFixedT = i18n.getFixedT as unknown as (lng: null, ns: string) => GameT;
   const tGame = getFixedT(null, gameId);
-  const newestFirst = [...events].reverse();
+  const rows: Row[] = [
+    ...events.map((event) => ({
+      key: `e${event.seq}`,
+      ts: event.ts,
+      line: lineFor(t, tGame, players, event.payload),
+    })),
+    ...reactions.map((reaction) => ({
+      key: `r${reaction.id}`,
+      ts: reaction.ts,
+      line: reactionLine(t, players, reaction),
+    })),
+  ];
+  // Newest first. The sort is stable, so events stamped in the same
+  // millisecond keep their log order.
+  const newestFirst = rows.reverse().sort((a, b) => b.ts - a.ts);
 
   return (
     <Disclosure className="overflow-hidden rounded-[var(--radius-lg)] border border-[var(--border-subtle)] bg-surface/70 shadow-[var(--edge-highlight),var(--shadow-1)]">
@@ -127,7 +169,7 @@ export function HistoryPanel({
         <Disclosure.Trigger className="flex w-full items-center gap-2 px-5 py-3 text-left font-display text-sm font-semibold text-[var(--text-secondary)]">
           {t("history.title")}
           <span className="inline-flex min-w-6 items-center justify-center rounded-[var(--radius-pill)] bg-[var(--surface-3)] px-2 py-0.5 text-xs font-bold text-[var(--text-muted)]">
-            {events.length}
+            {rows.length}
           </span>
           <Disclosure.Indicator />
         </Disclosure.Trigger>
@@ -141,11 +183,10 @@ export function HistoryPanel({
               aria-label={t("history.title")}
               className="m-0 flex max-h-64 list-none flex-col gap-1 overflow-y-auto p-0"
             >
-              {newestFirst.map((event) => {
-                const line = lineFor(t, tGame, players, event.payload);
+              {newestFirst.map(({ key, ts, line }) => {
                 return (
                   <li
-                    key={event.seq}
+                    key={key}
                     className="flex items-center gap-2.5 rounded-[var(--radius-sm)] px-2 py-1.5 odd:bg-[var(--surface-2)]/60"
                   >
                     {line.actor ? (
@@ -166,10 +207,10 @@ export function HistoryPanel({
                       {line.text}
                     </span>
                     <time
-                      dateTime={new Date(event.ts).toISOString()}
+                      dateTime={new Date(ts).toISOString()}
                       className="flex-none text-xs tabular-nums text-[var(--text-muted)]"
                     >
-                      {new Date(event.ts).toLocaleTimeString(language, {
+                      {new Date(ts).toLocaleTimeString(language, {
                         hour: "2-digit",
                         minute: "2-digit",
                       })}

@@ -191,7 +191,9 @@ function RouteContent() {
   // One element for every section, so switching between them keeps the
   // dashboard mounted and its data on screen.
   if (route.name === "dashboard") return <Dashboard tab={route.tab} />;
-  if (route.name === "match") return <MatchPage code={route.code} />;
+  // Keyed by code, so following a rematch from one match to the next starts
+  // the page afresh rather than showing the old match until the new loads.
+  if (route.name === "match") return <MatchPage key={route.code} code={route.code} />;
   if (route.name === "daily") return <DailyPage gameId={route.gameId} />;
   if (route.name === "stats") return <StatsPage />;
   return (

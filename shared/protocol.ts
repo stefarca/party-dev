@@ -3,6 +3,8 @@ import { z } from "zod";
 import { decodeBase64Url } from "./base64url";
 import type { ActionDescription, DailyScore, Result } from "./game";
 import { NICKNAME_MAX_LENGTH } from "./nickname";
+import { REACTIONS } from "./reactions";
+import type { Reaction } from "./reactions";
 
 // The single home for cross-boundary types and zod schemas.
 // Server authority is binding here: every inbound payload — REST bodies
@@ -102,6 +104,22 @@ export type ActionRequest = z.infer<typeof ActionRequestSchema>;
 // being silently ignored.
 export const StartMatchRequestSchema = z.object({}).strict();
 export type StartMatchRequest = z.infer<typeof StartMatchRequestSchema>;
+
+export const ReactionSchema = z.enum(REACTIONS);
+
+// Body of the HTTP reaction fallback (POST /api/matches/:id/reactions) —
+// mirrors the WS `{ t: "react", reaction }` message's payload one-for-one.
+export const ReactRequestSchema = z.object({ reaction: ReactionSchema });
+export type ReactRequest = z.infer<typeof ReactRequestSchema>;
+
+// Body of POST /api/matches/:id/rematch. Takes none, like join and start.
+export const RematchRequestSchema = z.object({}).strict();
+
+// Reply to POST /api/matches/:id/rematch: the lobby of the match that
+// follows this one, the same one for every player who asks.
+export interface RematchResponse {
+  matchId: string;
+}
 
 // ---------------------------------------------------------------------------
 // Web push subscriptions. A browser hands the app an endpoint plus two keys
@@ -205,11 +223,14 @@ export const StartMessageSchema = z.object({ t: z.literal("start") });
 
 export const PingMessageSchema = z.object({ t: z.literal("ping") });
 
+export const ReactMessageSchema = z.object({ t: z.literal("react"), reaction: ReactionSchema });
+
 export const ClientMessageSchema = z.discriminatedUnion("t", [
   HelloMessageSchema,
   ActionMessageSchema,
   StartMessageSchema,
   PingMessageSchema,
+  ReactMessageSchema,
 ]);
 export type ClientMessage = z.infer<typeof ClientMessageSchema>;
 
@@ -238,6 +259,18 @@ export interface MatchEvent {
   payload: MatchEventPayload;
 }
 
+// One reaction a player sent in a match. Not part of the event log: it is
+// banter rather than something that happened in the game, and an older
+// client, whose history panel has wording for every event kind but this one,
+// ignores a snapshot field or a message kind it does not know. `id` orders
+// them and tells a repeat apart from a second reaction of the same kind.
+export interface MatchReaction {
+  id: number;
+  ts: number;
+  by: PlayerId;
+  reaction: Reaction;
+}
+
 // The shape shared by the WS `snapshot` message and the HTTP snapshot
 // route's JSON body. `view` is always this player's own `view()`
 // projection (or `null` before the game has started) — never raw state.
@@ -249,10 +282,22 @@ export interface MatchSnapshot {
   waitingOn: PlayerId[];
   deadline: number | null;
   result: Result | null;
+  // The match's latest reactions, oldest first, at most `REACTION_LIMIT`.
+  reactions: MatchReaction[];
+  // The lobby of the match that follows this finished one, and who opened
+  // it, once a player has asked for a rematch.
+  rematch: { matchId: string; by: PlayerId } | null;
 }
 
 export interface SnapshotMessage extends MatchSnapshot {
   t: "snapshot";
+}
+
+// A reaction, pushed to every socket the moment it is sent. The HTTP
+// equivalent is the `reactions` every snapshot carries.
+export interface ReactionMessage {
+  t: "reaction";
+  reaction: MatchReaction;
 }
 
 export interface EventsMessage {
@@ -279,7 +324,8 @@ export interface PongMessage {
   t: "pong";
 }
 
-export type ServerMessage = SnapshotMessage | EventsMessage | ErrorMessage | PongMessage;
+export type ServerMessage =
+  SnapshotMessage | EventsMessage | ReactionMessage | ErrorMessage | PongMessage;
 
 // ---------------------------------------------------------------------------
 // Daily games: one run per player per day, on the board everyone gets that

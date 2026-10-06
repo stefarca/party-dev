@@ -9,11 +9,13 @@ import { gameUi } from "../../games/registry";
 import type {
   GameUiProps,
   MatchEvent,
+  MatchReaction,
   MatchStatus,
   MatchSnapshot,
   MatchSummary,
   MatchVisibility,
 } from "../../shared/protocol";
+import type { Reaction } from "../../shared/reactions";
 import { ApiError, getMatch, joinMatch, setMatchVisibility } from "../api";
 import { clearMatchWaiting, setMatchWaiting } from "../badge";
 import { ConnectionBadge } from "../components/ConnectionBadge";
@@ -24,6 +26,8 @@ import { GameGlyph } from "../components/GameGlyph";
 import { GameSurface } from "../components/GameSurface";
 import { HistoryPanel } from "../components/HistoryPanel";
 import { EmptyAvatar, PlayerAvatar } from "../components/PlayerAvatar";
+import { ReactionBar } from "../components/ReactionBar";
+import { RematchPanel } from "../components/RematchPanel";
 import { Notice, Skeleton } from "../components/states";
 import { TurnIndicator } from "../components/TurnIndicator";
 import { VisibilitySwitch } from "../components/VisibilitySwitch";
@@ -425,18 +429,22 @@ function MatchBody({
   match,
   snapshot,
   events,
+  reactions,
   transportError,
   send,
   start,
+  react,
   myPlayerId,
   isMember,
 }: {
   match: MatchSummary;
   snapshot: MatchSnapshot | null;
   events: MatchEvent[];
+  reactions: MatchReaction[];
   transportError: MatchError | null;
   send: (action: unknown) => void;
   start: () => void;
+  react: (reaction: Reaction) => void;
   myPlayerId: string;
   isMember: boolean;
 }) {
@@ -538,16 +546,21 @@ function MatchBody({
           {errorText(t, transportError, t("match.failed"))}
         </Notice>
       )}
-      <HistoryPanel events={events} players={snapshot.players} gameId={match.gameId} />
       {snapshot.result && (
-        <Button
-          variant="ghost"
-          onPress={() => navigate("/")}
-          className="self-start rounded-[var(--radius-pill)] font-bold"
-        >
-          {t("match.backToHub")}
-        </Button>
+        <RematchPanel
+          code={match.id}
+          rematch={snapshot.rematch ?? null}
+          players={snapshot.players}
+          me={myPlayerId}
+        />
       )}
+      <ReactionBar reactions={reactions} players={snapshot.players} onReact={react} />
+      <HistoryPanel
+        events={events}
+        reactions={reactions}
+        players={snapshot.players}
+        gameId={match.gameId}
+      />
     </div>
   );
 }
@@ -607,10 +620,12 @@ export function MatchPage({ code }: { code: string }) {
   const {
     snapshot,
     events,
+    reactions,
     connection,
     error: transportError,
     send,
     start,
+    react,
   } = useMatch(code, ready, notifyUnauthorized);
 
   // Tab badge: keep it live from this match's own snapshot stream between
@@ -676,9 +691,11 @@ export function MatchPage({ code }: { code: string }) {
             match={match}
             snapshot={snapshot}
             events={events}
+            reactions={reactions}
             transportError={transportError}
             send={send}
             start={start}
+            react={react}
             myPlayerId={myPlayerId}
             isMember={isMember}
           />

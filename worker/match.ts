@@ -7,10 +7,11 @@ import type { GameModule, Result } from "../shared/game";
 import { PRESENCE_WINDOW_MS } from "../shared/heartbeat";
 import { HISTORY_LIMIT } from "../shared/history";
 import { UNKNOWN_NICKNAME } from "../shared/nickname";
-import { ClientMessageSchema, MatchVisibilitySchema } from "../shared/protocol";
+import { ClientMessageSchema, MatchVisibilitySchema, ReactionSchema } from "../shared/protocol";
 import type {
   MatchEvent,
   MatchEventPayload,
+  MatchReaction,
   MatchSnapshot,
   MatchStatus,
   MatchSummary,
@@ -19,6 +20,9 @@ import type {
   PlayerInfo,
   ServerMessage,
 } from "../shared/protocol";
+import { REACTION_COOLDOWN_MS, REACTION_LIMIT } from "../shared/reactions";
+import type { Reaction } from "../shared/reactions";
+import { createMatch } from "./create";
 import { sendSlackNudge, shouldNudge } from "./nudge";
 import type { NudgeKind } from "./nudge";
 import { sendPushNudges } from "./push";
@@ -76,6 +80,9 @@ interface MatchRecord {
   // dropped when they act (`handleAction`), which is what answers a nudge;
   // an absent entry means there is no unanswered nudge to hold back for.
   nudgedAt: Record<PlayerId, number>;
+  // The lobby of the match that follows this one once it is over, and the
+  // player who opened it. Set once; every later ask for a rematch gets it.
+  rematch?: { matchId: string; by: PlayerId };
 }
 
 // Per-connection attachment: hibernation wipes in-memory
@@ -92,6 +99,10 @@ type ActionResult =
   { ok: true; snapshot: MatchSnapshot } | { ok: false; code: string; message: string };
 
 type MutationResult = { ok: true } | { ok: false; code: string; message: string };
+
+type Failure = { ok: false; code: string; message: string };
+type ReactResult = { ok: true; reaction: MatchReaction } | Failure;
+type RematchResult = { ok: true; matchId: string } | Failure;
 
 // One row of the turn-wait ledger, as `writeIndexNow()` reads it.
 type WaitRow = {
@@ -115,6 +126,7 @@ const VisibilityBody = z.object({
   visibility: MatchVisibilitySchema,
 });
 const ActionBody = z.object({ playerId: z.string().min(1), action: z.unknown() });
+const ReactBody = z.object({ playerId: z.string().min(1), reaction: ReactionSchema });
 
 // How long a lobby lasts unstarted, from its creation or from when it last
 // went public, and how long before that its host is warned.
@@ -158,8 +170,15 @@ function statusForCode(code: string): number {
       return 403;
     case "already_started":
     case "not_active":
+    case "not_finished":
     case "not_your_turn":
+    case "game_unavailable":
       return 409;
+    case "too_fast":
+      return 429;
+    case "code_exhausted":
+    case "create_failed":
+      return 500;
     default:
       return 400;
   }
@@ -187,6 +206,13 @@ export class MatchDO extends DurableObject<Env> {
   // does not close that gap, because by the time this write's own
   // `env.DB.batch()` call is in flight, its payload is already fixed.
   private dbWriteQueue: Promise<void> = Promise.resolve();
+
+  // The rematch being opened right now, if one is. Opening it takes awaits
+  // (a code from D1, a lobby from another Durable Object), so a second ask
+  // that lands meanwhile waits on this one rather than opening a second
+  // lobby. In memory only: an eviction mid-open can at worst leave one
+  // unused lobby behind, which expires like any other.
+  private rematchInFlight: Promise<RematchResult> | null = null;
 
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
@@ -217,6 +243,15 @@ export class MatchDO extends DurableObject<Env> {
     // waste the 20:1-billed inbound message budget. The client
     // transport relies on this and does not send `{t:"ping"}`.
     this.ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair("ping", "pong"));
+    // The latest reactions, at most `REACTION_LIMIT` of them (see `react()`).
+    this.ctx.storage.sql.exec(
+      `CREATE TABLE IF NOT EXISTS reactions (
+         id INTEGER PRIMARY KEY AUTOINCREMENT,
+         ts INTEGER NOT NULL,
+         player_id TEXT NOT NULL,
+         reaction TEXT NOT NULL
+       )`,
+    );
   }
 
   async fetch(request: Request): Promise<Response> {
@@ -267,6 +302,14 @@ export class MatchDO extends DurableObject<Env> {
 
     if (request.method === "POST" && url.pathname === "/action") {
       return this.handleActionRequest(request);
+    }
+
+    if (request.method === "POST" && url.pathname === "/react") {
+      return this.handleReactRequest(request);
+    }
+
+    if (request.method === "POST" && url.pathname === "/rematch") {
+      return this.handleRematchRequest(request);
     }
 
     if (url.pathname === "/ws") {
@@ -335,6 +378,19 @@ export class MatchDO extends DurableObject<Env> {
       )
       .toArray() as { seq: number; ts: number; payload: string }[];
     return rows.map((r) => ({ seq: r.seq, ts: r.ts, payload: JSON.parse(r.payload) })).reverse();
+  }
+
+  // The match's reactions, oldest first.
+  private latestReactions(): MatchReaction[] {
+    const rows = this.ctx.storage.sql
+      .exec(
+        "SELECT id, ts, player_id, reaction FROM reactions ORDER BY id DESC LIMIT ?",
+        REACTION_LIMIT,
+      )
+      .toArray() as { id: number; ts: number; player_id: string; reaction: Reaction }[];
+    return rows
+      .map((r) => ({ id: r.id, ts: r.ts, by: r.player_id, reaction: r.reaction }))
+      .reverse();
   }
 
   private currentSeq(): number {
@@ -486,7 +542,26 @@ export class MatchDO extends DurableObject<Env> {
       waitingOn: hasState ? module.waitingOn(state) : [],
       deadline: hasState ? module.deadline(state) : null,
       result: hasState ? module.result(state) : null,
+      reactions: this.latestReactions(),
+      rematch: record.rematch ?? null,
     };
+  }
+
+  // Sends every connected socket its own snapshot of `record`, followed by
+  // `events` when there are any. Synchronous, so the caller's `record` stays
+  // fresh for the whole loop.
+  private broadcast(
+    record: MatchRecord,
+    names: Map<PlayerId, string>,
+    events: MatchEvent[] = [],
+  ): void {
+    for (const ws of this.ctx.getWebSockets()) {
+      const attachment = ws.deserializeAttachment() as ConnectionAttachment | null;
+      if (!attachment) continue;
+      const snapshot = this.snapshotFor(record, attachment.playerId, names);
+      this.safeSend(ws, { t: "snapshot", ...snapshot });
+      if (events.length > 0) this.safeSend(ws, { t: "events", events });
+    }
   }
 
   private safeSend(ws: WebSocket, message: ServerMessage): void {
@@ -641,15 +716,7 @@ export class MatchDO extends DurableObject<Env> {
     const names = named?.names ?? new Map<PlayerId, string>();
     // eslint-disable-next-line no-useless-assignment -- recomputed from the fresh `current` for symmetry with the other stages; no stage reads it before the re-read after await #4 below
     derived = this.deriveWaitingAndDeadline(module, current);
-    for (const ws of this.ctx.getWebSockets()) {
-      const attachment = ws.deserializeAttachment() as ConnectionAttachment | null;
-      if (!attachment) continue;
-      const snapshot = this.snapshotFor(current, attachment.playerId, names);
-      this.safeSend(ws, { t: "snapshot", ...snapshot });
-      if (newEvents.length > 0) {
-        this.safeSend(ws, { t: "events", events: newEvents });
-      }
-    }
+    this.broadcast(current, names, newEvents);
 
     // 6. Update the D1 index (derived state). `syncIndex()` takes no
     // arguments and re-reads canonical state itself, at whatever instant
@@ -722,10 +789,18 @@ export class MatchDO extends DurableObject<Env> {
     this.sendNudges(record, playerIds, "turn");
   }
 
-  // Delivers one nudge decision to `playerIds` through both channels.
-  private sendNudges(record: MatchRecord, playerIds: PlayerId[], kind: NudgeKind): void {
+  // Delivers one nudge decision to `playerIds` through both channels. A
+  // "rematch" nudge is about the lobby `rematch` names rather than this
+  // match, and names only the player who opened it.
+  private sendNudges(
+    record: MatchRecord,
+    playerIds: PlayerId[],
+    kind: NudgeKind,
+    rematch?: { matchId: string; by: PlayerId },
+  ): void {
     const meta = getGameMeta(record.gameId);
-    const url = `${this.env.PUBLIC_BASE_URL}/m/${record.id}`;
+    const matchId = rematch?.matchId ?? record.id;
+    const url = `${this.env.PUBLIC_BASE_URL}/m/${matchId}`;
 
     // Both channels name players — Slack the ones it is nudging, a push
     // notification the reader's opponents — so the whole roster is looked up
@@ -742,11 +817,12 @@ export class MatchDO extends DurableObject<Env> {
       roster
         .then((players) =>
           sendSlackNudge(this.env, {
-            matchId: record.id,
+            matchId,
             gameName: meta?.name ?? record.gameId,
             players: players.filter((p) => playerIds.includes(p.id)),
             url,
             kind,
+            by: rematch && players.find((p) => p.id === rematch.by)?.nickname,
           }),
         )
         .catch((err) => {
@@ -758,10 +834,10 @@ export class MatchDO extends DurableObject<Env> {
       roster
         .then((players) =>
           sendPushNudges(this.env, {
-            matchId: record.id,
+            matchId,
             gameId: record.gameId,
             playerIds,
-            players,
+            players: rematch ? players.filter((p) => p.id === rematch.by) : players,
             kind,
           }),
         )
@@ -1180,6 +1256,135 @@ export class MatchDO extends DurableObject<Env> {
   }
 
   // ---------------------------------------------------------------------
+  // Reactions and rematches. Neither goes through commit(): neither changes
+  // the game, the event log or anything the index holds, and commit() would
+  // move `updatedAt`, which for a finished match dates when it finished.
+  // ---------------------------------------------------------------------
+
+  // Stores a reaction and pushes it to every socket, the sender's included.
+  // A player may react only to a match under way or over, and only once per
+  // `REACTION_COOLDOWN_MS`. Only the latest `REACTION_LIMIT` are kept.
+  // Synchronous throughout, so the cooldown check and the insert cannot be
+  // split by another request.
+  private react(playerId: PlayerId, reaction: Reaction): ReactResult {
+    const record = this.readMatch();
+    if (!record) return { ok: false, code: "not_found", message: "match not found" };
+    if (!record.players.some((p) => p.id === playerId)) {
+      return { ok: false, code: "not_a_player", message: "you are not a player in this match" };
+    }
+    if (record.status === "lobby") {
+      return { ok: false, code: "not_active", message: "match has not started" };
+    }
+
+    const sql = this.ctx.storage.sql;
+    const now = Date.now();
+    const last = sql
+      .exec("SELECT MAX(ts) AS ts FROM reactions WHERE player_id = ?", playerId)
+      .one() as { ts: number | null };
+    if (last.ts !== null && now - last.ts < REACTION_COOLDOWN_MS) {
+      return { ok: false, code: "too_fast", message: "slow down" };
+    }
+
+    sql.exec(
+      "INSERT INTO reactions (ts, player_id, reaction) VALUES (?, ?, ?)",
+      now,
+      playerId,
+      reaction,
+    );
+    const { id } = sql.exec("SELECT last_insert_rowid() AS id").one() as { id: number };
+    sql.exec("DELETE FROM reactions WHERE id <= ?", id - REACTION_LIMIT);
+
+    const stored: MatchReaction = { id, ts: now, by: playerId, reaction };
+    for (const ws of this.ctx.getWebSockets()) {
+      this.safeSend(ws, { t: "reaction", reaction: stored });
+    }
+    return { ok: true, reaction: stored };
+  }
+
+  private async handleReactRequest(request: Request): Promise<Response> {
+    const parsed = ReactBody.safeParse(await request.json().catch(() => null));
+    if (!parsed.success) return Response.json({ error: "invalid_body" }, { status: 400 });
+
+    const result = this.react(parsed.data.playerId, parsed.data.reaction);
+    if (!result.ok) {
+      return Response.json(
+        { error: result.code, message: result.message },
+        { status: statusForCode(result.code) },
+      );
+    }
+    return Response.json({ reaction: result.reaction });
+  }
+
+  // The lobby of the match after this one: opened by the first of its
+  // players to ask, once it is over, and handed back to everyone who asks
+  // after. Its asker hosts it, and it is private, so it is the same players'
+  // to fill.
+  private async rematch(playerId: PlayerId): Promise<RematchResult> {
+    const record = this.readMatch();
+    if (!record) return { ok: false, code: "not_found", message: "match not found" };
+    if (!record.players.some((p) => p.id === playerId)) {
+      return { ok: false, code: "not_a_player", message: "you are not a player in this match" };
+    }
+    if (record.status !== "done") {
+      return { ok: false, code: "not_finished", message: "match is not over yet" };
+    }
+    if (record.rematch) return { ok: true, matchId: record.rematch.matchId };
+
+    if (!this.rematchInFlight) {
+      this.rematchInFlight = this.openRematch(record.gameId, playerId).finally(() => {
+        this.rematchInFlight = null;
+      });
+    }
+    return this.rematchInFlight;
+  }
+
+  private async openRematch(gameId: string, by: PlayerId): Promise<RematchResult> {
+    if (getGameMeta(gameId)?.comingSoon) {
+      return { ok: false, code: "game_unavailable", message: "game is unavailable" };
+    }
+    const created = await createMatch(this.env, { gameId, hostId: by, visibility: "private" });
+    if (!created.ok) {
+      return { ok: false, code: created.error, message: "could not open the rematch" };
+    }
+
+    // Re-read after the awaits above. Nothing else sets `rematch` meanwhile
+    // (`rematchInFlight` holds every other ask back), but a finished
+    // record's other fields are still written by other paths.
+    const record = this.readMatch();
+    if (!record) return { ok: false, code: "not_found", message: "match not found" };
+    const rematch = { matchId: created.matchId, by };
+    record.rematch = rematch;
+    this.writeMatch(record);
+
+    // Everyone watching sees the offer at once. Everyone else is told the
+    // way they are told about their turn, and nobody twice, since a match
+    // leads to only one rematch.
+    const now = Date.now();
+    const away = record.players
+      .map((p) => p.id)
+      .filter((id) => id !== by && !this.isWatching(id, now));
+    if (away.length > 0) this.sendNudges(record, away, "rematch", rematch);
+
+    const named = await this.readNamedMatch();
+    if (named) this.broadcast(named.record, named.names);
+    return { ok: true, matchId: created.matchId };
+  }
+
+  private async handleRematchRequest(request: Request): Promise<Response> {
+    const parsed = ActorBody.safeParse(await request.json().catch(() => null));
+    if (!parsed.success) return Response.json({ error: "invalid_body" }, { status: 400 });
+
+    const result = await this.rematch(parsed.data.playerId);
+    if (!result.ok) {
+      return Response.json(
+        { error: result.code, message: result.message },
+        { status: statusForCode(result.code) },
+      );
+    }
+    return Response.json({ matchId: result.matchId });
+  }
+
+  // ---------------------------------------------------------------------
   // Alarm-driven onDeadline.
   // ---------------------------------------------------------------------
 
@@ -1292,6 +1497,7 @@ export class MatchDO extends DurableObject<Env> {
     this.ctx.storage.sql.exec("DELETE FROM meta");
     this.ctx.storage.sql.exec("DELETE FROM events");
     this.ctx.storage.sql.exec("DELETE FROM waits");
+    this.ctx.storage.sql.exec("DELETE FROM reactions");
     for (const ws of this.ctx.getWebSockets()) {
       this.safeSend(ws, { t: "error", code: "not_found", message: "this lobby has expired" });
       try {
@@ -1406,6 +1612,13 @@ export class MatchDO extends DurableObject<Env> {
         }
         case "action": {
           const result = await this.handleAction(attachment.playerId, msg.action);
+          if (!result.ok) {
+            this.safeSend(ws, { t: "error", code: result.code, message: result.message });
+          }
+          return;
+        }
+        case "react": {
+          const result = this.react(attachment.playerId, msg.reaction);
           if (!result.ok) {
             this.safeSend(ws, { t: "error", code: result.code, message: result.message });
           }

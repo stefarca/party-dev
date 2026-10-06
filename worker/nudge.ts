@@ -19,8 +19,9 @@ export interface NudgePlayer {
 
 // What a nudge is about. "turn": the game is waiting on these players.
 // "lobbyExpiring": their lobby, which only the host can start, is deleted in
-// an hour.
-export type NudgeKind = "turn" | "lobbyExpiring";
+// an hour. "rematch": another player of a match they finished has opened a
+// lobby for the next one.
+export type NudgeKind = "turn" | "lobbyExpiring" | "rematch";
 
 export interface NudgeParams {
   matchId: string;
@@ -28,13 +29,18 @@ export interface NudgeParams {
   players: NudgePlayer[];
   url: string;
   kind?: NudgeKind; // "turn" when absent
+  // Who asked, for a "rematch".
+  by?: string;
 }
 
 // One message regardless of how many players just became waited-on at once
 // (a trivia round start must be a single Slack message, never N) — the
 // caller is responsible for batching every eligible player into one call.
-function composeMessage({ gameName, players, url, kind = "turn" }: NudgeParams): string {
+function composeMessage({ gameName, players, url, kind = "turn", by }: NudgeParams): string {
   const names = players.map((p) => p.nickname).join(", ");
+  if (kind === "rematch") {
+    return `${by ?? "Someone"} wants a ${gameName} rematch with ${names}: ${url}`;
+  }
   if (kind === "lobbyExpiring") {
     return `${names}'s ${gameName} lobby closes in an hour unless it is started: ${url}`;
   }

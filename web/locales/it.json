@@ -377,7 +377,31 @@
     "won_other": "{{names}} hanno vinto",
     "draw": "La partita è finita in parità",
     "noWinner": "La partita è finita senza vincitori",
-    "scores": "Punteggi finali: {{scores}}"
+    "scores": "Punteggi finali: {{scores}}",
+    "reacted": "{{name}} ha reagito {{emoji}}"
+  },
+  "rematch": {
+    "offer": "Rivincita",
+    "open": "Vai alla rivincita",
+    "join": "Entra nella rivincita",
+    "offered": "{{name}} vuole la rivincita!",
+    "failed": "Impossibile aprire la rivincita, riprova."
+  },
+  "reactions": {
+    "label": "Reazioni",
+    "send": "Reagisci con {{reaction}}",
+    "live": "Reazioni in diretta",
+    "reacted": "{{name}} ha reagito con {{reaction}}",
+    "names": {
+      "clap": "Applausi",
+      "laugh": "Risata",
+      "wow": "Wow",
+      "grr": "Grrr",
+      "fire": "In fiamme",
+      "turtle": "Muoviti",
+      "gg": "Bella partita",
+      "skull": "RIP"
+    }
   },
   "debug": {
     "note": "Nessuna interfaccia registrata per questo gioco: ecco la vista grezza del motore.",
@@ -398,14 +422,18 @@
     "no_run": "Non c'è ancora una partita da giocare. Inizia prima quella di oggi.",
     "not_a_player": "Non sei tra i giocatori di questa partita.",
     "not_active": "Questa partita non è in corso.",
+    "not_finished": "Questa partita non è ancora finita.",
     "not_found": "Nessuna partita con questo codice.",
     "not_host": "Solo l'host può avviare la partita.",
     "not_joinable": "Questa partita è già iniziata.",
     "not_today": "La sfida di quel giorno non è ancora aperta.",
     "not_your_turn": "Non è il tuo turno.",
+    "react_failed": "La tua reazione non è arrivata, riprova.",
+    "rematch_failed": "Impossibile aprire la rivincita, riprova.",
     "run_over": "Questa partita è già finita.",
     "snapshot_failed": "Impossibile caricare questa partita.",
     "start_failed": "Impossibile avviare la partita.",
+    "too_fast": "Piano! Una reazione alla volta.",
     "unknown_game": "Questo gioco non esiste.",
     "wrong_player_count": "Il numero di giocatori non è quello giusto per iniziare."
   }
