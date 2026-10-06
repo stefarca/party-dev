@@ -1,5 +1,6 @@
 import type { GameMeta } from "../games/catalog";
 import type {
+  AchievementsResponse,
   DailyChart,
   DailyHub,
   DailyRunSnapshot,
@@ -139,6 +140,21 @@ export function getMyStats(): Promise<PlayerStatsDetail> {
 // The last seven days for everyone: who won most, and who kept matches waiting longest.
 export function getLeaderboard(): Promise<Leaderboard> {
   return request<Leaderboard>("/api/leaderboard");
+}
+
+// Every achievement with how far the player has got, and the levels they have
+// already been told about.
+export function getAchievements(): Promise<AchievementsResponse> {
+  return request<AchievementsResponse>("/api/me/achievements");
+}
+
+// Records the levels the player has just been told about, so no device of
+// theirs tells them again.
+export function markAchievementsSeen(seen: Record<string, number>): Promise<void> {
+  return request<void>("/api/me/achievements/seen", {
+    method: "POST",
+    body: JSON.stringify({ seen }),
+  });
 }
 
 export interface MatchBuckets {

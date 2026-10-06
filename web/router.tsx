@@ -11,7 +11,7 @@ import { useSyncExternalStore } from "react";
 //   /daily           -> dashboard, today's daily games
 //   /m/:code         -> match/lobby page
 //   /daily/:gameId   -> today's run at a daily game, and its chart
-//   /stats           -> the player's stats, and the week's boards
+//   /stats           -> the player's stats and achievements, and the week's boards
 
 // The dashboard's sections. Each has an address of its own, so a reload or the
 // back button lands on the section the player left.

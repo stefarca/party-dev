@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 
 import { AlertDialog, Button } from "@heroui/react";
@@ -12,7 +12,10 @@ import type {
   Rival,
   ShameEntry,
 } from "../../shared/protocol";
+import { useAchievements } from "../achievements";
 import { ApiError, getLeaderboard, getMyStats, resetStats } from "../api";
+import { AchievementList, levelsReached } from "../components/AchievementList";
+import { ACHIEVEMENTS_ANCHOR } from "../components/AchievementToast";
 import { GameGlyph } from "../components/GameGlyph";
 import { PlayerAvatar } from "../components/PlayerAvatar";
 import { EmptyState, Notice, Skeleton } from "../components/states";
@@ -23,10 +26,10 @@ import { navigate } from "../router";
 import { useSession } from "../session";
 
 // The player's stats, and the week's boards: their streaks, their record game
-// by game, how they stand against everyone they have played, and — for
-// everyone — who won most this week and who kept everyone waiting. Two reads,
-// each failing on its own, so a board that will not load never costs the
-// player their own numbers.
+// by game, how they stand against everyone they have played, their
+// achievements, and — for everyone — who won most this week and who kept
+// everyone waiting. Three reads, each failing on its own, so a board that will
+// not load never costs the player their own numbers.
 
 const MEDALS: Record<number, string> = { 1: "🥇", 2: "🥈", 3: "🥉" };
 
@@ -47,12 +50,14 @@ function BackLink() {
 }
 
 function Card({
+  id,
   title,
   glyph,
   hint,
   children,
   className = "",
 }: {
+  id?: string;
   title: string;
   glyph?: string;
   hint?: string;
@@ -61,6 +66,7 @@ function Card({
 }) {
   return (
     <section
+      id={id}
       className={`party-pop flex min-w-0 flex-col gap-4 rounded-[var(--radius-xl)] border border-[var(--border-subtle)] bg-[var(--surface-1)] p-5 shadow-[var(--shadow-2),var(--edge-highlight)] ${className}`}
     >
       <div className="flex flex-col gap-1">
@@ -447,6 +453,57 @@ function RivalsCard({ stats }: { stats: PlayerStatsDetail }) {
   );
 }
 
+// Everything the player has earned and everything still to earn, from the same read that
+// announces new ones. Read again on arrival, since what the app read when it loaded may be a
+// match behind. The toast's link lands here by its anchor.
+//
+// The anchor is followed only once the cards above have settled too, since they would push this
+// one down from wherever it had been scrolled to.
+function AchievementsCard({ settled }: { settled: boolean }) {
+  const { t } = useTranslation();
+  const { data, error, refresh } = useAchievements();
+  const [loaded, setLoaded] = useState(false);
+  const scrolled = useRef(false);
+
+  useEffect(() => {
+    void refresh().finally(() => setLoaded(true));
+  }, [refresh]);
+
+  useEffect(() => {
+    if (!loaded || !settled || scrolled.current) return;
+    scrolled.current = true;
+    if (window.location.hash === `#${ACHIEVEMENTS_ANCHOR}`) {
+      document.getElementById(ACHIEVEMENTS_ANCHOR)?.scrollIntoView();
+    }
+  }, [loaded, settled]);
+
+  let body: ReactNode;
+  if (data) {
+    body = <AchievementList achievements={data.achievements} />;
+  } else if (error && loaded) {
+    body = (
+      <Notice tone="danger" action={{ label: t("retry"), onClick: () => void refresh() }}>
+        {errorText(t, error, t("achievements.loadFailed"))}
+      </Notice>
+    );
+  } else {
+    body = <Skeleton height="12rem" rounded="lg" />;
+  }
+
+  // Clear of the sticky header when the anchor scrolls it into view.
+  return (
+    <Card
+      id={ACHIEVEMENTS_ANCHOR}
+      glyph="🏅"
+      title={t("achievements.title")}
+      hint={data ? t("achievements.hint", levelsReached(data.achievements)) : undefined}
+      className="scroll-mt-20"
+    >
+      {body}
+    </Card>
+  );
+}
+
 // One place on a board: rank, player, and whatever the board measures them by.
 function BoardRow({
   rank,
@@ -713,7 +770,10 @@ export function StatsPage() {
         </div>
         {stats && <ResetRecord onReset={handleReset} />}
       </header>
-      <div className="mb-10 flex flex-col gap-4">{mine}</div>
+      <div className="mb-10 flex flex-col gap-4">
+        {mine}
+        <AchievementsCard settled={stats !== null || statsError !== null} />
+      </div>
       <WeekSection
         board={board}
         error={boardError}

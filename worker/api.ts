@@ -6,6 +6,7 @@ import { GAME_CATALOG, getDailyMeta, getGameMeta } from "../games/catalog";
 import { dayEnd, dayOf, isDay } from "../shared/daily";
 import { MATCH_CODE_RE, normalizeMatchCode } from "../shared/ids";
 import {
+  AchievementsSeenRequestSchema,
   ActionRequestSchema,
   CreateMatchRequestSchema,
   DailyFinishRequestSchema,
@@ -20,6 +21,7 @@ import {
   StartMatchRequestSchema,
 } from "../shared/protocol";
 import type {
+  AchievementsResponse,
   DailyHub,
   DailyRunSnapshot,
   DailyStanding,
@@ -30,6 +32,7 @@ import type {
   PushKeyResponse,
   RematchResponse,
 } from "../shared/protocol";
+import { achievementsOf, markAchievementsSeen, seenAchievements } from "./achievements";
 import type { Session, SessionBindings } from "./auth";
 import {
   MissingSecretError,
@@ -200,6 +203,31 @@ api.post("/me/stats/reset", requireSession(), async (c) => {
 api.get("/me/stats", requireSession(), async (c) => {
   const session = c.get("session") as Session;
   return c.json<PlayerStatsDetail>(await playerStatsDetail(c.env.DB, session.pid, Date.now()));
+});
+
+// Every achievement with how far the caller has got, and which levels they
+// have already been told about, which is what lets the client announce only
+// the new ones.
+api.get("/me/achievements", requireSession(), async (c) => {
+  const session = c.get("session") as Session;
+  const [achievements, seen] = await Promise.all([
+    achievementsOf(c.env.DB, session.pid, Date.now()),
+    seenAchievements(c.env.DB, session.pid),
+  ]);
+  return c.json<AchievementsResponse>({ achievements, seen });
+});
+
+// Records the levels the client has just announced, so no device announces
+// them again. Taken on the client's word: what it says it has shown its own
+// player decides nothing but what that player is shown next.
+api.post("/me/achievements/seen", requireSession(), async (c) => {
+  const parsed = AchievementsSeenRequestSchema.safeParse(await readJsonBody(c.req.raw));
+  if (!parsed.success) {
+    return c.json({ error: "invalid_body" }, 400);
+  }
+  const session = c.get("session") as Session;
+  await markAchievementsSeen(c.env.DB, session.pid, parsed.data.seen);
+  return c.json({ ok: true });
 });
 
 // The last seven days for everyone: who won most, and who kept matches

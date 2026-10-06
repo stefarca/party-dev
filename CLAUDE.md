@@ -56,14 +56,15 @@ that old Worker, like the existing `ADD COLUMN`s. One-time operator setup is in 
 knowledge; it looks games up through `games/registry.ts`. The daily single-player games are run by
 `DailyDO` instead (see below). The Durable Object is authoritative; D1's `matches`,
 `match_players` and `turn_waits` (`migrations/*.sql`) are a derived index, read by the hub, the
-stats page and the weekly recap, that may be rebuilt or lag without affecting correctness. Never
-read match truth from D1. D1 has four other jobs. One is
+stats page, the achievements and the weekly recap, that may be rebuilt or lag without affecting
+correctness. Never read match truth from D1. D1 has five other jobs. One is
 match-code reservation: `POST /api/matches` inserts a placeholder `matches` row to claim a fresh
 code (retrying on a primary-key collision) and deletes it if the DO create fails, and join checks
 that row before it contacts the DO. The second is the player registry. The third is
 `push_subscriptions`, the devices to notify, which is authoritative for the same reason `players`
 is: a subscription is a capability a browser granted once and nothing can rebuild it. The fourth is
-`recaps`, the weeks whose Slack recap has already gone out (see below).
+`recaps`, the weeks whose Slack recap has already gone out (see below). The fifth is
+`achievements_seen`, the achievement levels each player has already been told about.
 
 **`players` is authoritative, not derived.** A nickname is the account — the same one on a
 second device is the same player, with the same matches and record — so `players` and its unique
@@ -158,6 +159,24 @@ like the hub's; a week's boards (champions, wall of shame) and the play streak d
 match with a NULL `result_kind` counts for neither side. A play streak is UTC days (the daily
 games' `dayOf()`) with a move or a daily run, alive through the day after its last one. In SQL,
 beware that a HAVING clause resolves an alias that shares a column's name (`won`) to the column.
+
+**Achievements are worked out, never stored.** `shared/achievements.ts` is the catalog: an id, a
+glyph and one or more tiers, each a fixed value of one measure the index already records (wins,
+finished matches, the best win or play streak, different games or opponents, daily runs, days
+on top of a final daily chart). `achievementsOf()` in `worker/achievements.ts` reads them from
+D1 on every `GET /api/me/achievements`, the way the stats are read, with the time each tier was
+reached, so nothing in a Durable Object knows they exist and a player who played before one was
+added has it at once. Unlike the record they ignore `stats_since`: a reset never takes one back.
+Two rules keep them from ever being lost. A tier is a fixed number, never "every game", which a
+new game would move. And a measure may only grow: count only what the index never deletes (a
+lobby's rows are the only ones it does), and a daily chart only once its day is over. The one
+thing stored is `achievements_seen`, written by `POST /api/me/achievements/seen` with the levels
+the client has just announced and never lowered, so "unlocked" is said once per player rather
+than once per device. On the client, `AchievementsProvider` (`web/achievements.tsx`) reads them
+when the signed-in app mounts and when a match or daily run ends in front of the player
+(`useCheckWhenDone`, which asks a moment later, and once more if nothing turned up, since the
+index lags the snapshot that says it ended), and `AchievementToast` announces what is new. An
+achievement's name and goal are `achievements.items.<id>` in `web/locales/`.
 
 **The weekly recap** (`worker/recap.ts`) is one English Slack message every Monday at 08:00 UTC
 about the seven UTC days before, through the same `postSlackMessage()` as the nudges. It has a
@@ -403,7 +422,8 @@ The card's text is set in Fredoka and Nunito, so render it with both fonts insta
   `worker/node-builtins.d.ts`, since the worker project loads no `@types` packages). Engine tests
   run against `games/__fixtures__/counter.ts`, a test-only game that is deliberately left out of the
   registry; the test adds it to `serverGames` and removes it afterwards. `worker/players.test.ts`,
-  `worker/hub.test.ts`, `worker/stats.test.ts` and `worker/recap.test.ts` run their SQL against
+  `worker/hub.test.ts`, `worker/stats.test.ts`, `worker/achievements.test.ts` and
+  `worker/recap.test.ts` run their SQL against
   the real schema through `worker/__fixtures__/d1.ts`, a D1 mock on `node:sqlite` that applies every `migrations/*.sql` in
   name order. A new migration needs no change there. `worker/daily.test.ts` drives `DailyDO` the
   same way, against `games/__fixtures__/dice.ts`, a test-only daily game it registers in
