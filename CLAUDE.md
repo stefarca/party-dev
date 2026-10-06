@@ -40,7 +40,9 @@ answers `null`, which is what makes the client hide the notification control. Th
 If `/api/health` reports "no such table: matches", the migration CLI and the vite plugin are
 pointed at different `.wrangler/state` persist directories — re-run `npm run db:migrate:local`.
 
-**Every push to `main` deploys to production** (`.github/workflows/deploy.yml`): it applies
+**Every push to `main` deploys to production** (`.github/workflows/deploy.yml`), unless all it
+touches is on the workflow's `paths-ignore` list (docs, tests, `.claude/`); that list names what
+to skip, so a new path deploys by default, and `workflow_dispatch` forces a deploy. It applies
 `migrations/*.sql` to the remote D1 first, then runs `npm run deploy`. Migrations therefore hit
 production before the new Worker is live. The workflow `sed`-substitutes the committed placeholders
 `"database_id": "REPLACE_ME_SEE_README"` and `"PUBLIC_BASE_URL": "http://localhost:5173"` in

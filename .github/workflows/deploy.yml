@@ -4,6 +4,19 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
+    # Files that never reach production. Listing what to skip, rather than what to deploy, means
+    # a new path deploys by default. workflow_dispatch forces a deploy regardless.
+    paths-ignore:
+      - ".claude/**"
+      - "**/*.md"
+      - "LICENSE"
+      - "e2e/**"
+      - "**/*.spec.ts"
+      - "**/*.test.ts"
+      - "**/__fixtures__/**"
+      - "playwright.config.ts"
+      - "vitest.config.ts"
+      - ".github/workflows/ci.yml"
 
 permissions:
   contents: read
