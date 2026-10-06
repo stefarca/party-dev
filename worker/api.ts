@@ -4,7 +4,7 @@ import type { ContentfulStatusCode } from "hono/utils/http-status";
 
 import { GAME_CATALOG, getDailyMeta, getGameMeta } from "../games/catalog";
 import { dayEnd, dayOf, isDay } from "../shared/daily";
-import { MATCH_CODE_RE, generateMatchCode, normalizeMatchCode } from "../shared/ids";
+import { MATCH_CODE_RE, normalizeMatchCode } from "../shared/ids";
 import {
   ActionRequestSchema,
   CreateMatchRequestSchema,
@@ -14,6 +14,8 @@ import {
   JoinMatchRequestSchema,
   PushSubscribeRequestSchema,
   PushUnsubscribeRequestSchema,
+  ReactRequestSchema,
+  RematchRequestSchema,
   SetVisibilityRequestSchema,
   StartMatchRequestSchema,
 } from "../shared/protocol";
@@ -26,6 +28,7 @@ import type {
   Leaderboard,
   PlayerStatsDetail,
   PushKeyResponse,
+  RematchResponse,
 } from "../shared/protocol";
 import type { Session, SessionBindings } from "./auth";
 import {
@@ -36,6 +39,7 @@ import {
   writeSession,
 } from "./auth";
 import { dailyChart, dailyStanding, dailySummaries } from "./chart";
+import { createMatch } from "./create";
 import { runName } from "./daily";
 import { HUB_LIST_LIMIT, myMatches, openMatches } from "./hub";
 import {
@@ -273,55 +277,13 @@ api.post("/matches", requireSession(), async (c) => {
   }
 
   const session = c.get("session") as Session;
-  const now = Date.now();
-
-  // This INSERT is only a collision reservation on the code, not the
-  // authoritative index write — MatchDO.syncIndex() (called via
-  // /lobby/create below) is what writes the real matches/match_players rows
-  // once the DO has accepted the match (D1 is derived, the DO is
-  // authoritative). We retry on a PRIMARY KEY collision, capped at 5
-  // attempts (32^6 codes makes repeated collisions vanishingly unlikely).
-  let matchId: string | null = null;
-  for (let attempt = 0; attempt < 5 && !matchId; attempt++) {
-    const code = generateMatchCode();
-    try {
-      await c.env.DB.prepare(
-        "INSERT INTO matches (id, game_id, status, created_at, updated_at, deadline) VALUES (?, ?, 'lobby', ?, ?, NULL)",
-      )
-        .bind(code, parsed.data.gameId, now, now)
-        .run();
-      matchId = code;
-    } catch {
-      // Assume a PRIMARY KEY collision on `id` and retry with a new code.
-    }
-  }
-  if (!matchId) {
-    return c.json({ error: "code_exhausted" }, 500);
-  }
-
-  try {
-    const id = c.env.MATCH.idFromName(matchId);
-    const stub = c.env.MATCH.get(id);
-    const res = await stub.fetch("http://do/lobby/create", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        matchId,
-        gameId: parsed.data.gameId,
-        hostId: session.pid,
-        visibility: parsed.data.visibility,
-      }),
-    });
-    if (!res.ok) throw new Error(`lobby create failed with status ${res.status}`);
-  } catch (err) {
-    // The DO create failed after we reserved the code in D1 — delete the
-    // reservation so the code is not left as an orphan row.
-    await c.env.DB.prepare("DELETE FROM matches WHERE id = ?").bind(matchId).run();
-    console.error("match create failed", err);
-    return c.json({ error: "create_failed" }, 500);
-  }
-
-  return c.json({ matchId, code: matchId });
+  const created = await createMatch(c.env, {
+    gameId: parsed.data.gameId,
+    hostId: session.pid,
+    visibility: parsed.data.visibility,
+  });
+  if (!created.ok) return c.json({ error: created.error }, 500);
+  return c.json({ matchId: created.matchId, code: created.matchId });
 });
 
 // Unknown/malformed codes 404 before the auth check (an unrecognized code
@@ -525,6 +487,65 @@ api.post("/matches/:id/actions", requireSession(), async (c) => {
   if (!res.ok) return c.json({ error: "action_failed" }, 500);
 
   return c.json(await res.json());
+});
+
+// HTTP fallback for the WS `{ t: "react", reaction }` message. Replies with
+// the reaction as stored, so a page without a socket can show its own at
+// once; everyone else's reach it in the next snapshot it loads.
+api.post("/matches/:id/reactions", requireSession(), async (c) => {
+  const session = c.get("session") as Session;
+  const code = normalizeMatchCode(c.req.param("id"));
+  if (!MATCH_CODE_RE.test(code)) {
+    return c.json({ error: "not_found" }, 404);
+  }
+
+  const body = await readJsonBody(c.req.raw);
+  const parsed = ReactRequestSchema.safeParse(body);
+  if (!parsed.success) {
+    return c.json({ error: "invalid_body" }, 400);
+  }
+
+  const stub = c.env.MATCH.get(c.env.MATCH.idFromName(code));
+  const res = await stub.fetch("http://do/react", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ playerId: session.pid, reaction: parsed.data.reaction }),
+  });
+  if (res.status >= 400 && res.status < 500) {
+    return c.json(await res.json(), res.status as ContentfulStatusCode);
+  }
+  if (!res.ok) return c.json({ error: "react_failed" }, 500);
+  return c.json(await res.json());
+});
+
+// Opens the next match between the same players, or hands back the one
+// another of them already opened: a finished match leads to at most one
+// rematch. Only its players may ask, and only once it is over. The DO opens
+// the lobby itself, so two players asking at once get the same one.
+api.post("/matches/:id/rematch", requireSession(), async (c) => {
+  const session = c.get("session") as Session;
+  const code = normalizeMatchCode(c.req.param("id"));
+  if (!MATCH_CODE_RE.test(code)) {
+    return c.json({ error: "not_found" }, 404);
+  }
+
+  const body = await readJsonBody(c.req.raw);
+  const parsed = RematchRequestSchema.safeParse(body);
+  if (!parsed.success) {
+    return c.json({ error: "invalid_body" }, 400);
+  }
+
+  const stub = c.env.MATCH.get(c.env.MATCH.idFromName(code));
+  const res = await stub.fetch("http://do/rematch", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ playerId: session.pid }),
+  });
+  if (res.status >= 400 && res.status < 500) {
+    return c.json(await res.json(), res.status as ContentfulStatusCode);
+  }
+  if (!res.ok) return c.json({ error: "rematch_failed" }, 500);
+  return c.json<RematchResponse>(await res.json());
 });
 
 api.get("/matches", requireSession(), async (c) => {

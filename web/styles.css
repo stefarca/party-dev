@@ -534,6 +534,17 @@ body {
   will-change: transform, opacity;
 }
 
+/* A reaction rising from the foot of the screen. `--reaction-x` is set
+ * inline per bubble, so two sent together do not stack on one spot. */
+.reaction-bubble {
+  position: absolute;
+  bottom: 1.5rem;
+  left: calc(50% + var(--reaction-x, 0px));
+  opacity: 0;
+  animation: party-reaction-rise 2600ms var(--ease-out) forwards;
+  will-change: transform, opacity;
+}
+
 /*
  * Named keyframes referenced from `games/**\/*.tsx` via Tailwind's
  * `animate-[name_duration_easing]` arbitrary-value syntax — an animation
@@ -841,6 +852,24 @@ body {
   }
   80% {
     transform: translateY(-2%) scale(1, 1);
+  }
+}
+
+@keyframes party-reaction-rise {
+  0% {
+    transform: translate(-50%, 1rem) scale(0.6);
+    opacity: 0;
+  }
+  12% {
+    transform: translate(-50%, 0) scale(1.1);
+    opacity: 1;
+  }
+  75% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -38vh) scale(1);
+    opacity: 0;
   }
 }
 

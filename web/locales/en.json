@@ -377,7 +377,31 @@
     "won_other": "{{names}} won",
     "draw": "The match ended in a draw",
     "noWinner": "The match ended with no winner",
-    "scores": "Final scores: {{scores}}"
+    "scores": "Final scores: {{scores}}",
+    "reacted": "{{name}} reacted {{emoji}}"
+  },
+  "rematch": {
+    "offer": "Rematch",
+    "open": "Go to the rematch",
+    "join": "Join the rematch",
+    "offered": "{{name}} wants a rematch!",
+    "failed": "Couldn't open a rematch — try again."
+  },
+  "reactions": {
+    "label": "Reactions",
+    "send": "React with {{reaction}}",
+    "live": "Live reactions",
+    "reacted": "{{name}} reacted with {{reaction}}",
+    "names": {
+      "clap": "Applause",
+      "laugh": "Laugh",
+      "wow": "Wow",
+      "grr": "Grr",
+      "fire": "On fire",
+      "turtle": "Hurry up",
+      "gg": "Good game",
+      "skull": "I'm dead"
+    }
   },
   "debug": {
     "note": "No UI is registered for this game — showing the raw engine view.",
@@ -398,14 +422,18 @@
     "no_run": "There's no run to play yet. Start today's first.",
     "not_a_player": "You are not a player in this match.",
     "not_active": "This match isn't being played right now.",
+    "not_finished": "This match isn't over yet.",
     "not_found": "No match with that code.",
     "not_host": "Only the host can start the match.",
     "not_joinable": "This match has already started.",
     "not_today": "That day's board isn't open yet.",
     "not_your_turn": "It's not your turn.",
+    "react_failed": "Your reaction didn't go through — try again.",
+    "rematch_failed": "Couldn't open a rematch — try again.",
     "run_over": "This run is already over.",
     "snapshot_failed": "Failed to load this match.",
     "start_failed": "Could not start the match.",
+    "too_fast": "Easy there — one reaction at a time.",
     "unknown_game": "That game doesn't exist.",
     "wrong_player_count": "This match doesn't have the right number of players to start."
   }

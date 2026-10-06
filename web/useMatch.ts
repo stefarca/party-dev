@@ -1,9 +1,18 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { ApiError, getMatchEvents, getMatchSnapshot, postMatchAction, postMatchStart } from "./api";
+import {
+  ApiError,
+  getMatchEvents,
+  getMatchSnapshot,
+  postMatchAction,
+  postMatchReaction,
+  postMatchStart,
+} from "./api";
 import { HEARTBEAT_INTERVAL_MS } from "../shared/heartbeat";
 import { HISTORY_LIMIT } from "../shared/history";
-import type { MatchEvent, MatchSnapshot, ServerMessage } from "../shared/protocol";
+import type { MatchEvent, MatchReaction, MatchSnapshot, ServerMessage } from "../shared/protocol";
+import { REACTION_LIMIT } from "../shared/reactions";
+import type { Reaction } from "../shared/reactions";
 
 // The live match transport: "treat WS as an
 // optimization over 'fetch state on load', never as the only path". This
@@ -29,10 +38,13 @@ export interface MatchError {
 export interface UseMatchResult {
   snapshot: MatchSnapshot | null;
   events: MatchEvent[];
+  // The match's latest reactions, oldest first.
+  reactions: MatchReaction[];
   connection: ConnectionState;
   error: MatchError | null;
   send: (action: unknown) => void;
   start: () => void;
+  react: (reaction: Reaction) => void;
 }
 
 const BASE_BACKOFF_MS = 1000;
@@ -57,6 +69,7 @@ export function useMatch(
 ): UseMatchResult {
   const [snapshot, setSnapshot] = useState<MatchSnapshot | null>(null);
   const [events, setEvents] = useState<MatchEvent[]>([]);
+  const [reactions, setReactions] = useState<MatchReaction[]>([]);
   const [connection, setConnection] = useState<ConnectionState>("connecting");
   const [error, setError] = useState<MatchError | null>(null);
 
@@ -76,10 +89,29 @@ export function useMatch(
   // snapshot that arrives out of order after a reconnect (e.g. a slow HTTP
   // fetch that resolves after the WS's own `hello` reply already landed)
   // must never clobber newer state.
-  const applySnapshot = useCallback((next: MatchSnapshot) => {
-    setSnapshot((prev) => (prev && next.seq < prev.seq ? prev : next));
-    if (next.seq > sinceRef.current) sinceRef.current = next.seq;
+  // Reactions arrive from two places — every snapshot carries the latest,
+  // and the socket pushes each one as it is sent — so they are merged by id
+  // rather than replaced, and kept to the same bound the server keeps. A
+  // snapshot from a server older than reactions has none to merge.
+  const applyReactions = useCallback((incoming: MatchReaction[] | undefined) => {
+    if (!incoming || incoming.length === 0) return;
+    setReactions((prev) => {
+      const seen = new Set(prev.map((r) => r.id));
+      const fresh = incoming.filter((r) => !seen.has(r.id));
+      if (fresh.length === 0) return prev;
+      const merged = prev.concat(fresh).sort((a, b) => a.id - b.id);
+      return merged.length > REACTION_LIMIT ? merged.slice(merged.length - REACTION_LIMIT) : merged;
+    });
   }, []);
+
+  const applySnapshot = useCallback(
+    (next: MatchSnapshot) => {
+      setSnapshot((prev) => (prev && next.seq < prev.seq ? prev : next));
+      if (next.seq > sinceRef.current) sinceRef.current = next.seq;
+      applyReactions(next.reactions);
+    },
+    [applyReactions],
+  );
 
   // Appends to the bounded history buffer. De-duplicates by `seq` and sorts
   // ascending — the server's own contract already guarantees a contiguous,
@@ -121,6 +153,7 @@ export function useMatch(
     backoffAttemptRef.current = 0;
     setSnapshot(null);
     setEvents([]);
+    setReactions([]);
     setError(null);
     setConnection("connecting");
 
@@ -211,6 +244,9 @@ export function useMatch(
           }
           case "events":
             applyEvents(msg.events);
+            break;
+          case "reaction":
+            applyReactions([msg.reaction]);
             break;
           case "error":
             // `not_found` can also come later, from a lobby that expired
@@ -340,7 +376,7 @@ export function useMatch(
         socketRef.current = null;
       }
     };
-  }, [matchId, ready, applySnapshot, applyEvents]);
+  }, [matchId, ready, applySnapshot, applyEvents, applyReactions]);
 
   // The client never sends state, only intents — these
   // two are the only two ways this hook ever talks to the server.
@@ -391,5 +427,29 @@ export function useMatch(
       });
   }, [applySnapshot]);
 
-  return { snapshot, events, connection, error, send, start };
+  const react = useCallback(
+    (reaction: Reaction) => {
+      const ws = socketRef.current;
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        try {
+          ws.send(JSON.stringify({ t: "react", reaction }));
+          return;
+        } catch {
+          // Fall through to the HTTP fallback below.
+        }
+      }
+      postMatchReaction(matchIdRef.current, reaction)
+        .then((stored) => applyReactions([stored]))
+        .catch((err) => {
+          if (err instanceof ApiError && err.status === 401) {
+            onUnauthorizedRef.current?.();
+            return;
+          }
+          setError(toMatchError(err, "react_failed", "could not send that reaction"));
+        });
+    },
+    [applyReactions],
+  );
+
+  return { snapshot, events, reactions, connection, error, send, start, react };
 }

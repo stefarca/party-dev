@@ -197,7 +197,9 @@ async function forgetDeadEndpoint(db: D1Database, endpoint: string): Promise<voi
 // wants when it subscribes.
 //
 // One set per `NudgeKind`: "turn" when the game is waiting on the reader,
-// "lobbyExpiring" when the reader hosts a lobby that is deleted in an hour.
+// "lobbyExpiring" when the reader hosts a lobby that is deleted in an hour,
+// "rematch" when the player named in the body opened the next match after
+// one the reader finished with them.
 //
 // The body names the reader's opponents rather than the match code: a code
 // is how the app addresses a match, not how a person remembers one, and
@@ -223,6 +225,11 @@ export const COPY: Record<
       one: "{{names}} is waiting for you to start.",
       many: "{{names}} are waiting for you to start.",
     },
+    rematch: {
+      title: "Rematch in {{game}}?",
+      one: "{{names}} wants a rematch. Tap to join.",
+      many: "{{names}} want a rematch. Tap to join.",
+    },
   },
   it: {
     turn: {
@@ -234,6 +241,11 @@ export const COPY: Record<
       title: "La tua lobby di {{game}} chiude tra un'ora",
       one: "{{names}} aspetta che inizi la partita.",
       many: "{{names}} aspettano che inizi la partita.",
+    },
+    rematch: {
+      title: "Rivincita a {{game}}?",
+      one: "{{names}} vuole la rivincita. Tocca per entrare.",
+      many: "{{names}} vogliono la rivincita. Tocca per entrare.",
     },
   },
 };
