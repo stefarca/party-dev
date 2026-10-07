@@ -276,7 +276,8 @@ export async function playerStatsDetail(
 // `to`, if that is sooner), so a match stuck all week counts all week. The
 // longest wait is the whole of that one wait, from its start to its end or to
 // `now`, however much of it lies outside the window. `stalled` is how many
-// matches wait on them right now.
+// matches wait on them right now. A void match, one nobody moved in, is
+// left out like everywhere else.
 export async function wallOfShame(
   db: D1Database,
   from: number,
@@ -292,8 +293,10 @@ export async function wallOfShame(
               MAX(COALESCE(w.ended_at, ?3) - w.started_at) AS longestMs,
               COALESCE(SUM(w.ended_at IS NULL), 0) AS stalled
        FROM turn_waits w
+       LEFT JOIN matches m ON m.id = w.match_id
        LEFT JOIN players p ON p.id = w.player_id
        WHERE w.started_at < ?2 AND COALESCE(w.ended_at, ?3) > ?1
+         AND m.result_kind IS NOT 'void'
        GROUP BY w.player_id
        HAVING waitedMs > 0
        ORDER BY waitedMs DESC, w.player_id

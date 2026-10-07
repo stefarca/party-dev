@@ -123,12 +123,13 @@ what makes that safe on any match.
 **A deadline is the engine's call before it is the game's.** In `alarm()`, if nobody in the match
 has made a move (no `action` event in the log), the match ends void: `record.outcome` is
 `{ kind: "void" }`, no auto-move is played, and the index writes `result_kind = 'void'`, which every
-record, stats and recap query leaves out, `played` included. Otherwise everyone still waited on gets
+record, stats and recap query leaves out, `played` and the wall of shame included. Otherwise everyone still waited on gets
 an auto-move through `onDeadline`, counted in `record.autoMoves`; a player's third time out is not
 played, and ends the match as `{ kind: "win", winners: <everyone else>, forfeited: [...] }`. Once
 `record.outcome` is set it replaces the game's `result()`, and `progressOf()` reports the match as
 waiting on nobody, whatever the game state still says; the client makes the board inert for
-both. Test the handler locally with
+both. Each player's snapshot carries their own `autoMovesLeft` (never anyone else's, since a
+snapshot is built per player), null until someone has moved, and the turn indicator shows it. Test the handler locally with
 `curl "http://localhost:5173/cdn-cgi/handler/scheduled"`.
 
 **`players` is the only place a nickname is stored.** Match records, the event log and

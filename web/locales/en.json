@@ -353,7 +353,10 @@
     "waiting": "Waiting…",
     "waitingOn": "Waiting on {{names}}",
     "remaining": "{{time}} remaining",
-    "timeUp": "time is up"
+    "timeUp": "time is up",
+    "autoMovesLeft_one": "If your time runs out, a move is played for you: {{count}} left",
+    "autoMovesLeft_other": "If your time runs out, a move is played for you: {{count}} left",
+    "noAutoMovesLeft": "No automatic moves left: if your time runs out again, you lose"
   },
   "result": {
     "draw": "It's a draw",

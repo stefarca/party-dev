@@ -27,6 +27,9 @@ test("X opens, and the turn passes to O", async ({ startMatch }) => {
   await expect(x.page.getByText("Your turn — place your X.")).toBeVisible();
   await expect(o.waitingOn(x)).toBeVisible();
   await expect(square(o, 2, 2)).toBeDisabled();
+  // Before anyone has moved, running out of time voids the match, so there is no count yet.
+  const autoMoves = /a move is played for you/;
+  await expect(x.page.getByText(autoMoves)).toBeHidden();
 
   await square(x, 2, 2).click();
 
@@ -35,6 +38,12 @@ test("X opens, and the turn passes to O", async ({ startMatch }) => {
   await expect(square(o, 2, 2)).toBeDisabled();
   await expect(x.waitingOn(o)).toBeVisible();
   await expect(square(x, 1, 1)).toBeDisabled();
+  // Each player sees how many of their own turns would be played for them.
+  for (const player of [x, o]) {
+    await expect(player.page.getByText(autoMoves)).toHaveText(
+      "If your time runs out, a move is played for you: 2 left",
+    );
+  }
 });
 
 test("three in a row wins", async ({ startMatch }) => {

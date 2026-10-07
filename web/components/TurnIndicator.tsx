@@ -137,9 +137,19 @@ export interface TurnIndicatorProps {
   waitingOn: PlayerId[];
   deadline: number | null;
   result: Result | null;
+  // The viewer's own automatic moves left, or null when they have none to
+  // count (a spectator, or a match not under way).
+  autoMovesLeft: number | null;
 }
 
-export function TurnIndicator({ me, players, waitingOn, deadline, result }: TurnIndicatorProps) {
+export function TurnIndicator({
+  me,
+  players,
+  waitingOn,
+  deadline,
+  result,
+  autoMovesLeft,
+}: TurnIndicatorProps) {
   const { t } = useTranslation();
   const [now, setNow] = useState(() => Date.now());
 
@@ -254,6 +264,18 @@ export function TurnIndicator({ me, players, waitingOn, deadline, result }: Turn
             {label}
           </span>
           {myTurn && <span className="text-xs text-[var(--text-muted)]">{t("turn.makeMove")}</span>}
+          {autoMovesLeft !== null && (
+            <span
+              className="text-xs"
+              style={{
+                color: autoMovesLeft === 0 ? "var(--danger-fg)" : "var(--text-muted)",
+              }}
+            >
+              {autoMovesLeft === 0
+                ? t("turn.noAutoMovesLeft")
+                : t("turn.autoMovesLeft", { count: autoMovesLeft })}
+            </span>
+          )}
         </div>
       </div>
       {remainingMs !== null && (

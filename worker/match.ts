@@ -566,6 +566,7 @@ export class MatchDO extends DurableObject<Env> {
     const state = record.state;
     const hasState = module !== undefined && state !== null;
     const { waitingOn, deadline, result } = progressOf(module, record);
+    const seated = record.players.some((p) => p.id === playerId);
     return {
       seq: this.currentSeq(),
       status: record.status,
@@ -576,6 +577,12 @@ export class MatchDO extends DurableObject<Env> {
       result,
       reactions: this.latestReactions(),
       rematch: record.rematch ?? null,
+      // Until someone moves, a time out voids the match rather than playing
+      // a move for anyone, so there is nothing to count yet.
+      autoMovesLeft:
+        record.status === "active" && seated && this.anyoneMoved()
+          ? Math.max(0, MAX_AUTO_MOVES - (record.autoMoves?.[playerId] ?? 0))
+          : null,
     };
   }
 

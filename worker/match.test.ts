@@ -1042,6 +1042,11 @@ describe("MatchDO turn clock", () => {
     const { matchDo, alarmController, db, players } = await ticTacToe();
     const [first, second] = players;
     let now = T0;
+    const left = async (playerId: string) => (await viewOf(matchDo, playerId)).autoMovesLeft;
+
+    // Before anyone moves, a time out voids the match: nothing to count yet.
+    expect(await left(first)).toBeNull();
+    expect(await left(second)).toBeNull();
 
     // `first` moves every time, never onto a square that would finish a
     // line; `second` never does.
@@ -1069,6 +1074,9 @@ describe("MatchDO turn clock", () => {
       );
       expect((await place(matchDo, first, free)).status).toBe(200);
       mark ??= (await board(matchDo))[free];
+      // Each player is told their own count, never the other's.
+      expect(await left(second)).toBe(3 - round);
+      expect(await left(first)).toBe(2);
       now += TURN_TIMEOUT_MS;
       vi.setSystemTime(now);
       await matchDo.alarm();
@@ -1081,6 +1089,7 @@ describe("MatchDO turn clock", () => {
         expect(view.result).toEqual({ kind: "win", winners: [first], forfeited: [second] });
         // The third time out is not played: the board is as it was.
         expect(await movesMade(matchDo)).toBe(5);
+        expect(await left(second)).toBeNull();
       }
     }
 

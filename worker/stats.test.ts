@@ -364,6 +364,19 @@ describe("stats queries", () => {
       expect(dee.longestMs).toBe(17 * DAY - HOUR);
     });
 
+    it("leaves out the waits of a void match", async () => {
+      await seedMatch(db, {
+        id: "VOID",
+        resultKind: "void",
+        players: { ada: false, bob: false },
+      });
+      await seedWait(db, "VOID", "ada", from, from + DAY, false);
+      await seedWait(db, "M1", "bob", from, from + HOUR);
+
+      const board = await wallOfShame(db, from, to, to);
+      expect(board.map((e) => e.playerId)).toEqual(["bob"]);
+    });
+
     it("lists the slowest first, at most `limit` of them", async () => {
       await seedWait(db, "M1", "ada", from, from + HOUR);
       await seedWait(db, "M2", "bob", from, from + 3 * HOUR);

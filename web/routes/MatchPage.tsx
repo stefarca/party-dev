@@ -541,6 +541,7 @@ function MatchBody({
         waitingOn={snapshot.waitingOn}
         deadline={snapshot.deadline}
         result={snapshot.result}
+        autoMovesLeft={snapshot.autoMovesLeft ?? null}
       />
       <GameUiHost
         code={match.id}
