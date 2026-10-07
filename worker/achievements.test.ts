@@ -337,14 +337,15 @@ describe("achievementsOf", () => {
     expect(ada.get("openHouse")).toMatchObject({ value: 1, unlockedAt: [2] });
   });
 
-  it("counts a move made more than a day after the turn came round", async () => {
-    await seedWait(db, "ada", T0, T0 + DAY - 1);
-    await seedWait(db, "ada", T0, T0 + 2 * DAY, false);
+  it("counts a move made 20 hours or more after the turn came round", async () => {
+    await seedWait(db, "ada", T0, T0 + 20 * HOUR - 1);
+    // Ended by the turn clock, which played a move for her.
+    await seedWait(db, "ada", T0, T0 + DAY, false);
     await seedWait(db, "ada", T0, null);
     expect((await progress()).get("slowpoke")?.unlockedAt).toEqual([]);
 
-    await seedWait(db, "ada", T0 + HOUR, T0 + HOUR + DAY);
-    expect((await progress()).get("slowpoke")?.unlockedAt).toEqual([T0 + HOUR + DAY]);
+    await seedWait(db, "ada", T0 + HOUR, T0 + 21 * HOUR);
+    expect((await progress()).get("slowpoke")?.unlockedAt).toEqual([T0 + 21 * HOUR]);
   });
 
   it("counts daily runs finished, and the most different ones on a single day", async () => {

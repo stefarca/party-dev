@@ -252,8 +252,8 @@
       },
       "slowpoke": {
         "name": "Lumaca",
-        "goal_one": "Metti più di un giorno a fare una mossa",
-        "goal_other": "Metti più di un giorno a fare una mossa, {{count}} volte"
+        "goal_one": "Metti 20 ore o più a fare una mossa",
+        "goal_other": "Metti 20 ore o più a fare una mossa, {{count}} volte"
       },
       "dailyHabit": {
         "name": "Abitudine quotidiana",

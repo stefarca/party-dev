@@ -32,7 +32,7 @@ export const ACHIEVEMENTS = [
   { id: "openHouse", glyph: "📣", tiers: [1] },
   // Matches finished in a draw.
   { id: "stalemate", glyph: "🤝", tiers: [1] },
-  // Moves made more than a day after the match turned to the player.
+  // Moves made 20 hours or more after the match turned to the player.
   { id: "slowpoke", glyph: "🐌", tiers: [1] },
   // Daily runs finished.
   { id: "dailyHabit", glyph: "☀️", tiers: [5, 25, 100] },
@@ -51,8 +51,10 @@ export function getAchievement(id: string): Achievement | undefined {
   return ACHIEVEMENTS.find((a) => a.id === id);
 }
 
-// The time a move has to keep a match waiting for `slowpoke`.
-export const SLOWPOKE_MS = 24 * 60 * 60 * 1000;
+// The time a move has to keep a match waiting for `slowpoke`, which web/locales/ state in words.
+// Short of the games' 24-hour turn clock: a turn left that long is played for whoever let it run
+// out, and that move is not theirs.
+export const SLOWPOKE_MS = 20 * 60 * 60 * 1000;
 
 // How many players a daily chart needs, ranked, before topping it counts.
 export const TOP_OF_THE_CHART_MIN_RANKED = 2;

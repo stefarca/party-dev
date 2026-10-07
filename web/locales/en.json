@@ -252,8 +252,8 @@
       },
       "slowpoke": {
         "name": "Slowpoke",
-        "goal_one": "Take more than a day to make a move",
-        "goal_other": "Take more than a day to make a move, {{count}} times"
+        "goal_one": "Take 20 hours or more to make a move",
+        "goal_other": "Take 20 hours or more to make a move, {{count}} times"
       },
       "dailyHabit": {
         "name": "Daily habit",
