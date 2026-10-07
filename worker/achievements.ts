@@ -137,15 +137,16 @@ export async function achievementsOf(
       )
       .bind(playerId)
       .all<MatchRow>(),
-    // Everyone the player has finished a match with, once per match. A
-    // finished match updates no more, so its `updated_at` is when it ended.
+    // Everyone the player has finished a match with, once per match, a void
+    // one aside. A finished match updates no more, so its `updated_at` is
+    // when it ended.
     db
       .prepare(
         `SELECT o.player_id AS opponent, COALESCE(m.updated_at, 0) AS at
          FROM match_players mp
          JOIN matches m ON m.id = mp.match_id
          JOIN match_players o ON o.match_id = mp.match_id AND o.player_id <> mp.player_id
-         WHERE mp.player_id = ? AND m.status = 'done'`,
+         WHERE mp.player_id = ? AND m.status = 'done' AND m.result_kind IS NOT 'void'`,
       )
       .bind(playerId)
       .all<{ opponent: string; at: number }>(),
@@ -188,7 +189,10 @@ export async function achievementsOf(
       .all<{ at: number }>(),
   ]);
 
-  const finished = matches.results.filter((m) => m.status === "done");
+  // A void match, one nobody moved in before time ran out, finished nothing:
+  // it counts towards no measure of finished matches. It still counts as
+  // hosted, since that is earned when the match starts and must not be lost.
+  const finished = matches.results.filter((m) => m.status === "done" && m.resultKind !== "void");
   const underWay = matches.results.filter((m) => m.status !== "lobby");
   const hosted = underWay.filter((m) => m.hostId === playerId);
   const finishedRuns = runs.results.filter((r) => r.status === "done");

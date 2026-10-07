@@ -236,6 +236,28 @@ describe("achievementsOf", () => {
     expect((await progress()).get("hotStreak")).toMatchObject({ value: 3, unlockedAt: [T0 + 3] });
   });
 
+  it("counts a void match towards nothing a finished match earns", async () => {
+    await beat(db, "W1", "ada", "bob", T0 + 1);
+    await seedMatch(db, {
+      id: "VOID",
+      gameId: "tictactoe",
+      finishedAt: T0 + 2,
+      resultKind: "void",
+      hostId: "ada",
+      players: { ada: false, cy: false },
+    });
+    await beat(db, "W2", "ada", "bob", T0 + 3);
+
+    const ada = await progress();
+    expect(ada.get("veteran")?.value).toBe(2);
+    expect(ada.get("explorer")?.value).toBe(1);
+    expect(ada.get("social")?.value).toBe(1);
+    // It does not break the streak either.
+    expect(ada.get("hotStreak")?.value).toBe(2);
+    // Hosting is earned when the match starts, and is kept: ada hosted all three.
+    expect(ada.get("host")?.value).toBe(3);
+  });
+
   it("takes nothing back when the player resets their record", async () => {
     await beat(db, "M1", "ada", "bob", T0 - DAY);
     await db.prepare("UPDATE players SET stats_since = ? WHERE id = 'ada'").bind(T0).run();
