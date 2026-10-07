@@ -102,7 +102,7 @@
         "trigger": "Azzera",
         "label": "Azzera il tuo bilancio",
         "title": "Azzerare il tuo bilancio?",
-        "body": "Giocate, vinte e concluse, la serie di vittorie e le rivalità ripartono da zero e contano solo le partite iniziate da adesso. La serie di giorni e i traguardi restano, e tutte le partite restano nelle tue liste: non viene cancellato nulla.",
+        "body": "Giocate, vinte e concluse, la serie di vittorie e le rivalità ripartono da zero e contano solo le partite iniziate da adesso. La serie di giorni e gli achievement restano, e tutte le partite restano nelle tue liste: non viene cancellato nulla.",
         "confirm": "Azzera bilancio",
         "cancel": "Annulla",
         "failed": "Impossibile azzerare il bilancio."
@@ -183,17 +183,17 @@
     }
   },
   "achievements": {
-    "title": "Traguardi",
+    "title": "Achievements",
     "hint": "{{unlocked}} su {{total}} sbloccati. Sono tuoi per sempre: azzerare il bilancio non li tocca.",
-    "label": "I tuoi traguardi",
+    "label": "I tuoi achievement",
     "level": "Livello {{level}} di {{total}}",
     "progress": "{{value}} su {{goal}}",
     "unlocked": "Sbloccato il {{date}}",
     "new": "Nuovo",
-    "loadFailed": "Impossibile caricare i tuoi traguardi.",
+    "loadFailed": "Impossibile caricare i tuoi achievement.",
     "toast": {
-      "title_one": "Traguardo sbloccato!",
-      "title_other": "{{count}} traguardi sbloccati!",
+      "title_one": "Achievement sbloccato!",
+      "title_other": "{{count}} achievement sbloccati!",
       "more_one": "…e {{count}} altro",
       "more_other": "…e altri {{count}}",
       "seeAll": "Vedi tutti",
