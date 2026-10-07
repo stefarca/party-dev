@@ -102,7 +102,7 @@
         "trigger": "Reset",
         "label": "Reset your record",
         "title": "Reset your record?",
-        "body": "Played, won and finished, your win streak and your rivalries all start again from zero, counting only matches started from now on. Your play streak stays, and every match stays in your lists — nothing is deleted.",
+        "body": "Played, won and finished, your win streak and your rivalries all start again from zero, counting only matches started from now on. Your play streak and your achievements stay, and every match stays in your lists — nothing is deleted.",
         "confirm": "Reset record",
         "cancel": "Cancel",
         "failed": "Could not reset your record."
@@ -180,6 +180,96 @@
       "stalled_one": "{{count}} match waiting on them now",
       "stalled_other": "{{count}} matches waiting on them now",
       "shameEmpty": "Nobody has kept anyone waiting this week. Suspicious."
+    }
+  },
+  "achievements": {
+    "title": "Achievements",
+    "hint": "{{unlocked}} of {{total}} unlocked. They're yours for good: resetting your record keeps them.",
+    "label": "Your achievements",
+    "level": "Level {{level}} of {{total}}",
+    "progress": "{{value}} of {{goal}}",
+    "unlocked": "Unlocked {{date}}",
+    "new": "New",
+    "loadFailed": "Failed to load your achievements.",
+    "toast": {
+      "title_one": "Achievement unlocked!",
+      "title_other": "{{count}} achievements unlocked!",
+      "more_one": "…and {{count}} more",
+      "more_other": "…and {{count}} more",
+      "seeAll": "See all",
+      "close": "Close"
+    },
+    "items": {
+      "winner": {
+        "name": "Winner",
+        "goal_one": "Win a match",
+        "goal_other": "Win {{count}} matches"
+      },
+      "hotStreak": {
+        "name": "Hot streak",
+        "goal_one": "Win {{count}} match in a row",
+        "goal_other": "Win {{count}} matches in a row"
+      },
+      "veteran": {
+        "name": "Veteran",
+        "goal_one": "Finish {{count}} match",
+        "goal_other": "Finish {{count}} matches"
+      },
+      "regular": {
+        "name": "Regular",
+        "goal_one": "Play {{count}} day in a row",
+        "goal_other": "Play {{count}} days in a row"
+      },
+      "explorer": {
+        "name": "Explorer",
+        "goal_one": "Finish {{count}} game",
+        "goal_other": "Finish {{count}} different games, matches or dailies"
+      },
+      "social": {
+        "name": "Social butterfly",
+        "goal_one": "Finish a match against {{count}} player",
+        "goal_other": "Finish a match against {{count}} different players"
+      },
+      "rivalry": {
+        "name": "Arch-rivals",
+        "goal_one": "Finish {{count}} match against the same player",
+        "goal_other": "Finish {{count}} matches against the same player"
+      },
+      "host": {
+        "name": "Party host",
+        "goal_one": "Host a match that gets played",
+        "goal_other": "Host {{count}} matches that get played"
+      },
+      "openHouse": {
+        "name": "Open house",
+        "goal_one": "Host a public match that gets played",
+        "goal_other": "Host {{count}} public matches that get played"
+      },
+      "stalemate": {
+        "name": "Stalemate",
+        "goal_one": "Finish a match in a draw",
+        "goal_other": "Finish {{count}} matches in a draw"
+      },
+      "slowpoke": {
+        "name": "Slowpoke",
+        "goal_one": "Take 20 hours or more to make a move",
+        "goal_other": "Take 20 hours or more to make a move, {{count}} times"
+      },
+      "dailyHabit": {
+        "name": "Daily habit",
+        "goal_one": "Finish a daily game",
+        "goal_other": "Finish {{count}} daily games"
+      },
+      "cleanSweep": {
+        "name": "Clean sweep",
+        "goal_one": "Finish {{count}} daily game in one day",
+        "goal_other": "Finish {{count}} different daily games in one day"
+      },
+      "topOfTheChart": {
+        "name": "Top of the chart",
+        "goal_one": "Finish first on a day's chart, with someone else on it",
+        "goal_other": "Finish first on a day's chart {{count}} times"
+      }
     }
   },
   "tile": {

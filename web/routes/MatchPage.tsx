@@ -16,6 +16,7 @@ import type {
   MatchVisibility,
 } from "../../shared/protocol";
 import type { Reaction } from "../../shared/reactions";
+import { useCheckWhenDone } from "../achievements";
 import { ApiError, getMatch, joinMatch, setMatchVisibility } from "../api";
 import { clearMatchWaiting, setMatchWaiting } from "../badge";
 import { ConnectionBadge } from "../components/ConnectionBadge";
@@ -641,6 +642,9 @@ export function MatchPage({ code }: { code: string }) {
   useEffect(() => {
     return () => clearMatchWaiting(code);
   }, [code]);
+
+  // A match that ends in front of the player may have earned them something.
+  useCheckWhenDone(snapshot?.status);
 
   const meta = match ? getGameMeta(match.gameId) : undefined;
   const status = snapshot?.status ?? match?.status;

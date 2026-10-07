@@ -13,7 +13,8 @@ each day, one run each, ranked on the day's chart,
 nudges for players who are newly up and not currently connected — to a Slack channel, and as a
 web push notification to whichever browsers a player has switched them on from — a stats page
 with play and win streaks, a record game by game, head-to-head rivalries ("you're 3–11 against
-Luca"), the week's champions and a wall of shame for whoever keeps everyone waiting, a weekly
+Luca"), the week's champions and a wall of shame for whoever keeps everyone waiting, tiered
+achievements (announced the moment you earn one, and kept through a record reset), a weekly
 recap of all of that posted to Slack every Monday, the whole UI in
 English or Italian (picked from the browser's languages, switchable from the header), and an
 installable PWA build so the app can live on a phone's home screen like any other game. See
