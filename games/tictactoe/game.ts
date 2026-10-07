@@ -163,11 +163,17 @@ export function waitingOn(state: TttState): PlayerId[] {
 export function deadline(state: TttState): number | null {
   if (isOver(state)) return null;
   // `init()` gets no `now`, so `turnStartedAt` stays at its `0` sentinel
-  // until the first move stamps a real time. Reporting `0 + TURN_TIMEOUT_MS`
-  // (a moment in 1970) would fire the alarm at once and auto-play the
-  // opening move before X could react, so the first turn is untimed.
+  // until `start()` stamps the moment the match started. Reporting
+  // `0 + TURN_TIMEOUT_MS` (a moment in 1970) would fire the alarm at once and
+  // auto-play the opening move before X could react.
   if (state.turnStartedAt === 0) return null;
   return state.turnStartedAt + TURN_TIMEOUT_MS;
+}
+
+// Starts the opening turn's clock at the moment the match starts; a clock
+// already running is left alone.
+export function start(state: TttState, now: number): TttState {
+  return state.turnStartedAt === 0 ? { ...state, turnStartedAt: now } : state;
 }
 
 export function onDeadline(state: TttState, now: number): TttState {
@@ -221,6 +227,7 @@ export const tictactoeGame: GameModule<TttState, PlaceAction> = {
   meta: { name: "Tic-tac-toe", minPlayers: 2, maxPlayers: 2 },
   actionSchema: PlaceActionSchema,
   init,
+  start,
   reduce,
   view,
   waitingOn,

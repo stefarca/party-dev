@@ -105,11 +105,32 @@ them from under an instance whose constructor will not run again. It closes the 
 A record from before `expiresAt` existed falls back to its old `publicUntil`, then to a day after
 creation. A lobby nobody touches never wakes to set an alarm, so an hourly cron
 (`triggers.crons` in `wrangler.jsonc`, `scheduled()` in `worker/index.ts`) runs
-`sweepLobbies()` (`worker/sweep.ts`). It reads index lobbies older than a day, oldest first and
-`SWEEP_BATCH` at a time to stay under the per-invocation subrequest limit, and posts
-`/lobby/sweep` to each one's DO, which arms the alarm if it is missing or wrong. A DO that answers
-404 holds no match, so its index rows are deleted. That also cleans up after a failed
-`dissolveLobby()` index delete. Test the handler locally with
+`sweepMatches()` (`worker/sweep.ts`). It reads index lobbies older than a day and active matches
+whose `updated_at` is older than a day, oldest first and `SWEEP_BATCH` at a time to stay under the
+per-invocation subrequest limit, and posts `/sweep` to each one's DO, which arms the alarm if it is
+missing or wrong. A DO that answers 404 holds no match, so its index rows are deleted. That also
+cleans up after a failed `dissolveLobby()` index delete.
+
+**Every turn has a clock, the opening one included.** `init()` has no `now`, so a game leaves its
+opening clock at a `0` sentinel (with `deadline()` null) and stamps it in the optional
+`start(state, now)` hook, which `beginGame()` calls the moment the match starts — in `/start` and
+in the join that takes the last seat alike. The opening turn is then due a full timeout after the
+start, never at once. A match started before the hook existed is still waiting on its opening
+turn with no deadline and no alarm, and nothing wakes it, so the sweep reaches it (a match with a
+clock never goes a day without a commit) and the DO calls `start` with the record's `updatedAt`,
+which for a match nobody has moved in is its start. `start` leaves a running clock alone, which is
+what makes that safe on any match.
+
+**A deadline is the engine's call before it is the game's.** In `alarm()`, if nobody in the match
+has made a move (no `action` event in the log), the match ends void: `record.outcome` is
+`{ kind: "void" }`, no auto-move is played, and the index writes `result_kind = 'void'`, which every
+record, stats and recap query leaves out, `played` and the wall of shame included. Otherwise everyone still waited on gets
+an auto-move through `onDeadline`, counted in `record.autoMoves`; a player's third time out is not
+played, and ends the match as `{ kind: "win", winners: <everyone else>, forfeited: [...] }`. Once
+`record.outcome` is set it replaces the game's `result()`, and `progressOf()` reports the match as
+waiting on nobody, whatever the game state still says; the client makes the board inert for
+both. Each player's snapshot carries their own `autoMovesLeft` (never anyone else's, since a
+snapshot is built per player), null until someone has moved, and the turn indicator shows it. Test the handler locally with
 `curl "http://localhost:5173/cdn-cgi/handler/scheduled"`.
 
 **`players` is the only place a nickname is stored.** Match records, the event log and

@@ -44,6 +44,7 @@ const { counterGame, ROUND_TIMEOUT_MS } = await import("../games/__fixtures__/co
 const { createMatch: openLobby } = await import("./create");
 const { createMigratedDb } = await import("./__fixtures__/d1");
 const { serverGames } = await import("../games/registry");
+const { TURN_TIMEOUT_MS } = await import("../games/tictactoe/game");
 const { MatchDO } = await import("./match");
 
 // ---------------------------------------------------------------------
@@ -309,12 +310,16 @@ function jsonRequest(path: string, body: unknown): Request {
 
 type MatchDOInstance = InstanceType<typeof MatchDO>;
 
-// A counter match between `players` (the first one hosts), every one of them
+// A counter match (or `gameId`'s) between `players` (the first one hosts), every one of them
 // connected, started unless told otherwise. `visibility` is sent only when
 // given, so the default is the DO's own.
 async function createMatch(
   players: string[],
-  { start = true, visibility }: { start?: boolean; visibility?: string } = {},
+  {
+    start = true,
+    visibility,
+    gameId = "counter",
+  }: { start?: boolean; visibility?: string; gameId?: string } = {},
 ) {
   const pauses = createPauseController();
   const alarmController = createAlarmController(pauses);
@@ -328,7 +333,7 @@ async function createMatch(
   await matchDo.fetch(
     jsonRequest("/lobby/create", {
       matchId: "m1",
-      gameId: "counter",
+      gameId,
       hostId: players[0],
       ...(visibility === undefined ? {} : { visibility }),
     }),
@@ -864,7 +869,7 @@ describe("MatchDO visibility", () => {
       ctx.storage.sql.exec("UPDATE meta SET value = ? WHERE key = 'match'", JSON.stringify(older));
       await ctx.storage.deleteAlarm();
 
-      const res = await matchDo.fetch(new Request("http://do/lobby/sweep", { method: "POST" }));
+      const res = await matchDo.fetch(new Request("http://do/sweep", { method: "POST" }));
       expect(res.status).toBe(200);
       expect(alarmController.value).toBe(T0 + DAY - HOUR);
     });
@@ -873,7 +878,7 @@ describe("MatchDO visibility", () => {
       const { matchDo } = await createMatch(["alice"], { start: false });
       vi.setSystemTime(T0 + DAY);
       await matchDo.alarm();
-      const res = await matchDo.fetch(new Request("http://do/lobby/sweep", { method: "POST" }));
+      const res = await matchDo.fetch(new Request("http://do/sweep", { method: "POST" }));
       expect(res.status).toBe(404);
     });
 
@@ -898,6 +903,245 @@ describe("MatchDO visibility", () => {
       const view = await matchDo.fetch(new Request("http://do/view?playerId=alice"));
       expect(((await view.json()) as MatchSnapshot).status).toBe("active");
     });
+  });
+});
+
+describe("MatchDO turn clock", () => {
+  const T0 = Date.UTC(2026, 8, 1, 9);
+  const HOUR = 60 * 60 * 1000;
+
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(T0);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  async function viewOf(matchDo: MatchDOInstance, playerId: string): Promise<MatchSnapshot> {
+    const res = await matchDo.fetch(new Request(`http://do/view?playerId=${playerId}`));
+    return (await res.json()) as MatchSnapshot;
+  }
+
+  // The tic-tac-toe board as alice sees it.
+  async function board(matchDo: MatchDOInstance): Promise<(string | null)[]> {
+    return ((await viewOf(matchDo, "alice")).view as { board: (string | null)[] }).board;
+  }
+
+  async function movesMade(matchDo: MatchDOInstance): Promise<number> {
+    return (await board(matchDo)).filter((cell) => cell !== null).length;
+  }
+
+  // A tic-tac-toe match between alice and bob, started at T0 by the join
+  // that takes its second seat, with whoever opens first in `players`.
+  async function ticTacToe() {
+    const created = await createMatch(["alice", "bob"], { gameId: "tictactoe" });
+    const [first] = (await viewOf(created.matchDo, "alice")).waitingOn;
+    const players = first === "alice" ? ["alice", "bob"] : ["bob", "alice"];
+    return { ...created, players };
+  }
+
+  // The latest index rows: the match's result kind, and who it counts as won.
+  function indexed(db: ReturnType<typeof createFakeDB>) {
+    const batch = db.batches.at(-1) ?? [];
+    const match = batch.find((s) => s.sql.includes("INSERT INTO matches"));
+    const won = batch
+      .filter((s) => s.sql.includes("INSERT INTO match_players"))
+      .map((s) => [s.args[1], s.args[3]]);
+    return { status: match?.args[2], resultKind: match?.args[7], won };
+  }
+
+  // Puts the match back as a match started before its game timed the
+  // opening turn left it: the clock at its `0` sentinel, and no alarm.
+  async function withoutOpeningClock(created: Awaited<ReturnType<typeof createMatch>>) {
+    const { ctx } = created;
+    const [stored] = ctx.storage.sql
+      .exec("SELECT value FROM meta WHERE key = 'match'")
+      .toArray() as { value: string }[];
+    const record = JSON.parse(stored.value) as { state: { turnStartedAt: number } };
+    record.state.turnStartedAt = 0;
+    ctx.storage.sql.exec("UPDATE meta SET value = ? WHERE key = 'match'", JSON.stringify(record));
+    await ctx.storage.deleteAlarm();
+  }
+
+  function sweep(matchDo: MatchDOInstance): Promise<Response> {
+    return matchDo.fetch(new Request("http://do/sweep", { method: "POST" }));
+  }
+
+  function place(matchDo: MatchDOInstance, playerId: string, cell: number) {
+    return play(matchDo, { playerId, action: { t: "place", cell } });
+  }
+
+  it("arms the alarm for the opening turn when the match starts, a full turn out", async () => {
+    const { matchDo, alarmController } = await ticTacToe();
+    expect(alarmController.value).toBe(T0 + TURN_TIMEOUT_MS);
+    const opening = await viewOf(matchDo, "alice");
+    expect(opening.status).toBe("active");
+    expect(opening.deadline).toBe(T0 + TURN_TIMEOUT_MS);
+
+    // An early fire changes nothing.
+    vi.setSystemTime(T0 + HOUR);
+    await matchDo.alarm();
+    expect((await viewOf(matchDo, "alice")).status).toBe("active");
+    expect(alarmController.value).toBe(T0 + TURN_TIMEOUT_MS);
+  });
+
+  it("voids a match nobody has moved in once the opening turn runs out", async () => {
+    const { matchDo, alarmController, db, sockets } = await ticTacToe();
+
+    vi.setSystemTime(T0 + TURN_TIMEOUT_MS);
+    await matchDo.alarm();
+
+    const ended = await viewOf(matchDo, "alice");
+    expect(ended.status).toBe("done");
+    expect(ended.result).toEqual({ kind: "void" });
+    expect(ended.waitingOn).toEqual([]);
+    expect(ended.deadline).toBeNull();
+    // Nothing was played for anyone.
+    expect(await movesMade(matchDo)).toBe(0);
+    expect(alarmController.value).toBeNull();
+    expect(indexed(db)).toEqual({
+      status: "done",
+      resultKind: "void",
+      won: [
+        ["alice", 0],
+        ["bob", 0],
+      ],
+    });
+    const events = sockets.alice.sent.filter((m) => m.t === "events");
+    expect(events.at(-1)).toMatchObject({
+      events: [
+        { payload: { type: "deadline_resolved" } },
+        { payload: { type: "match_finished", result: { kind: "void" } } },
+      ],
+    });
+
+    // A second fire finds nothing left to do.
+    await matchDo.alarm();
+    expect((await viewOf(matchDo, "alice")).result).toEqual({ kind: "void" });
+    expect((await place(matchDo, ended.players[0].id, 0)).status).toBe(409);
+  });
+
+  it("plays a turn that runs out once someone has moved, and starts the next clock", async () => {
+    const { matchDo, alarmController, players } = await ticTacToe();
+    const [first, second] = players;
+    expect((await place(matchDo, first, 0)).status).toBe(200);
+
+    vi.setSystemTime(T0 + TURN_TIMEOUT_MS);
+    await matchDo.alarm();
+    const after = await viewOf(matchDo, "alice");
+    expect(after.status).toBe("active");
+    expect(await movesMade(matchDo)).toBe(2);
+    expect(after.waitingOn).toEqual([first]);
+    expect(alarmController.value).toBe(T0 + 2 * TURN_TIMEOUT_MS);
+    expect(second).not.toBe(first);
+  });
+
+  it("plays a player's turn for them twice, and counts the third time as a loss", async () => {
+    const { matchDo, alarmController, db, players } = await ticTacToe();
+    const [first, second] = players;
+    let now = T0;
+    const left = async (playerId: string) => (await viewOf(matchDo, playerId)).autoMovesLeft;
+
+    // Before anyone moves, a time out voids the match: nothing to count yet.
+    expect(await left(first)).toBeNull();
+    expect(await left(second)).toBeNull();
+
+    // `first` moves every time, never onto a square that would finish a
+    // line; `second` never does.
+    const LINES = [
+      [0, 1, 2],
+      [3, 4, 5],
+      [6, 7, 8],
+      [0, 3, 6],
+      [1, 4, 7],
+      [2, 5, 8],
+      [0, 4, 8],
+      [2, 4, 6],
+    ];
+    let mark: string | null = null;
+    for (let round = 1; round <= 3; round++) {
+      const cells = await board(matchDo);
+      const free = cells.findIndex(
+        (cell, i) =>
+          cell === null &&
+          !LINES.some(
+            (line) =>
+              line.includes(i) &&
+              line.every((j) => j === i || (mark !== null && cells[j] === mark)),
+          ),
+      );
+      expect((await place(matchDo, first, free)).status).toBe(200);
+      mark ??= (await board(matchDo))[free];
+      // Each player is told their own count, never the other's.
+      expect(await left(second)).toBe(3 - round);
+      expect(await left(first)).toBe(2);
+      now += TURN_TIMEOUT_MS;
+      vi.setSystemTime(now);
+      await matchDo.alarm();
+      const view = await viewOf(matchDo, "alice");
+      if (round < 3) {
+        expect(view.status).toBe("active");
+        expect(await movesMade(matchDo)).toBe(round * 2);
+      } else {
+        expect(view.status).toBe("done");
+        expect(view.result).toEqual({ kind: "win", winners: [first], forfeited: [second] });
+        // The third time out is not played: the board is as it was.
+        expect(await movesMade(matchDo)).toBe(5);
+        expect(await left(second)).toBeNull();
+      }
+    }
+
+    expect(alarmController.value).toBeNull();
+    const index = indexed(db);
+    expect(index.resultKind).toBe("win");
+    expect(new Map(index.won as [string, number][])).toEqual(
+      new Map([
+        [first, 1],
+        [second, 0],
+      ]),
+    );
+  });
+
+  it("starts the opening clock of a match from before it was timed, as of the match's start", async () => {
+    const created = await createMatch(["alice", "bob"], { gameId: "tictactoe" });
+    const { matchDo, alarmController } = created;
+    await withoutOpeningClock(created);
+    expect((await viewOf(matchDo, "alice")).deadline).toBeNull();
+
+    vi.setSystemTime(T0 + 2 * HOUR);
+    expect((await sweep(matchDo)).status).toBe(200);
+    expect(alarmController.value).toBe(T0 + TURN_TIMEOUT_MS);
+    expect((await viewOf(matchDo, "alice")).deadline).toBe(T0 + TURN_TIMEOUT_MS);
+
+    // A second sweep finds the clock running and leaves it be.
+    vi.setSystemTime(T0 + 3 * HOUR);
+    await sweep(matchDo);
+    expect(alarmController.value).toBe(T0 + TURN_TIMEOUT_MS);
+  });
+
+  it("voids a match from before the opening was timed that stalled on it for over a day", async () => {
+    const created = await createMatch(["alice", "bob"], { gameId: "tictactoe" });
+    const { matchDo, alarmController } = created;
+    await withoutOpeningClock(created);
+
+    vi.setSystemTime(T0 + 3 * TURN_TIMEOUT_MS);
+    await sweep(matchDo);
+    // Already due, so the alarm fires at once.
+    expect(alarmController.value).toBe(T0 + TURN_TIMEOUT_MS);
+    await matchDo.alarm();
+    expect((await viewOf(matchDo, "alice")).result).toEqual({ kind: "void" });
+  });
+
+  it("re-arms a match under way that lost its alarm, without touching its state", async () => {
+    const { matchDo, alarmController, ctx } = await ticTacToe();
+    await ctx.storage.deleteAlarm();
+    const before = await viewOf(matchDo, "alice");
+
+    await sweep(matchDo);
+    expect(alarmController.value).toBe(T0 + TURN_TIMEOUT_MS);
+    expect(await viewOf(matchDo, "alice")).toEqual(before);
   });
 });
 

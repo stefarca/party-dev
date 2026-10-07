@@ -83,6 +83,14 @@ interface MatchRecord {
   // The lobby of the match that follows this one once it is over, and the
   // player who opened it. Set once; every later ask for a rematch gets it.
   rematch?: { matchId: string; by: PlayerId };
+  // How a match the engine ended itself, at a deadline, came out: void when
+  // nobody had moved yet, or a win for the rest when a player ran out of
+  // auto-moves. It takes the place of the game's own `result()`, and the
+  // match waits on nobody once it is set. Absent while the game decides.
+  outcome?: Result;
+  // How many of each player's turns the engine has played for them, keyed
+  // by playerId. Absent on records from before it was counted.
+  autoMoves?: Record<PlayerId, number>;
 }
 
 // Per-connection attachment: hibernation wipes in-memory
@@ -146,14 +154,37 @@ function lobbyWakeAt(record: MatchRecord): number | null {
   return record.expiryWarnedFor === expiresAt ? expiresAt : expiresAt - LOBBY_EXPIRY_WARNING_MS;
 }
 
-// Turns a lobby into a match under way, seating its roster in join order.
-// The caller has checked the player count and commits the record.
-function beginGame(record: MatchRecord, module: GameModule<unknown, unknown>): void {
+// How many of a player's turns the engine plays for them when their clock
+// runs out. The next time it runs out, they lose the match.
+export const MAX_AUTO_MOVES = 2;
+
+// What the match waits on, when it is due, and how it came out, from the game
+// unless the engine ended the match itself (`outcome`).
+function progressOf(
+  module: GameModule<unknown, unknown> | undefined,
+  record: MatchRecord,
+): { waitingOn: PlayerId[]; deadline: number | null; result: Result | null } {
+  if (record.outcome) return { waitingOn: [], deadline: null, result: record.outcome };
+  const state = record.state;
+  if (module === undefined || state === null)
+    return { waitingOn: [], deadline: null, result: null };
+  return {
+    waitingOn: module.waitingOn(state),
+    deadline: module.deadline(state),
+    result: module.result(state),
+  };
+}
+
+// Turns a lobby into a match under way, seating its roster in join order,
+// and starts the opening clock, so the first turn has a deadline like every
+// other. The caller has checked the player count and commits the record.
+function beginGame(record: MatchRecord, module: GameModule<unknown, unknown>, now: number): void {
   record.status = "active";
-  record.state = module.init(
+  const state = module.init(
     record.players.map((p) => p.id),
     record.seed,
   );
+  record.state = module.start ? module.start(state, now) : state;
 }
 
 // Maps an internal error `code` (see ActionResult/MutationResult above) to
@@ -189,7 +220,7 @@ function statusForCode(code: string): number {
 // winner, so the top score takes it and a tie counts for everyone on it —
 // the same reading the scoreboard UI gives.
 function winnersOf(result: Result | null): Set<PlayerId> {
-  if (result === null || result.kind === "draw") return new Set();
+  if (result === null || result.kind === "draw" || result.kind === "void") return new Set();
   if (result.kind === "win") return new Set(result.winners);
   const scores = Object.entries(result.scores);
   if (scores.length === 0) return new Set();
@@ -280,8 +311,8 @@ export class MatchDO extends DurableObject<Env> {
       return this.handleVisibilityRequest(request);
     }
 
-    if (request.method === "POST" && url.pathname === "/lobby/sweep") {
-      return this.handleLobbySweep();
+    if (request.method === "POST" && url.pathname === "/sweep") {
+      return this.handleSweep();
     }
 
     if (request.method === "GET" && url.pathname === "/snapshot") {
@@ -534,16 +565,24 @@ export class MatchDO extends DurableObject<Env> {
     const module = getGame(record.gameId) as GameModule<unknown, unknown> | undefined;
     const state = record.state;
     const hasState = module !== undefined && state !== null;
+    const { waitingOn, deadline, result } = progressOf(module, record);
+    const seated = record.players.some((p) => p.id === playerId);
     return {
       seq: this.currentSeq(),
       status: record.status,
       players: this.rosterOf(record, names),
       view: hasState ? module.view(state, playerId) : null,
-      waitingOn: hasState ? module.waitingOn(state) : [],
-      deadline: hasState ? module.deadline(state) : null,
-      result: hasState ? module.result(state) : null,
+      waitingOn,
+      deadline,
+      result,
       reactions: this.latestReactions(),
       rematch: record.rematch ?? null,
+      // Until someone moves, a time out voids the match rather than playing
+      // a move for anyone, so there is nothing to count yet.
+      autoMovesLeft:
+        record.status === "active" && seated && this.anyoneMoved()
+          ? Math.max(0, MAX_AUTO_MOVES - (record.autoMoves?.[playerId] ?? 0))
+          : null,
     };
   }
 
@@ -599,12 +638,8 @@ export class MatchDO extends DurableObject<Env> {
     module: GameModule<unknown, unknown> | undefined,
     record: MatchRecord,
   ): { waitingOn: PlayerId[]; deadline: number | null } {
-    const state = record.state;
-    const hasState = module !== undefined && state !== null;
-    return {
-      waitingOn: hasState ? module.waitingOn(state) : [],
-      deadline: hasState ? module.deadline(state) : null,
-    };
+    const { waitingOn, deadline } = progressOf(module, record);
+    return { waitingOn, deadline };
   }
 
   // ---------------------------------------------------------------------
@@ -622,8 +657,7 @@ export class MatchDO extends DurableObject<Env> {
     // Read the previously-persisted waitingOn *before* overwriting the
     // record, so stage 7 can compute which players are newly waited-on.
     const priorRecord = this.readMatch();
-    const previousWaiting =
-      module && priorRecord?.state != null ? module.waitingOn(priorRecord.state) : [];
+    const previousWaiting = priorRecord ? progressOf(module, priorRecord).waitingOn : [];
 
     // Auto-finalize: whenever the state a caller just assigned to
     // `record.state` has a non-null result(), the match is done —
@@ -633,9 +667,8 @@ export class MatchDO extends DurableObject<Env> {
     // have to remember to flip `status` or append `match_finished`
     // themselves. This must happen before stage 1 (persist) so the
     // "done" status is what actually gets written.
-    const finalizingState = record.state;
-    const finalizingHasState = module !== undefined && finalizingState !== null;
-    const finishedResult = finalizingHasState ? module.result(finalizingState) : null;
+    const finalizing = progressOf(module, record);
+    const finishedResult = finalizing.result;
     const finalEvents = events;
     if (finishedResult !== null && record.status !== "done") {
       record.status = "done";
@@ -648,7 +681,7 @@ export class MatchDO extends DurableObject<Env> {
     // ledger can never disagree with the state it describes.
     record.updatedAt = Date.now();
     this.writeMatch(record);
-    const nextWaiting = finalizingHasState ? module.waitingOn(finalizingState) : [];
+    const nextWaiting = finalizing.waitingOn;
     const mover = finalEvents.find((event) => event.type === "action");
     this.trackWaits(previousWaiting, nextWaiting, {
       mover: mover?.type === "action" ? mover.by : undefined,
@@ -916,7 +949,7 @@ export class MatchDO extends DurableObject<Env> {
       const events: MatchEventPayload[] = [{ type: "player_joined", id }];
       const module = getGame(record.gameId) as GameModule<unknown, unknown> | undefined;
       if (module && record.players.length >= module.meta.maxPlayers) {
-        beginGame(record, module);
+        beginGame(record, module, Date.now());
         events.push({ type: "match_started" });
       }
       await this.commit(record, events, id);
@@ -1001,8 +1034,7 @@ export class MatchDO extends DurableObject<Env> {
     const record = this.readMatch();
     if (!record) return;
     const module = getGame(record.gameId) as GameModule<unknown, unknown> | undefined;
-    const { waitingOn, deadline } = this.deriveWaitingAndDeadline(module, record);
-    const result = module && record.state !== null ? module.result(record.state) : null;
+    const { waitingOn, deadline, result } = progressOf(module, record);
     const winners = winnersOf(result);
     // Read in the same synchronous stretch as the record, so the ledger and
     // the match rows below describe one moment. A lobby has never waited on
@@ -1115,7 +1147,7 @@ export class MatchDO extends DurableObject<Env> {
       return { ok: false, code: "wrong_player_count", message: "player count is out of range" };
     }
 
-    beginGame(record, module);
+    beginGame(record, module, Date.now());
     await this.commit(record, [{ type: "match_started" }]);
     return { ok: true };
   }
@@ -1409,6 +1441,34 @@ export class MatchDO extends DurableObject<Env> {
       return;
     }
 
+    // Before the game resolves the deadline, the engine decides whether the
+    // match is still worth playing. Everyone it was waiting on has run out
+    // of time. If nobody has made a single move, nobody is playing: the
+    // match is void, and counts for no one. Otherwise each of them gets a
+    // turn played for them, `MAX_AUTO_MOVES` times a match; whoever runs out
+    // of time once more than that loses, and the rest win.
+    const late = module.waitingOn(record.state);
+    const events: MatchEventPayload[] = [{ type: "deadline_resolved", round: due }];
+    if (late.length > 0) {
+      if (!this.anyoneMoved()) {
+        record.outcome = { kind: "void" };
+        await this.commit(record, events);
+        return;
+      }
+      const autoMoves = { ...record.autoMoves };
+      for (const id of late) autoMoves[id] = (autoMoves[id] ?? 0) + 1;
+      const forfeited = late.filter((id) => autoMoves[id] > MAX_AUTO_MOVES);
+      if (forfeited.length > 0) {
+        const winners = record.players.map((p) => p.id).filter((id) => !forfeited.includes(id));
+        record.autoMoves = autoMoves;
+        record.outcome =
+          winners.length > 0 ? { kind: "win", winners, forfeited } : { kind: "void" };
+        await this.commit(record, events);
+        return;
+      }
+      record.autoMoves = autoMoves;
+    }
+
     let resolvedState: unknown;
     try {
       resolvedState = module.onDeadline(record.state, now);
@@ -1442,23 +1502,58 @@ export class MatchDO extends DurableObject<Env> {
     // waitingOn/deadline from the new state, which is `[]`/`null` once
     // finished — that is what clears the alarm and zeroes every
     // match_players.waiting row via syncIndex.
-    await this.commit(record, [{ type: "deadline_resolved", round: due }]);
+    await this.commit(record, events);
   }
 
-  // Arms a lobby's expiry alarm if it has none, or the wrong one: the lobby
-  // sweep (worker/sweep.ts) sends this to every old lobby in the index, which
-  // is what reaches a lobby whose alarm was never set, such as one created
-  // before lobbies expired. An alarm set in the past fires at once, and
-  // `lobbyAlarm()` then decides what is due. 404 when there is no match
-  // here at all, so the sweep can drop the index rows that point at nothing.
-  private async handleLobbySweep(): Promise<Response> {
+  // Whether any player has made a move in this match, as opposed to having
+  // one played for them at a deadline.
+  private anyoneMoved(): boolean {
+    return (
+      this.ctx.storage.sql
+        .exec("SELECT 1 FROM events WHERE json_extract(payload, '$.type') = 'action' LIMIT 1")
+        .toArray().length > 0
+    );
+  }
+
+  // Arms the alarm of a match that has none, or the wrong one: the sweep
+  // (worker/sweep.ts) sends this to every old lobby in the index, and to
+  // every match under way that has not moved in a day, which is what
+  // reaches a match whose alarm was never set. For a lobby that is one
+  // created before lobbies expired. For a match under way it is one started
+  // before its game timed the opening turn, still waiting on that turn with
+  // no deadline at all: its clock is started now as of the match's last
+  // commit, which for a match nobody has moved in is when it started, so it
+  // is due when it would have been had the clock always been there. An alarm
+  // set in the past fires at once, and `alarm()` then decides what is due.
+  // 404 when there is no match here at all, so the sweep can drop the index
+  // rows that point at nothing.
+  private async handleSweep(): Promise<Response> {
     const record = this.readMatch();
     if (!record) return Response.json({ error: "not_found" }, { status: 404 });
-    const wakeAt = lobbyWakeAt(record);
+
+    const module = getGame(record.gameId) as GameModule<unknown, unknown> | undefined;
+    if (record.status === "active" && module?.start && record.state != null) {
+      const { waitingOn, deadline } = this.deriveWaitingAndDeadline(module, record);
+      if (deadline === null && waitingOn.length > 0) {
+        const started = module.start(record.state, record.updatedAt);
+        if (module.deadline(started) !== null) {
+          record.state = started;
+          // Arms the alarm and brings the index up to date.
+          await this.commit(record, []);
+          return Response.json({ ok: true, status: record.status });
+        }
+      }
+    }
+
+    const current = this.readMatch() ?? record;
+    const wakeAt = this.deriveWaitingAndDeadline(module, current).deadline ?? lobbyWakeAt(current);
     if (wakeAt !== null && (await this.ctx.storage.getAlarm()) !== wakeAt) {
       await this.ctx.storage.setAlarm(wakeAt);
     }
-    return Response.json({ ok: true, status: record.status });
+    // A match under way that the index thinks has stalled may only be
+    // missing an index write; this one re-reads the record, so it repairs it.
+    if (current.status !== "lobby") await this.syncIndex();
+    return Response.json({ ok: true, status: current.status });
   }
 
   // A lobby nobody starts is deleted when it expires (`dissolveLobby()`),

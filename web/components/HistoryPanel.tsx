@@ -85,6 +85,17 @@ function lineFor(
     case "match_finished": {
       const result = payload.result;
       if (result.kind === "draw") return { text: t("history.draw"), glyph: "🏁", actor: null };
+      if (result.kind === "void") return { text: t("history.void"), glyph: "⏱", actor: null };
+      if (result.kind === "win" && result.forfeited && result.forfeited.length > 0) {
+        return {
+          text: t("history.forfeited", {
+            count: result.forfeited.length,
+            names: result.forfeited.map((id) => nameFor(players, id)).join(", "),
+          }),
+          glyph: "🏳️",
+          actor: result.forfeited.length === 1 ? result.forfeited[0] : null,
+        };
+      }
       if (result.kind === "win") {
         if (result.winners.length === 0) {
           return { text: t("history.noWinner"), glyph: "🏁", actor: null };

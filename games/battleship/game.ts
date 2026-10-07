@@ -58,7 +58,7 @@ export interface BattleshipState {
   turnNo: number; // shots fired so far
   lastShot: { by: Seat; cell: number } | null;
   winner: Seat | null;
-  placingStartedAt: number; // 0 until the first fleet is placed
+  placingStartedAt: number; // 0 until the match starts
   turnStartedAt: number;
   rng: number;
 }
@@ -202,8 +202,8 @@ export function init(players: PlayerId[], seed: number): BattleshipState {
     lastShot: null,
     winner: null,
     // `init()` gets no `now`, so neither clock can start here. Placing is
-    // untimed until the first fleet lands, and the first turn's clock starts
-    // the moment the second one does.
+    // timed from the match's start (`start()`), and the first turn's clock
+    // starts the moment the second fleet lands.
     placingStartedAt: 0,
     turnStartedAt: 0,
     rng,
@@ -378,13 +378,20 @@ export function waitingOn(state: BattleshipState): PlayerId[] {
 export function deadline(state: BattleshipState): number | null {
   if (isOver(state)) return null;
   if (state.phase === "placing") {
-    // Untimed until someone has placed: a deadline counted from the `0`
-    // sentinel (a moment in 1970) would fire the alarm at once and place
+    // Untimed until `start()` stamps the clock: a deadline counted from the
+    // `0` sentinel (a moment in 1970) would fire the alarm at once and place
     // both fleets at random before either player had looked.
     if (state.placingStartedAt === 0) return null;
     return state.placingStartedAt + TURN_TIMEOUT_MS;
   }
   return state.turnStartedAt + TURN_TIMEOUT_MS;
+}
+
+// Starts the placing clock at the moment the match starts; a clock already
+// running (or a match already shooting) is left alone.
+export function start(state: BattleshipState, now: number): BattleshipState {
+  if (state.phase !== "placing" || state.placingStartedAt !== 0) return state;
+  return { ...state, placingStartedAt: now };
 }
 
 export function onDeadline(state: BattleshipState, now: number): BattleshipState {
@@ -457,6 +464,7 @@ export const battleshipGame: GameModule<BattleshipState, BattleshipAction> = {
   meta: { name: "Battleship", minPlayers: 2, maxPlayers: 2 },
   actionSchema: BattleshipActionSchema,
   init,
+  start,
   reduce,
   view,
   waitingOn,

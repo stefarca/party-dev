@@ -21,6 +21,7 @@ const OUTCOME_STYLE: Record<MatchOutcome | "unknown", { fill: string; ink: strin
   won: { fill: "var(--ok-soft)", ink: "var(--ok-fg)" },
   lost: { fill: "var(--surface-3)", ink: "var(--text-secondary)" },
   draw: { fill: "var(--warn-soft)", ink: "var(--warn-fg)" },
+  void: { fill: "var(--surface-3)", ink: "var(--text-muted)" },
   unknown: { fill: "var(--surface-3)", ink: "var(--text-muted)" },
 };
 

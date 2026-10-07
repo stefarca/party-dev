@@ -21,7 +21,7 @@ export interface MatchIndexRow {
   updated_at: number;
   deadline: number | null;
   visibility: string | null;
-  // `win`, `draw` or `scores` once the match is over, NULL before then and
+  // `win`, `draw`, `scores` or `void` once the match is over, NULL before then and
   // for a match that finished before results were indexed.
   result_kind: string | null;
   // Whether the match waits on the player asking, and whether they are among
@@ -44,6 +44,7 @@ const ROW_COLUMNS = `m.id AS id, m.game_id AS game_id, m.status AS status, m.hos
 function outcomeOf(row: MatchIndexRow): MatchOutcome | null {
   if (row.status !== "done" || row.result_kind === null || row.my_won === null) return null;
   if (row.result_kind === "draw") return "draw";
+  if (row.result_kind === "void") return "void";
   return row.my_won ? "won" : "lost";
 }
 

@@ -24,13 +24,14 @@ function seedMatch(
   status: string,
   players: { id: string; won: 0 | 1 }[],
   createdAt = 0,
+  resultKind: string | null = null,
 ) {
   return Promise.all([
     db
       .prepare(
-        "INSERT INTO matches (id, game_id, status, created_at, updated_at) VALUES (?, 'tictactoe', ?, ?, ?)",
+        "INSERT INTO matches (id, game_id, status, created_at, updated_at, result_kind) VALUES (?, 'tictactoe', ?, ?, ?, ?)",
       )
-      .bind(matchId, status, createdAt, createdAt)
+      .bind(matchId, status, createdAt, createdAt, resultKind)
       .run(),
     ...players.map((p) =>
       db
@@ -151,6 +152,12 @@ describe("playerStats", () => {
     ]);
     expect(await playerStats(db, "ada")).toEqual({ played: 2, finished: 2, won: 1, since: null });
     expect(await playerStats(db, "grace")).toEqual({ played: 2, finished: 2, won: 1, since: null });
+  });
+
+  it("leaves a void match out of the record altogether", async () => {
+    await seedMatch(db, "M1", "done", [{ id: "ada", won: 1 }], 0, "win");
+    await seedMatch(db, "M2", "done", [{ id: "ada", won: 0 }], 0, "void");
+    expect(await playerStats(db, "ada")).toEqual({ played: 1, finished: 1, won: 1, since: null });
   });
 
   it("follows the player id, not the nickname — so a rename keeps the record", async () => {

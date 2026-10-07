@@ -44,8 +44,9 @@ export interface MatchSummary {
   visibility: MatchVisibility;
 }
 
-// How a finished match went for one of its players.
-export type MatchOutcome = "won" | "lost" | "draw";
+// How a finished match went for one of its players. A void match is one
+// nobody moved in before time ran out, and counts for no one.
+export type MatchOutcome = "won" | "lost" | "draw" | "void";
 
 // A match as the hub lists it: its summary, and what the match index knows
 // about it from the caller's side.
@@ -288,6 +289,12 @@ export interface MatchSnapshot {
   // The lobby of the match that follows this finished one, and who opened
   // it, once a player has asked for a rematch.
   rematch: { matchId: string; by: PlayerId } | null;
+  // How many more of this snapshot's own player's turns the engine will
+  // play for them when their time runs out; at 0, the next time out loses
+  // them the match. Null outside a match under way, before anyone in it has
+  // moved (a time out then voids it instead), and for anyone not seated in
+  // it. Each player is only ever told their own.
+  autoMovesLeft: number | null;
 }
 
 export interface SnapshotMessage extends MatchSnapshot {

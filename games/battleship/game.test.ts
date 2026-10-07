@@ -15,6 +15,7 @@ import {
   reduce,
   result,
   shipCells,
+  start,
   view,
   waitingOn,
 } from "./game";
@@ -267,11 +268,20 @@ describe("battleship — firing", () => {
 });
 
 describe("battleship — deadline", () => {
-  it("has none before anyone has placed", () => {
+  it("has none before the match starts the clock", () => {
     expect(battleshipGame.deadline(init(PLAYERS, 1))).toBeNull();
   });
 
-  it("gives placing 24h from the first fleet", () => {
+  it("gives placing 24h from the match's start", () => {
+    const state = start(init(PLAYERS, 1), 12345);
+    expect(battleshipGame.deadline(state)).toBe(12345 + TURN_TIMEOUT_MS);
+    // The first fleet down does not move it.
+    expect(battleshipGame.deadline(place(state, 0, ROWS_FLEET, 20000))).toBe(
+      12345 + TURN_TIMEOUT_MS,
+    );
+  });
+
+  it("gives placing 24h from the first fleet, in a match that never started the clock", () => {
     const state = place(init(PLAYERS, 1), 0, ROWS_FLEET, 12345);
     expect(battleshipGame.deadline(state)).toBe(12345 + TURN_TIMEOUT_MS);
   });
@@ -279,6 +289,44 @@ describe("battleship — deadline", () => {
   it("gives each shot 24h", () => {
     const state = fire(placed(1, 1000), "A1", 54321);
     expect(battleshipGame.deadline(state)).toBe(54321 + TURN_TIMEOUT_MS);
+  });
+});
+
+describe("battleship — opening placement", () => {
+  const START = 1_000_000;
+
+  it("is not resolved before its clock runs out", () => {
+    const state = start(init(PLAYERS, 1), START);
+    expect(onDeadline(state, START)).toBe(state);
+    expect(onDeadline(state, START + TURN_TIMEOUT_MS - 1)).toBe(state);
+  });
+
+  it("gives both players a random fleet once nobody has placed in 24h", () => {
+    const state = start(init(PLAYERS, 1), START);
+    const now = START + TURN_TIMEOUT_MS;
+    const resolved = onDeadline(state, now);
+    expect(resolved.phase).toBe("firing");
+    expect(fleetCells(resolved.fleets[0] ?? [])).not.toBeNull();
+    expect(fleetCells(resolved.fleets[1] ?? [])).not.toBeNull();
+    expect(battleshipGame.deadline(resolved)).toBe(now + TURN_TIMEOUT_MS);
+    expect(onDeadline(resolved, now)).toBe(resolved);
+    expect(onDeadline(start(init(PLAYERS, 1), START), now)).toEqual(resolved);
+  });
+
+  it("does not mutate its input", () => {
+    const before = init(PLAYERS, 1);
+    const frozen = deepFreeze(structuredClone(before));
+    expect(start(frozen, START)).not.toBe(frozen);
+    expect(frozen).toEqual(before);
+  });
+
+  it("leaves a clock that is already running, or a match already firing, alone", () => {
+    const started = start(init(PLAYERS, 1), START);
+    expect(start(started, START + 5000)).toBe(started);
+    const halfway = place(init(PLAYERS, 1), 0, ROWS_FLEET, START);
+    expect(start(halfway, START + 5000)).toBe(halfway);
+    const firing = placed(1, START);
+    expect(start(firing, START + 5000)).toBe(firing);
   });
 });
 

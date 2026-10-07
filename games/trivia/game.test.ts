@@ -8,6 +8,7 @@ import {
   onDeadline,
   reduce,
   result,
+  start,
   triviaGame,
   view,
   waitingOn,
@@ -51,7 +52,7 @@ describe("trivia — init", () => {
     expect(() => init(["solo"], 1)).toThrow();
   });
 
-  it("starts at round 0, phase answering, zeroed scores, untimed", () => {
+  it("starts at round 0, phase answering, zeroed scores, untimed until the match starts", () => {
     const state = init(PLAYERS, 1);
     expect(state.round).toBe(0);
     expect(state.phase).toBe("answering");
@@ -122,6 +123,52 @@ describe("trivia — reduce: simultaneous answering", () => {
     const next = reduce(state, { t: "answer", round: 0, choice: q.answer }, "alice", 1000);
     expect(state).toEqual(before);
     expect(next).not.toBe(state);
+  });
+});
+
+describe("trivia — round 0's clock", () => {
+  const START = 1_000_000;
+
+  it("starts the moment the match does, with a 24h deadline", () => {
+    expect(triviaGame.deadline(init(PLAYERS, 1))).toBeNull();
+    const state = start(init(PLAYERS, 1), START);
+    expect(state.roundStartedAt).toBe(START);
+    expect(triviaGame.deadline(state)).toBe(START + ROUND_TIMEOUT_MS);
+    // The first answer does not move it.
+    expect(triviaGame.deadline(answer(state, "alice", 0, START + 5000))).toBe(
+      START + ROUND_TIMEOUT_MS,
+    );
+  });
+
+  it("is not closed before it runs out", () => {
+    const state = start(init(PLAYERS, 1), START);
+    expect(onDeadline(state, START)).toBe(state);
+    expect(onDeadline(state, START + ROUND_TIMEOUT_MS - 1)).toBe(state);
+  });
+
+  it("closes round 0 once nobody has answered in 24h, scoring nobody", () => {
+    const state = start(init(PLAYERS, 1), START);
+    const now = START + ROUND_TIMEOUT_MS;
+    const resolved = onDeadline(state, now);
+    expect(resolved.phase).toBe("reveal");
+    expect(resolved.round).toBe(0);
+    for (const p of PLAYERS) {
+      expect(resolved.revealed?.given[p]).toBeNull();
+      expect(resolved.scores[p]).toBe(0);
+    }
+    expect(triviaGame.deadline(resolved)).toBe(now + REVEAL_MS);
+    expect(onDeadline(resolved, now)).toBe(resolved);
+  });
+
+  it("does not mutate its input, and leaves a clock already running alone", () => {
+    const before = init(PLAYERS, 1);
+    const frozen = deepFreeze(structuredClone(before));
+    const started = start(frozen, START);
+    expect(started).not.toBe(frozen);
+    expect(frozen).toEqual(before);
+    expect(start(started, START + 5000)).toBe(started);
+    const revealing = onDeadline(started, START + ROUND_TIMEOUT_MS);
+    expect(start(revealing, START + 5000)).toBe(revealing);
   });
 });
 

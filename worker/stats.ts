@@ -28,7 +28,8 @@ import { playerStats } from "./players";
 // given week — the champions, the wall of shame — is not a record: it counts
 // every match in that week, whoever has reset since. Neither kind counts a
 // finished match whose `result_kind` is NULL, which finished before the index
-// recorded who won it.
+// recorded who won it, or a void one, which nobody moved in before time ran
+// out.
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -99,6 +100,7 @@ const WAIT_DAY = "strftime('%Y-%m-%d', w.ended_at / 1000, 'unixepoch')";
 
 // Only a player's own finished matches, known results, since their reset.
 const RECORD_FILTER = `m.status = 'done' AND m.result_kind IS NOT NULL
+  AND m.result_kind <> 'void'
   AND (p.stats_since IS NULL OR m.created_at >= p.stats_since)`;
 
 export async function playerStreaks(
@@ -150,6 +152,7 @@ export async function gameRecords(db: D1Database, playerId: PlayerId): Promise<G
        JOIN matches m ON m.id = mp.match_id
        LEFT JOIN players p ON p.id = mp.player_id
        WHERE mp.player_id = ?
+         AND m.result_kind IS NOT 'void'
          AND (p.stats_since IS NULL OR m.created_at >= p.stats_since)
        GROUP BY m.game_id
        ORDER BY played DESC, m.game_id`,
@@ -273,7 +276,8 @@ export async function playerStatsDetail(
 // `to`, if that is sooner), so a match stuck all week counts all week. The
 // longest wait is the whole of that one wait, from its start to its end or to
 // `now`, however much of it lies outside the window. `stalled` is how many
-// matches wait on them right now.
+// matches wait on them right now. A void match, one nobody moved in, is
+// left out like everywhere else.
 export async function wallOfShame(
   db: D1Database,
   from: number,
@@ -289,8 +293,10 @@ export async function wallOfShame(
               MAX(COALESCE(w.ended_at, ?3) - w.started_at) AS longestMs,
               COALESCE(SUM(w.ended_at IS NULL), 0) AS stalled
        FROM turn_waits w
+       LEFT JOIN matches m ON m.id = w.match_id
        LEFT JOIN players p ON p.id = w.player_id
        WHERE w.started_at < ?2 AND COALESCE(w.ended_at, ?3) > ?1
+         AND m.result_kind IS NOT 'void'
        GROUP BY w.player_id
        HAVING waitedMs > 0
        ORDER BY waitedMs DESC, w.player_id
@@ -317,7 +323,7 @@ export async function champions(
        FROM match_players mp
        JOIN matches m ON m.id = mp.match_id
        LEFT JOIN players p ON p.id = mp.player_id
-       WHERE m.status = 'done' AND m.result_kind IS NOT NULL
+       WHERE m.status = 'done' AND m.result_kind IS NOT NULL AND m.result_kind <> 'void'
          AND m.updated_at >= ? AND m.updated_at < ?
        GROUP BY mp.player_id
        -- Spelled out, since in HAVING the alias would lose to the column mp.won.

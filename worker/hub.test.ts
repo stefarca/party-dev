@@ -164,6 +164,7 @@ describe("myMatches", () => {
     await seedMatch(db, { ...done, id: "DRAW01", resultKind: "draw" });
     await seedMatch(db, { ...done, id: "TIED01", resultKind: "scores", winners: ["ada", "alan"] });
     await seedMatch(db, { ...done, id: "OLD001", resultKind: null });
+    await seedMatch(db, { ...done, id: "VOID01", resultKind: "void" });
 
     expect(await outcomes("ada")).toEqual({
       WIN001: "won",
@@ -171,6 +172,7 @@ describe("myMatches", () => {
       DRAW01: "draw",
       TIED01: "won",
       OLD001: null,
+      VOID01: "void",
     });
     expect((await outcomes("alan")).WIN001).toBe("lost");
   });

@@ -44,12 +44,13 @@ async function seedMatch(
   status: string,
   finishedAt: number,
   players: Record<string, { won?: boolean; waiting?: boolean }>,
+  resultKind = "win",
 ) {
   await db
     .prepare(
       "INSERT INTO matches (id, game_id, status, created_at, updated_at, result_kind) VALUES (?, ?, ?, ?, ?, ?)",
     )
-    .bind(id, gameId, status, finishedAt - HOUR, finishedAt, status === "done" ? "win" : null)
+    .bind(id, gameId, status, finishedAt - HOUR, finishedAt, status === "done" ? resultKind : null)
     .run();
   for (const [playerId, { won = false, waiting = false }] of Object.entries(players)) {
     await db
@@ -109,6 +110,8 @@ async function busyWeek(db: D1Database) {
   await beat(db, "M2", "ada", "bob", at(15));
   await beat(db, "M3", "ada", "bob", at(16));
   await beat(db, "M4", "ada", "cy", at(17), "tictactoe");
+  // Nobody moved in this one, so it counts for no one.
+  await seedMatch(db, "VOID", "connect4", "done", at(18), { ada: {}, bob: {} }, "void");
   // A match stuck on Bob since before the week began.
   await seedMatch(db, "STUCK", "checkers", "active", at(10), {
     ada: {},
