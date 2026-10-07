@@ -136,7 +136,8 @@ export async function renamePlayer(
 //
 // After a reset it counts only matches created at or after `stats_since`.
 // A match already under way at the reset stays out of the record even once
-// it finishes; otherwise a reset would not start at zero.
+// it finishes; otherwise a reset would not start at zero. A void match, one
+// nobody moved in before time ran out, is in no one's record.
 export async function playerStats(db: D1Database, playerId: string): Promise<PlayerStats> {
   const row = await db
     .prepare(
@@ -148,6 +149,7 @@ export async function playerStats(db: D1Database, playerId: string): Promise<Pla
        JOIN matches m ON m.id = mp.match_id
        LEFT JOIN players p ON p.id = mp.player_id
        WHERE mp.player_id = ?
+         AND m.result_kind IS NOT 'void'
          AND (p.stats_since IS NULL OR m.created_at >= p.stats_since)`,
     )
     .bind(playerId, playerId)

@@ -29,7 +29,23 @@ function resultCopy(
   if (result.kind === "draw") {
     return { headline: t("result.draw"), detail: t("result.drawDetail") };
   }
+  if (result.kind === "void") {
+    return { headline: t("result.void"), detail: t("result.voidDetail") };
+  }
   if (result.kind === "win") {
+    const forfeited = result.forfeited ?? [];
+    if (forfeited.includes(me)) {
+      return { headline: t("result.finished"), detail: t("result.youForfeited") };
+    }
+    if (forfeited.length > 0) {
+      return {
+        headline: result.winners.includes(me) ? t("result.won") : t("result.finished"),
+        detail: t("result.forfeited", {
+          count: forfeited.length,
+          names: forfeited.map((id) => nameFor(players, id)).join(", "),
+        }),
+      };
+    }
     if (result.winners.includes(me)) {
       const beaten = players.filter((p) => !result.winners.includes(p.id));
       return {

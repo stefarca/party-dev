@@ -88,9 +88,8 @@ export function init(players: PlayerId[], seed: number): TriviaState {
     round: 0,
     // `init()` has no `now` (the `GameModule` signature is
     // `init(players, seed)`), so it cannot stamp a real wall-clock start for
-    // round 0 — left at the `0` sentinel until the first `reduce()` call
-    // (which does get a real `now`) sets it for real. Same pattern as
-    // connect4's `turnStartedAt`.
+    // round 0 — left at the `0` sentinel until `start()` sets it to the
+    // moment the match started. Same pattern as connect4's `turnStartedAt`.
     roundStartedAt: 0,
     revealStartedAt: 0,
     answers: {},
@@ -179,10 +178,10 @@ export function reduce(
 
   const stamped: TriviaState = {
     ...state,
-    // Same `0`-sentinel handling as `init()`'s comment above: only round 0's
-    // very first answer needs to stamp a real start time; every later
-    // round's `roundStartedAt` was already set for real by
-    // `advanceAfterReveal`.
+    // Same `0`-sentinel handling as `init()`'s comment above: `start()` has
+    // normally stamped round 0 already, and every later round's
+    // `roundStartedAt` was set for real by `advanceAfterReveal`. A round 0
+    // that somehow was not is timed from its first answer.
     roundStartedAt: state.roundStartedAt === 0 ? now : state.roundStartedAt,
     answers: { ...state.answers, [by]: action.choice },
   };
@@ -244,8 +243,8 @@ export function waitingOn(state: TriviaState): PlayerId[] {
 
 export function deadline(state: TriviaState): number | null {
   if (state.phase === "answering") {
-    // See init()'s comment: `0` means round 0 has not had its first answer
-    // yet, so there is nothing to time out against.
+    // See init()'s comment: `0` means the match has not started round 0's
+    // clock yet, so there is nothing to time out against.
     if (state.roundStartedAt === 0) return null;
     return state.roundStartedAt + ROUND_TIMEOUT_MS;
   }
@@ -253,6 +252,13 @@ export function deadline(state: TriviaState): number | null {
     return state.revealStartedAt + REVEAL_MS;
   }
   return null;
+}
+
+// Starts round 0's clock at the moment the match starts; a clock already
+// running is left alone.
+export function start(state: TriviaState, now: number): TriviaState {
+  if (state.phase !== "answering" || state.roundStartedAt !== 0) return state;
+  return { ...state, roundStartedAt: now };
 }
 
 export function onDeadline(state: TriviaState, now: number): TriviaState {
@@ -292,6 +298,7 @@ export const triviaGame: GameModule<TriviaState, AnswerAction> = {
   meta: { name: "Trivia", minPlayers: 2, maxPlayers: 8, comingSoon: true },
   actionSchema: AnswerActionSchema,
   init,
+  start,
   reduce,
   view,
   waitingOn,

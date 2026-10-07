@@ -43,8 +43,9 @@ export interface MatchSummary {
   visibility: MatchVisibility;
 }
 
-// How a finished match went for one of its players.
-export type MatchOutcome = "won" | "lost" | "draw";
+// How a finished match went for one of its players. A void match is one
+// nobody moved in before time ran out, and counts for no one.
+export type MatchOutcome = "won" | "lost" | "draw" | "void";
 
 // A match as the hub lists it: its summary, and what the match index knows
 // about it from the caller's side.

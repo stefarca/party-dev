@@ -9,6 +9,7 @@ import {
   onDeadline,
   reduce,
   result,
+  start,
   view,
   waitingOn,
 } from "./game";
@@ -228,9 +229,9 @@ describe("connect4 — waitingOn / deadline", () => {
     expect(connect4Game.deadline(state)).toBe(5000 + TURN_TIMEOUT_MS);
   });
 
-  it("deadline is null before the first move (no real turnStartedAt yet)", () => {
+  it("deadline is null before the match starts the clock (no real turnStartedAt yet)", () => {
     // init() has no `now`, so the very first turn has no wall-clock anchor
-    // until the first reduce() call sets one for real.
+    // until start() sets one for real.
     const state = init(PLAYERS, 1);
     expect(state.turnStartedAt).toBe(0);
     expect(connect4Game.deadline(state)).toBeNull();
@@ -247,11 +248,53 @@ describe("connect4 — waitingOn / deadline", () => {
   });
 });
 
+describe("connect4 — opening turn", () => {
+  const START = 1_000_000;
+
+  it("gets a 24h clock from the moment the match starts", () => {
+    const state = start(init(PLAYERS, 1), START);
+    expect(state.turnStartedAt).toBe(START);
+    expect(connect4Game.deadline(state)).toBe(START + TURN_TIMEOUT_MS);
+  });
+
+  it("is not auto-played before its clock runs out", () => {
+    const state = start(init(PLAYERS, 1), START);
+    expect(onDeadline(state, START)).toBe(state);
+    expect(onDeadline(state, START + TURN_TIMEOUT_MS - 1)).toBe(state);
+  });
+
+  it("is auto-played for the player on turn once it does, and starts the next turn's clock", () => {
+    const state = start(init(PLAYERS, 1), START);
+    const now = START + TURN_TIMEOUT_MS;
+    const resolved = onDeadline(state, now);
+    expect(resolved.turnNo).toBe(1);
+    expect(waitingOn(resolved)).not.toEqual(waitingOn(state));
+    expect(connect4Game.deadline(resolved)).toBe(now + TURN_TIMEOUT_MS);
+    expect(onDeadline(resolved, now)).toBe(resolved);
+  });
+
+  it("does not mutate its input, and is deterministic", () => {
+    const before = init(PLAYERS, 1);
+    const frozen = deepFreeze(structuredClone(before));
+    expect(start(frozen, START)).not.toBe(frozen);
+    expect(frozen).toEqual(before);
+    expect(start(init(PLAYERS, 1), START)).toEqual(start(init(PLAYERS, 1), START));
+  });
+
+  it("leaves a clock that is already running alone", () => {
+    const started = start(init(PLAYERS, 1), START);
+    expect(start(started, START + 5000)).toBe(started);
+    const midGame = onDeadline(started, START + TURN_TIMEOUT_MS);
+    expect(start(midGame, START + 5000)).toBe(midGame);
+  });
+});
+
 describe("connect4 — onDeadline", () => {
   // A turn already in progress (a real `turnStartedAt`, as reduce() would
   // set) — turnStartedAt=0 straight out of init() has no deadline at all
-  // (see the "deadline is null before the first move" test above), so
-  // onDeadline has nothing to resolve against until a real turn has begun.
+  // (see the "deadline is null before the match starts the clock" test
+  // above), so onDeadline has nothing to resolve against until start() or a
+  // move has set one.
   function midTurn(seed: number, turnStartedAt = 1000): C4State {
     return { ...init(PLAYERS, seed), turnStartedAt };
   }

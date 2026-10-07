@@ -7,7 +7,7 @@ import { DailyDO } from "./daily";
 import { MatchDO } from "./match";
 import { previewFor, withPreview } from "./preview";
 import { RECAP_CRON, sendWeeklyRecap } from "./recap";
-import { sweepLobbies } from "./sweep";
+import { sweepMatches } from "./sweep";
 import { MATCH_CODE_RE, normalizeMatchCode } from "../shared/ids";
 
 export { DailyDO, MatchDO };
@@ -79,13 +79,13 @@ app.get("/daily/*", sharedPage);
 export default {
   fetch: app.fetch,
   // Both crons in wrangler.jsonc land here, told apart by their schedule: the
-  // weekly recap's, and the hourly lobby sweep's. At the hour the recap goes
+  // weekly recap's, and the hourly match sweep's. At the hour the recap goes
   // out, both fire, each as a run of its own.
   scheduled(controller, env, ctx) {
     if (controller.cron === RECAP_CRON) {
       ctx.waitUntil(sendWeeklyRecap(env, controller.scheduledTime));
     } else {
-      ctx.waitUntil(sweepLobbies(env));
+      ctx.waitUntil(sweepMatches(env));
     }
   },
 } satisfies ExportedHandler<Env>;

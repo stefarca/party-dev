@@ -18,6 +18,18 @@ export interface GameModule<S, A> {
   actionSchema: z.ZodType<A>;
 
   init(players: PlayerId[], seed: number): S;
+  // Optional. Starts the opening clock, which `init` cannot, having no
+  // `now`: the engine calls it on the state `init` returned, at the moment
+  // the match starts, so the first turn has a deadline like every other
+  // and a match whose opening player never moves still ends. Until it runs,
+  // `deadline()` must return null rather than count from a placeholder, or
+  // the opening would be due at once.
+  //
+  // Must leave a clock that is already running alone: the engine also calls
+  // it, with the time the match started, on matches that were under way
+  // before their game had this hook, and that state may be mid-game. A
+  // game whose first turn needs no clock leaves it out.
+  start?(state: S, now: number): S;
   reduce(state: S, action: A, by: PlayerId, now: number): S; // pure + deterministic
   view(state: S, forPlayer: PlayerId): unknown; // per-player projection
 
@@ -68,10 +80,16 @@ export interface GameMeta {
   comingSoon?: boolean;
 }
 
+// A game's `result()` returns one of the first three kinds. The engine can
+// also end a match itself when a deadline passes (`alarm()` in
+// worker/match.ts): `void` when nobody had made a move, which counts for no
+// one, and a `win` naming in `forfeited` whoever lost by running out of time
+// too often.
 export type Result =
-  | { kind: "win"; winners: PlayerId[] }
+  | { kind: "win"; winners: PlayerId[]; forfeited?: PlayerId[] }
   | { kind: "draw" }
-  | { kind: "scores"; scores: Record<PlayerId, number> };
+  | { kind: "scores"; scores: Record<PlayerId, number> }
+  | { kind: "void" };
 
 // A daily game: one player, one run a day, on a board every player gets that
 // day, ranked against everyone else's run on the day's chart. `DailyDO`

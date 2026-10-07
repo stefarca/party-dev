@@ -183,15 +183,19 @@ export function deadline(state: C4State): number | null {
   if (state.winner !== null || state.draw) return null;
   // `init()` has no `now` (the `GameModule` signature is `init(players, seed)`),
   // so it cannot stamp a real wall-clock start for the very first turn —
-  // `turnStartedAt` is left at its `0` sentinel until the first `reduce()`
-  // call (which does get a real `now`) sets it for real. Treat `0` as "not
-  // timed yet" rather than a real epoch millisecond: a real `turnStartedAt`
-  // is always a large, current epoch value, and reporting a deadline of
-  // `0 + TURN_TIMEOUT_MS` (a moment in 1970) would tell the DO to fire its
-  // alarm immediately, auto-playing the very first turn before either
-  // player could react.
+  // `turnStartedAt` is left at its `0` sentinel until `start()` sets it to
+  // the moment the match started. Treat `0` as "not timed yet" rather than a
+  // real epoch millisecond: reporting a deadline of `0 + TURN_TIMEOUT_MS` (a
+  // moment in 1970) would tell the DO to fire its alarm immediately,
+  // auto-playing the very first turn before either player could react.
   if (state.turnStartedAt === 0) return null;
   return state.turnStartedAt + TURN_TIMEOUT_MS;
+}
+
+// Starts the opening turn's clock at the moment the match starts; a clock
+// already running is left alone.
+export function start(state: C4State, now: number): C4State {
+  return state.turnStartedAt === 0 ? { ...state, startedAt: now, turnStartedAt: now } : state;
 }
 
 export function onDeadline(state: C4State, now: number): C4State {
@@ -237,6 +241,7 @@ export const connect4Game: GameModule<C4State, DropAction> = {
   meta: { name: "Connect 4", minPlayers: 2, maxPlayers: 2 },
   actionSchema: DropActionSchema,
   init,
+  start,
   reduce,
   view,
   waitingOn,

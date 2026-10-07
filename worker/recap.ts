@@ -111,7 +111,8 @@ export async function gatherRecap(db: D1Database, now: number): Promise<RecapDat
         .prepare(
           `SELECT
              (SELECT COUNT(*) FROM matches
-              WHERE status = 'done' AND updated_at >= ?1 AND updated_at < ?2) AS matches,
+              WHERE status = 'done' AND result_kind IS NOT 'void'
+                AND updated_at >= ?1 AND updated_at < ?2) AS matches,
              (SELECT COUNT(*) FROM turn_waits
               WHERE moved = 1 AND ended_at >= ?1 AND ended_at < ?2) AS moves,
              (SELECT COUNT(*) FROM (
@@ -135,7 +136,7 @@ export async function gatherRecap(db: D1Database, now: number): Promise<RecapDat
            FROM matches m
            JOIN match_players a ON a.match_id = m.id
            JOIN match_players b ON b.match_id = m.id AND a.player_id < b.player_id
-           WHERE m.status = 'done' AND m.result_kind IS NOT NULL
+           WHERE m.status = 'done' AND m.result_kind IS NOT NULL AND m.result_kind <> 'void'
              AND m.updated_at >= ? AND m.updated_at < ?
            GROUP BY a.player_id, b.player_id
            HAVING COUNT(*) >= ?

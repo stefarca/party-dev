@@ -7,6 +7,7 @@ import {
   onDeadline,
   reduce,
   result,
+  start,
   tictactoeGame,
   view,
   waitingOn,
@@ -158,7 +159,7 @@ describe("tictactoe — waitingOn / deadline", () => {
     expect(waitingOn(state)).toEqual([state.players.O]);
   });
 
-  it("has no deadline before the first move", () => {
+  it("has no deadline before the match starts the clock", () => {
     expect(tictactoeGame.deadline(init(PLAYERS, 1))).toBeNull();
   });
 
@@ -170,6 +171,47 @@ describe("tictactoe — waitingOn / deadline", () => {
   it("has no deadline once the match is finished", () => {
     const state = { ...place(init(PLAYERS, 1), 4, 5000), winner: "X" as const };
     expect(tictactoeGame.deadline(state)).toBeNull();
+  });
+});
+
+describe("tictactoe — opening turn", () => {
+  const START = 1_000_000;
+
+  it("gets a 24h clock from the moment the match starts", () => {
+    const state = start(init(PLAYERS, 1), START);
+    expect(state.turnStartedAt).toBe(START);
+    expect(tictactoeGame.deadline(state)).toBe(START + TURN_TIMEOUT_MS);
+  });
+
+  it("is not auto-played before its clock runs out", () => {
+    const state = start(init(PLAYERS, 1), START);
+    expect(onDeadline(state, START)).toBe(state);
+    expect(onDeadline(state, START + TURN_TIMEOUT_MS - 1)).toBe(state);
+  });
+
+  it("is auto-played for the player on turn once it does, and starts the next turn's clock", () => {
+    const state = start(init(PLAYERS, 1), START);
+    const now = START + TURN_TIMEOUT_MS;
+    const resolved = onDeadline(state, now);
+    expect(resolved.turnNo).toBe(1);
+    expect(waitingOn(resolved)).not.toEqual(waitingOn(state));
+    expect(tictactoeGame.deadline(resolved)).toBe(now + TURN_TIMEOUT_MS);
+    expect(onDeadline(resolved, now)).toBe(resolved);
+  });
+
+  it("does not mutate its input, and is deterministic", () => {
+    const before = init(PLAYERS, 1);
+    const frozen = deepFreeze(structuredClone(before));
+    expect(start(frozen, START)).not.toBe(frozen);
+    expect(frozen).toEqual(before);
+    expect(start(init(PLAYERS, 1), START)).toEqual(start(init(PLAYERS, 1), START));
+  });
+
+  it("leaves a clock that is already running alone", () => {
+    const started = start(init(PLAYERS, 1), START);
+    expect(start(started, START + 5000)).toBe(started);
+    const midGame = onDeadline(started, START + TURN_TIMEOUT_MS);
+    expect(start(midGame, START + 5000)).toBe(midGame);
   });
 });
 

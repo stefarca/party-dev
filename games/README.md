@@ -5,7 +5,8 @@ optionally, one in `games/icons.ts`) — nothing else. Checklist, in order:
 
 1. **`games/<id>/game.ts`** implements `GameModule<S, A>` from `shared/game.ts`: `id`, `meta`,
    `actionSchema`, `init`, `reduce`, `view`, `waitingOn`, `deadline`, `onDeadline`, `result`, and
-   (optionally, but write one) `describeAction`.
+   (optionally, but write one) `describeAction`. A game with a clock on its turns also implements
+   `start`, below.
 2. **Pick a phase type:**
    - **Sequential** — `waitingOn(state)` returns exactly one player at a time; see
      `games/connect4/game.ts`.
@@ -25,6 +26,21 @@ optionally, one in `games/icons.ts`) — nothing else. Checklist, in order:
      resolution on the round/turn number already in `state` and no-op if it has already resolved —
      re-running it on an already-resolved round must return state that is unchanged in every
      observable way (same `deadline()`, same `result()`).
+   - **The opening turn is timed too.** `init(players, seed)` gets no `now`, so leave the opening
+     clock at a `0` sentinel there, have `deadline()` return `null` while it is `0` (a deadline
+     counted from `0` is a moment in 1970, and would auto-play the opening at once), and implement
+     `start(state, now)` to stamp it. `MatchDO` calls `start` on `init`'s state at the moment the
+     match starts, so a match whose opening player never moves still ends. `start` must leave a
+     clock that is already running untouched: the engine also calls it, with the match's start
+     time, on matches already under way when the hook was added, and those may be mid-game. The
+     sequential games stamp `turnStartedAt`, `games/battleship/game.ts` its placing clock and
+     `games/trivia/game.ts` round 0's.
+   - **The engine decides what a deadline costs; the game only decides what an auto-move is.**
+     When a deadline passes and nobody in the match has made a move yet, `MatchDO` voids the match
+     (`{ kind: "void" }`, which counts for no one) without calling `onDeadline`. Otherwise it calls
+     `onDeadline` for everyone still waited on, at most `MAX_AUTO_MOVES` (2) times per player per
+     match; the next time a player runs out, the engine ends the match as a win for everyone else,
+     naming them in `forfeited`. Neither result kind is the game's to return.
 4. **`describeAction(state, action, by)`** is how a move reads in the match history. Return
    `{ key, values }`, where `key` names a string in your own `locales/<lng>.json` (by convention
    under `history.`) and `values` are its interpolations; the panel adds `name`, the player's
@@ -102,6 +118,8 @@ optionally, one in `games/icons.ts`) — nothing else. Checklist, in order:
    - determinism (`init`/`reduce` given the same seed/actions produce identical output),
    - `onDeadline` idempotence (running it twice on the same overdue state is a no-op the second
      time),
+   - the opening turn's deadline: `start` gives it a full timeout from the start, `onDeadline`
+     leaves it alone before then and resolves it once due, and `start` leaves a running clock be,
    - view leakage (`view(state, p)` never contains another player's hidden information or, once
      applicable, the correct answer/outcome before it should be visible),
    - the same for `describeAction`, if the game hides anything: what it returns is broadcast.

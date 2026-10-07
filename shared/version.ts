@@ -4,4 +4,6 @@
 // MatchSnapshot). Version 3 closed the event log's payload: an `action`
 // event now carries the game's own description of the move instead of its
 // raw action, so a client older than this renders nothing for one.
-export const PROTOCOL_VERSION = 3;
+// Version 4 added the engine's own results: a `void` match and a `win` that
+// names who `forfeited`.
+export const PROTOCOL_VERSION = 4;

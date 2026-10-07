@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { createMigratedDb } from "./__fixtures__/d1";
-import { SWEEP_BATCH, SWEEP_MIN_AGE_MS, sweepLobbies } from "./sweep";
+import { SWEEP_BATCH, SWEEP_MIN_AGE_MS, sweepMatches } from "./sweep";
 
 const NOW = Date.UTC(2026, 8, 23, 12);
 const OLD = NOW - SWEEP_MIN_AGE_MS - 1;
@@ -14,7 +14,7 @@ function createMatchNamespace(replies: Record<string, number | Error>) {
     idFromName: (name: string) => name,
     get: (id: string) => ({
       async fetch(url: string, init: RequestInit) {
-        expect(url).toBe("http://do/lobby/sweep");
+        expect(url).toBe("http://do/sweep");
         expect(init.method).toBe("POST");
         swept.push(id);
         const reply = replies[id] ?? 200;
@@ -26,12 +26,18 @@ function createMatchNamespace(replies: Record<string, number | Error>) {
   return { namespace, swept };
 }
 
-async function seedMatch(db: D1Database, id: string, createdAt: number, status = "lobby") {
+async function seedMatch(
+  db: D1Database,
+  id: string,
+  createdAt: number,
+  status = "lobby",
+  updatedAt = createdAt,
+) {
   await db
     .prepare(
       "INSERT INTO matches (id, game_id, status, created_at, updated_at) VALUES (?, 'tictactoe', ?, ?, ?)",
     )
-    .bind(id, status, createdAt, createdAt)
+    .bind(id, status, createdAt, updatedAt)
     .run();
   await db
     .prepare("INSERT INTO match_players (match_id, player_id, waiting) VALUES (?, 'p1', 0)")
@@ -47,25 +53,27 @@ async function indexedIds(db: D1Database): Promise<string[]> {
   return results.map((row) => row.id);
 }
 
-describe("sweepLobbies", () => {
+describe("sweepMatches", () => {
   let db: D1Database;
 
   beforeEach(() => {
     db = createMigratedDb();
   });
 
-  it("asks only lobbies older than a day, and leaves started matches alone", async () => {
+  it("asks lobbies older than a day and matches that have not moved in one, and no others", async () => {
     await seedMatch(db, "OLDLOB", OLD);
     await seedMatch(db, "NEWLOB", NOW - 1000);
-    await seedMatch(db, "ACTIVE", OLD, "active");
+    await seedMatch(db, "STALLD", OLD - 10, "active", OLD - 5);
+    await seedMatch(db, "MOVING", OLD - 10, "active", NOW - 1000);
     await seedMatch(db, "DONE01", OLD, "done");
     const { namespace, swept } = createMatchNamespace({});
 
-    const report = await sweepLobbies({ DB: db, MATCH: namespace } as unknown as Env, NOW);
+    const report = await sweepMatches({ DB: db, MATCH: namespace } as unknown as Env, NOW);
 
-    expect(swept).toEqual(["OLDLOB"]);
-    expect(report).toEqual({ armed: 1, orphaned: 0, failed: 0 });
-    expect(await indexedIds(db)).toEqual(["ACTIVE", "DONE01", "NEWLOB", "OLDLOB"]);
+    // Oldest first, a lobby by its creation and a match by its last move.
+    expect(swept).toEqual(["STALLD", "OLDLOB"]);
+    expect(report).toEqual({ armed: 2, orphaned: 0, failed: 0 });
+    expect(await indexedIds(db)).toEqual(["DONE01", "MOVING", "NEWLOB", "OLDLOB", "STALLD"]);
   });
 
   it("drops the index rows of a lobby whose Durable Object holds no match", async () => {
@@ -73,7 +81,7 @@ describe("sweepLobbies", () => {
     await seedMatch(db, "REAL01", OLD);
     const { namespace } = createMatchNamespace({ GHOST1: 404 });
 
-    const report = await sweepLobbies({ DB: db, MATCH: namespace } as unknown as Env, NOW);
+    const report = await sweepMatches({ DB: db, MATCH: namespace } as unknown as Env, NOW);
 
     expect(report).toEqual({ armed: 1, orphaned: 1, failed: 0 });
     expect(await indexedIds(db)).toEqual(["REAL01"]);
@@ -93,7 +101,7 @@ describe("sweepLobbies", () => {
       ERRORS: 500,
     });
 
-    const report = await sweepLobbies({ DB: db, MATCH: namespace } as unknown as Env, NOW);
+    const report = await sweepMatches({ DB: db, MATCH: namespace } as unknown as Env, NOW);
 
     expect(swept).toEqual(["BROKEN", "ERRORS", "FINE01"]);
     expect(report).toEqual({ armed: 1, orphaned: 0, failed: 2 });
@@ -106,7 +114,7 @@ describe("sweepLobbies", () => {
     }
     const { namespace, swept } = createMatchNamespace({});
 
-    await sweepLobbies({ DB: db, MATCH: namespace } as unknown as Env, NOW);
+    await sweepMatches({ DB: db, MATCH: namespace } as unknown as Env, NOW);
 
     expect(swept).toHaveLength(SWEEP_BATCH);
     expect(swept[0]).toBe("L00000");

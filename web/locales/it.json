@@ -293,6 +293,7 @@
       "won": "Vinta",
       "lost": "Persa",
       "draw": "Pari",
+      "void": "Annullata",
       "unknown": "Finita"
     }
   },
@@ -364,7 +365,12 @@
     "noWinner": "Nessun vincitore.",
     "winners_one": "Ha vinto {{names}}.",
     "winners_other": "Hanno vinto {{names}}.",
-    "scores": "Punteggi finali: {{scores}}"
+    "scores": "Punteggi finali: {{scores}}",
+    "void": "Partita annullata",
+    "voidDetail": "Nessuno ha mosso prima dello scadere del tempo: non conta per nessuno.",
+    "youForfeited": "Hai esaurito il tempo troppe volte.",
+    "forfeited_one": "{{names}} ha esaurito il tempo troppe volte.",
+    "forfeited_other": "{{names}} hanno esaurito il tempo troppe volte."
   },
   "history": {
     "title": "Cronologia",
@@ -378,7 +384,10 @@
     "draw": "La partita è finita in parità",
     "noWinner": "La partita è finita senza vincitori",
     "scores": "Punteggi finali: {{scores}}",
-    "reacted": "{{name}} ha reagito {{emoji}}"
+    "reacted": "{{name}} ha reagito {{emoji}}",
+    "void": "Nessuno ha mosso in tempo — partita annullata",
+    "forfeited_one": "{{names}} ha esaurito il tempo troppe volte e ha perso",
+    "forfeited_other": "{{names}} hanno esaurito il tempo troppe volte e hanno perso"
   },
   "rematch": {
     "offer": "Rivincita",

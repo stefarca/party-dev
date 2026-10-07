@@ -293,6 +293,7 @@
       "won": "Won",
       "lost": "Lost",
       "draw": "Draw",
+      "void": "Void",
       "unknown": "Finished"
     }
   },
@@ -364,7 +365,12 @@
     "noWinner": "No winner.",
     "winners_one": "{{names}} won.",
     "winners_other": "{{names}} won.",
-    "scores": "Final scores: {{scores}}"
+    "scores": "Final scores: {{scores}}",
+    "void": "Match void",
+    "voidDetail": "Nobody moved before time ran out, so it counts for no one.",
+    "youForfeited": "You ran out of time too many times.",
+    "forfeited_one": "{{names}} ran out of time too many times.",
+    "forfeited_other": "{{names}} ran out of time too many times."
   },
   "history": {
     "title": "History",
@@ -378,7 +384,10 @@
     "draw": "The match ended in a draw",
     "noWinner": "The match ended with no winner",
     "scores": "Final scores: {{scores}}",
-    "reacted": "{{name}} reacted {{emoji}}"
+    "reacted": "{{name}} reacted {{emoji}}",
+    "void": "Nobody moved in time — the match is void",
+    "forfeited_one": "{{names}} ran out of time too many times and lost",
+    "forfeited_other": "{{names}} ran out of time too many times and lost"
   },
   "rematch": {
     "offer": "Rematch",

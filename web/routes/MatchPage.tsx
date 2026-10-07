@@ -387,6 +387,12 @@ function GameUiHost({
   };
 
   const title = gameName(gameId, getGameMeta(gameId)?.name);
+  // A match the engine ended at a deadline (void, or lost on time) ends
+  // mid-game as far as the game's own view knows, so its board may still
+  // offer a move. Nothing on it can be played any more.
+  const endedByClock =
+    snapshot.result?.kind === "void" ||
+    (snapshot.result?.kind === "win" && (snapshot.result.forfeited?.length ?? 0) > 0);
   const Lazy = getLazyUi(gameId);
   if (!Lazy) {
     return (
@@ -407,7 +413,9 @@ function GameUiHost({
             </div>
           }
         >
-          <Lazy {...props} />
+          <div inert={endedByClock}>
+            <Lazy {...props} />
+          </div>
         </Suspense>
       </GameErrorBoundary>
     </GameSurface>

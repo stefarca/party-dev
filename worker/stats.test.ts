@@ -181,8 +181,14 @@ describe("stats queries", () => {
       expect((await playerStreaks(db, "ada", T0)).wins).toEqual({ current: 2, best: 2 });
     });
 
-    it("skips matches with no recorded result, and unfinished ones", async () => {
+    it("skips matches with no recorded result, void ones, and unfinished ones", async () => {
       await beat(db, "M1", "ada", "bob", T0 + 1);
+      await seedMatch(db, {
+        id: "VOID",
+        finishedAt: T0 + 2,
+        resultKind: "void",
+        players: { ada: false, bob: false },
+      });
       await seedMatch(db, {
         id: "OLD",
         finishedAt: T0 + 2,
@@ -230,6 +236,12 @@ describe("stats queries", () => {
       await beat(db, "M2", "bob", "ada", T0, "connect4");
       await beat(db, "M3", "ada", "bob", T0, "connect4");
       await seedMatch(db, { id: "M4", status: "active", players: { ada: false, bob: false } });
+      await seedMatch(db, {
+        id: "M5",
+        gameId: "tictactoe",
+        resultKind: "void",
+        players: { ada: false, bob: false },
+      });
 
       expect(await gameRecords(db, "ada")).toEqual([
         { gameId: "connect4", played: 3, finished: 2, won: 1 },
@@ -371,6 +383,12 @@ describe("stats queries", () => {
       await beat(db, "M4", "bob", "dee", from + 4);
       await beat(db, "M5", "cy", "bob", from + 5);
       await beat(db, "OLD", "dee", "ada", from - 1); // the week before
+      await seedMatch(db, {
+        id: "VOID",
+        finishedAt: from + 6,
+        resultKind: "void",
+        players: { ada: false, bob: false },
+      });
 
       expect(await champions(db, from, T0)).toEqual([
         { playerId: "ada", nickname: "ADA", won: 2, finished: 2 },
