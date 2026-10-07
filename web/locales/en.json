@@ -125,7 +125,7 @@
       "days_one": "{{count}} day",
       "days_other": "{{count}} days",
       "playDone": "Done for today. Come back tomorrow to keep it going.",
-      "playAtRisk": "Make a move or play a daily today, or it ends at midnight UTC.",
+      "playAtRisk": "Make a move or play a daily today, or it ends at midnight.",
       "playNone": "Make a move or play a daily to start one.",
       "wins": "Win streak",
       "winsCount_one": "{{count}} win",

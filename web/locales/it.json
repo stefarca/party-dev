@@ -125,7 +125,7 @@
       "days_one": "{{count}} giorno",
       "days_other": "{{count}} giorni",
       "playDone": "Fatto per oggi. Torna domani per continuarla.",
-      "playAtRisk": "Fai una mossa o gioca una sfida del giorno oggi, o finisce a mezzanotte UTC.",
+      "playAtRisk": "Fai una mossa o gioca una sfida del giorno oggi, o finisce a mezzanotte.",
       "playNone": "Fai una mossa o gioca una sfida del giorno per iniziarne una.",
       "wins": "Serie di vittorie",
       "winsCount_one": "{{count}} vittoria",
