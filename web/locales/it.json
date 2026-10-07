@@ -102,7 +102,7 @@
         "trigger": "Azzera",
         "label": "Azzera il tuo bilancio",
         "title": "Azzerare il tuo bilancio?",
-        "body": "Giocate, vinte e concluse, la serie di vittorie e le rivalità ripartono da zero e contano solo le partite iniziate da adesso. La serie di giorni resta, e tutte le partite restano nelle tue liste: non viene cancellato nulla.",
+        "body": "Giocate, vinte e concluse, la serie di vittorie e le rivalità ripartono da zero e contano solo le partite iniziate da adesso. La serie di giorni e gli achievement restano, e tutte le partite restano nelle tue liste: non viene cancellato nulla.",
         "confirm": "Azzera bilancio",
         "cancel": "Annulla",
         "failed": "Impossibile azzerare il bilancio."
@@ -125,7 +125,7 @@
       "days_one": "{{count}} giorno",
       "days_other": "{{count}} giorni",
       "playDone": "Fatto per oggi. Torna domani per continuarla.",
-      "playAtRisk": "Fai una mossa o gioca una sfida del giorno oggi, o finisce a mezzanotte UTC.",
+      "playAtRisk": "Fai una mossa o gioca una sfida del giorno oggi, o finisce a mezzanotte.",
       "playNone": "Fai una mossa o gioca una sfida del giorno per iniziarne una.",
       "wins": "Serie di vittorie",
       "winsCount_one": "{{count}} vittoria",
@@ -180,6 +180,96 @@
       "stalled_one": "{{count}} partita lo aspetta adesso",
       "stalled_other": "{{count}} partite lo aspettano adesso",
       "shameEmpty": "Nessuno ha fatto aspettare nessuno questa settimana. Sospetto."
+    }
+  },
+  "achievements": {
+    "title": "Achievements",
+    "hint": "{{unlocked}} su {{total}} sbloccati. Sono tuoi per sempre: azzerare il bilancio non li tocca.",
+    "label": "I tuoi achievement",
+    "level": "Livello {{level}} di {{total}}",
+    "progress": "{{value}} su {{goal}}",
+    "unlocked": "Sbloccato il {{date}}",
+    "new": "Nuovo",
+    "loadFailed": "Impossibile caricare i tuoi achievement.",
+    "toast": {
+      "title_one": "Achievement sbloccato!",
+      "title_other": "{{count}} achievement sbloccati!",
+      "more_one": "…e {{count}} altro",
+      "more_other": "…e altri {{count}}",
+      "seeAll": "Vedi tutti",
+      "close": "Chiudi"
+    },
+    "items": {
+      "winner": {
+        "name": "Vincitore",
+        "goal_one": "Vinci una partita",
+        "goal_other": "Vinci {{count}} partite"
+      },
+      "hotStreak": {
+        "name": "In serie",
+        "goal_one": "Vinci {{count}} partita di fila",
+        "goal_other": "Vinci {{count}} partite di fila"
+      },
+      "veteran": {
+        "name": "Veterano",
+        "goal_one": "Concludi {{count}} partita",
+        "goal_other": "Concludi {{count}} partite"
+      },
+      "regular": {
+        "name": "Habitué",
+        "goal_one": "Gioca {{count}} giorno di fila",
+        "goal_other": "Gioca {{count}} giorni di fila"
+      },
+      "explorer": {
+        "name": "Esploratore",
+        "goal_one": "Concludi {{count}} gioco",
+        "goal_other": "Concludi {{count}} giochi diversi, tra partite e sfide del giorno"
+      },
+      "social": {
+        "name": "Animale sociale",
+        "goal_one": "Concludi una partita contro {{count}} giocatore",
+        "goal_other": "Concludi una partita contro {{count}} giocatori diversi"
+      },
+      "rivalry": {
+        "name": "Rivali storici",
+        "goal_one": "Concludi {{count}} partita contro lo stesso giocatore",
+        "goal_other": "Concludi {{count}} partite contro lo stesso giocatore"
+      },
+      "host": {
+        "name": "Padrone di casa",
+        "goal_one": "Ospita una partita che viene giocata",
+        "goal_other": "Ospita {{count}} partite che vengono giocate"
+      },
+      "openHouse": {
+        "name": "Porte aperte",
+        "goal_one": "Ospita una partita pubblica che viene giocata",
+        "goal_other": "Ospita {{count}} partite pubbliche che vengono giocate"
+      },
+      "stalemate": {
+        "name": "Stallo",
+        "goal_one": "Concludi una partita in pareggio",
+        "goal_other": "Concludi {{count}} partite in pareggio"
+      },
+      "slowpoke": {
+        "name": "Lumaca",
+        "goal_one": "Metti 20 ore o più a fare una mossa",
+        "goal_other": "Metti 20 ore o più a fare una mossa, {{count}} volte"
+      },
+      "dailyHabit": {
+        "name": "Abitudine quotidiana",
+        "goal_one": "Concludi una sfida del giorno",
+        "goal_other": "Concludi {{count}} sfide del giorno"
+      },
+      "cleanSweep": {
+        "name": "Filotto",
+        "goal_one": "Concludi {{count}} sfida del giorno in un giorno solo",
+        "goal_other": "Concludi {{count}} sfide del giorno diverse in un giorno solo"
+      },
+      "topOfTheChart": {
+        "name": "In vetta",
+        "goal_one": "Arriva primo nella classifica di un giorno, con qualcun altro in gara",
+        "goal_other": "Arriva primo nella classifica di un giorno {{count}} volte"
+      }
     }
   },
   "tile": {

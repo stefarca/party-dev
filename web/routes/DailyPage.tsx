@@ -12,6 +12,7 @@ import type {
   DailyStanding,
   DailyUiProps,
 } from "../../shared/protocol";
+import { useCheckWhenDone } from "../achievements";
 import { getDailyStanding } from "../api";
 import { Confetti } from "../components/Confetti";
 import { DailyChart } from "../components/DailyChart";
@@ -424,6 +425,8 @@ function DailyGame({ meta }: { meta: DailyGameMeta }) {
   useEffect(() => {
     if (runStatus === "done") void reloadChart();
   }, [runStatus, reloadChart]);
+  // So may the player's achievements be, once the run is in the index too.
+  useCheckWhenDone(runStatus);
 
   const challenge = useChallenge(meta.id, player?.playerId);
 

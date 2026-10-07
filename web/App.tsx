@@ -5,6 +5,7 @@ import { Button, Form, I18nProvider, Input, Label, Popover, TextField } from "@h
 import { useTranslation } from "react-i18next";
 
 import { NICKNAME_MAX_LENGTH } from "../shared/nickname";
+import { AchievementsProvider } from "./achievements";
 import { AppBackground } from "./components/AppBackground";
 import { BrandName, Buddy } from "./components/Brand";
 import { LanguagePicker } from "./components/LanguagePicker";
@@ -228,11 +229,12 @@ function AppShell() {
     return <NicknameGate />;
   }
 
+  // Only a signed-in player has achievements, and signing out drops what was read for them.
   return (
-    <>
+    <AchievementsProvider>
       <Header />
       <RouteContent />
-    </>
+    </AchievementsProvider>
   );
 }
 

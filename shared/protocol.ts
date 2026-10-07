@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import type { AchievementId } from "./achievements";
 import { decodeBase64Url } from "./base64url";
 import type { ActionDescription, DailyScore, Result } from "./game";
 import { NICKNAME_MAX_LENGTH } from "./nickname";
@@ -561,3 +562,38 @@ export interface Leaderboard {
   champions: ChampionEntry[];
   shame: ShameEntry[];
 }
+
+// ---------------------------------------------------------------------------
+// Achievements (shared/achievements.ts): what a player has earned, read from
+// the derived index like the stats (worker/achievements.ts), and which of it
+// they have already been told about.
+// ---------------------------------------------------------------------------
+
+// How far a player has got with one achievement.
+export interface AchievementProgress {
+  id: AchievementId;
+  // The measure the tiers are set on: a count, or the best run of one.
+  value: number;
+  // When each tier was reached, in tier order, one entry for every tier
+  // reached: its length is the player's level. As near as the index can say,
+  // which for a play streak is the first thing the player did on the day.
+  unlockedAt: number[];
+}
+
+// Reply to GET /api/me/achievements.
+export interface AchievementsResponse {
+  // Every achievement, in catalog order.
+  achievements: AchievementProgress[];
+  // The level of each achievement the player has already been told they
+  // reached. One missing is level 0: nothing told yet.
+  seen: Partial<Record<AchievementId, number>>;
+}
+
+// Body of POST /api/me/achievements/seen: the levels the client has just
+// told the player about. Ids are checked against the catalog by the route
+// rather than here, so a client that knows an achievement this Worker does
+// not yet (during a deploy) is not refused for the ones both know.
+export const AchievementsSeenRequestSchema = z.object({
+  seen: z.record(z.string().max(64), z.number().int().min(1).max(1000)),
+});
+export type AchievementsSeenRequest = z.infer<typeof AchievementsSeenRequestSchema>;
