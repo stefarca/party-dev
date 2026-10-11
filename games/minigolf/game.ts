@@ -5,8 +5,9 @@ import type { DailyGameModule, DailyScore } from "../../shared/game";
 
 // Mini golf, as a daily game: a round of six holes, drawn from the course
 // below for the day and the same for every player. A shot is a direction and
-// a power; the ball rolls, bounces off walls, slows in sand, is pulled down
-// slopes, and drops if it reaches the cup slowly enough. A ball that rolls
+// a power; the ball rolls, bounces off walls, slows in sand, slides on ice,
+// is pulled down slopes, is kicked away by springs, and drops if it reaches
+// the cup slowly enough. A ball that rolls
 // into water costs a penalty stroke and goes back to where it was hit from.
 //
 // Five strokes a hole, penalties included: a ball still out after the fifth
@@ -45,19 +46,25 @@ const MAX_SPEED = 150;
 // How fast rolling slows the ball on the green, and in sand.
 const FRICTION = 45;
 const SAND_FRICTION = 200;
+// Ice barely slows the ball at all, so a shot onto it has to be soft.
+const ICE_FRICTION = 12;
 // A slope's pull. Stronger than the green's friction, so a ball never comes
 // to rest on one: it rolls off it, downhill.
 const SLOPE_PULL = 75;
 // The share of its speed into a wall that a ball keeps when it bounces.
 const BOUNCE = 0.7;
+// What a spring gives back instead: more than the ball brought into it. A
+// wall takes more than a spring adds, so a ball caught between the two
+// still slows down.
+const SPRING_BOUNCE = 1.25;
 // A ball rolling over the cup faster than this rattles across it.
 const CAPTURE_SPEED = 40;
 // A ball this slow that touches a wall stays against it: a slope pushing it
 // into the wall would otherwise bounce it there forever.
 const STICK_SPEED = 3;
 // No ball ever travels further in one step than half its radius, which is
-// what keeps it from passing through a wall. A slope can speed a ball up
-// past a full-power shot, so this is a cap of its own, above that.
+// what keeps it from passing through a wall. A slope or a spring can speed a
+// ball up past a full-power shot, so this is a cap of its own, above that.
 const SPEED_LIMIT = 190;
 const STEP = 1 / 240;
 // The path keeps one point in every few steps, 60 a second.
@@ -75,6 +82,12 @@ export interface Slope {
   fall: Point;
 }
 
+// A round, springy bumper: it kicks the ball back off it faster than it came.
+export interface Spring {
+  at: Point;
+  r: number;
+}
+
 export interface Hole {
   par: number;
   // The course's outline, walled all the way round.
@@ -84,6 +97,10 @@ export interface Hole {
   sand: Area[];
   water: Area[];
   slopes: Slope[];
+  // Absent from a round laid out before there was any ice or a spring on the
+  // course: a run keeps the course it started with.
+  ice?: Area[];
+  springs?: Spring[];
   tee: Point;
   cup: Point;
 }
@@ -111,7 +128,11 @@ const LEFT: Point = [-1, 0];
 const RIGHT: Point = [1, 0];
 
 function hole(parts: Partial<Hole> & Pick<Hole, "par" | "edge" | "tee" | "cup">): Hole {
-  return { blocks: [], sand: [], water: [], slopes: [], ...parts };
+  return { blocks: [], sand: [], water: [], slopes: [], ice: [], springs: [], ...parts };
+}
+
+function spring(x: number, y: number, r: number): Spring {
+  return { at: [x, y], r };
 }
 
 // The course. A round plays six of these, each one either as drawn or
@@ -307,6 +328,144 @@ export const COURSE: readonly Hole[] = [
     tee: [50, 112],
     cup: [50, 20],
   }),
+  // An ice rink across the middle: anything firm slides to the back wall.
+  hole({
+    par: 2,
+    edge: rect(18, 8, 82, 122),
+    ice: [rect(18, 40, 82, 92)],
+    blocks: [diamond(50, 66, 7)],
+    tee: [34, 112],
+    cup: [64, 24],
+  }),
+  // Ice running up to the cup, and a pond behind it for a ball hit too hard.
+  hole({
+    par: 3,
+    edge: rect(20, 8, 80, 122),
+    ice: [rect(20, 34, 80, 96)],
+    water: [rect(20, 8, 80, 16)],
+    tee: [50, 112],
+    cup: [50, 26],
+  }),
+  // A pinball table: springs between the tee and the cup.
+  hole({
+    par: 3,
+    edge: rect(14, 8, 86, 122),
+    springs: [spring(34, 58, 5), spring(66, 58, 5), spring(50, 82, 6)],
+    tee: [50, 112],
+    cup: [50, 24],
+  }),
+  // A dogleg with a spring in the corner to bank off.
+  hole({
+    par: 3,
+    edge: [
+      [12, 122],
+      [44, 122],
+      [44, 46],
+      [88, 46],
+      [88, 8],
+      [12, 8],
+    ],
+    springs: [spring(20, 16, 5)],
+    tee: [28, 110],
+    cup: [76, 26],
+  }),
+  // A dogleg whose top arm is iced over.
+  hole({
+    par: 2,
+    edge: [
+      [12, 122],
+      [44, 122],
+      [44, 48],
+      [88, 48],
+      [88, 8],
+      [12, 8],
+    ],
+    ice: [rect(12, 8, 80, 48)],
+    water: [rect(80, 8, 88, 48)],
+    tee: [28, 110],
+    cup: [72, 28],
+  }),
+  // The cup tucked behind a spring: come at it from the side.
+  hole({
+    par: 3,
+    edge: rect(16, 8, 84, 122),
+    springs: [spring(50, 44, 7)],
+    sand: [rect(16, 60, 36, 84)],
+    tee: [50, 112],
+    cup: [50, 26],
+  }),
+  // Ice down the middle, a bunker beyond the cup to catch an overhit.
+  hole({
+    par: 2,
+    edge: rect(22, 8, 78, 122),
+    ice: [rect(22, 48, 78, 98)],
+    sand: [rect(22, 8, 78, 20)],
+    blocks: [diamond(58, 42, 5)],
+    tee: [40, 112],
+    cup: [58, 30],
+  }),
+  // A frozen causeway between two ponds.
+  hole({
+    par: 3,
+    edge: rect(12, 8, 88, 122),
+    water: [rect(12, 52, 42, 72), rect(58, 52, 88, 72)],
+    ice: [rect(42, 52, 58, 72)],
+    tee: [30, 112],
+    cup: [66, 24],
+  }),
+  // A wall with a gap, a spring on each side of it.
+  hole({
+    par: 2,
+    edge: rect(14, 8, 86, 122),
+    blocks: [rect(14, 64, 42, 70), rect(58, 64, 86, 70)],
+    springs: [spring(36, 52, 4), spring(64, 82, 4)],
+    tee: [30, 112],
+    cup: [70, 22],
+  }),
+  // An S: two lanes, with a spring at each bend.
+  hole({
+    par: 3,
+    edge: [
+      [10, 122],
+      [62, 122],
+      [62, 86],
+      [90, 86],
+      [90, 8],
+      [38, 8],
+      [38, 44],
+      [10, 44],
+    ],
+    springs: [spring(56, 72, 5), spring(44, 58, 5)],
+    tee: [24, 110],
+    cup: [76, 22],
+  }),
+  // A sidehill of ice: it falls away to the right, and nothing slows the ball.
+  hole({
+    par: 3,
+    edge: rect(14, 8, 86, 122),
+    ice: [rect(14, 36, 86, 76)],
+    slopes: [{ area: rect(14, 36, 86, 76), fall: RIGHT }],
+    water: [rect(76, 36, 86, 76)],
+    tee: [30, 112],
+    cup: [32, 20],
+  }),
+  // An octagon, the cup in the middle, ringed by springs.
+  hole({
+    par: 2,
+    edge: [
+      [34, 18],
+      [66, 18],
+      [90, 44],
+      [90, 92],
+      [66, 120],
+      [34, 120],
+      [10, 92],
+      [10, 44],
+    ],
+    springs: [spring(50, 52, 4), spring(36, 74, 4), spring(64, 74, 4)],
+    tee: [50, 110],
+    cup: [50, 68],
+  }),
 ];
 
 // `hole` with left and right swapped.
@@ -323,6 +482,8 @@ export function mirror(hole: Hole): Hole {
       area: area(points),
       fall: [x === 0 ? 0 : -x, y],
     })),
+    ice: (hole.ice ?? []).map(area),
+    springs: (hole.springs ?? []).map(({ at, r }) => ({ at: flip(at), r })),
     tee: flip(hole.tee),
     cup: flip(hole.cup),
   };
@@ -369,6 +530,10 @@ function wallsOf(hole: Hole): number[][] {
 // Whether a ball could sit at `x, y`: on the course, clear of every wall.
 export function fits(hole: Hole, x: number, y: number): boolean {
   if (!inside(hole.edge, x, y) || hole.blocks.some((block) => inside(block, x, y))) return false;
+  const clear = (hole.springs ?? []).every(
+    ({ at: [sx, sy], r }) => (x - sx) ** 2 + (y - sy) ** 2 >= (r + BALL_R) ** 2 - 1e-9,
+  );
+  if (!clear) return false;
   return wallsOf(hole).every(([x0, y0, x1, y1]) => {
     const [cx, cy] = closest(x, y, x0, y0, x1, y1);
     return (x - cx) ** 2 + (y - cy) ** 2 >= BALL_R ** 2 - 1e-9;
@@ -405,6 +570,8 @@ const round2 = (n: number) => Math.round(n * 100) / 100;
 // straight up the screen) at `power` (a fraction of full power).
 export function roll(hole: Hole, from: Point, angle: number, power: number): Roll {
   const walls = wallsOf(hole);
+  const ice = hole.ice ?? [];
+  const springs = hole.springs ?? [];
   const [cupX, cupY] = hole.cup;
   const speed = MAX_SPEED * power;
   const radians = (angle * Math.PI) / 180;
@@ -424,7 +591,12 @@ export function roll(hole: Hole, from: Point, angle: number, power: number): Rol
         sloped = true;
       }
     }
-    const drag = (hole.sand.some((area) => inside(area, x, y)) ? SAND_FRICTION : FRICTION) * STEP;
+    const friction = hole.sand.some((area) => inside(area, x, y))
+      ? SAND_FRICTION
+      : ice.some((area) => inside(area, x, y))
+        ? ICE_FRICTION
+        : FRICTION;
+    const drag = friction * STEP;
     let v = Math.sqrt(vx * vx + vy * vy);
     if (v <= drag) {
       // Flat ground holds a ball this slow. A slope does not: at the top of
@@ -463,6 +635,35 @@ export function roll(hole: Hole, from: Point, angle: number, power: number): Rol
       if (into < 0) {
         vx -= (1 + BOUNCE) * into * nx;
         vy -= (1 + BOUNCE) * into * ny;
+      }
+      touched = true;
+    }
+    for (const {
+      at: [sx, sy],
+      r,
+    } of springs) {
+      let nx = x - sx;
+      let ny = y - sy;
+      const d = Math.sqrt(nx * nx + ny * ny);
+      if (d >= r + BALL_R) continue;
+      if (d > 1e-9) {
+        nx /= d;
+        ny /= d;
+      } else {
+        nx = 0;
+        ny = 1;
+      }
+      x = sx + nx * (r + BALL_R);
+      y = sy + ny * (r + BALL_R);
+      const into = vx * nx + vy * ny;
+      if (into < 0) {
+        vx -= (1 + SPRING_BOUNCE) * into * nx;
+        vy -= (1 + SPRING_BOUNCE) * into * ny;
+        const kicked = Math.sqrt(vx * vx + vy * vy);
+        if (kicked > SPEED_LIMIT) {
+          vx *= SPEED_LIMIT / kicked;
+          vy *= SPEED_LIMIT / kicked;
+        }
       }
       touched = true;
     }

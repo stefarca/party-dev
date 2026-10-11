@@ -88,6 +88,18 @@ const IN_PAR: [plain: Shot[], mirrored: Shot[]][] = [
   ],
   [[[0, 0.76]], [[0, 0.76]]],
   [[[24, 0.94]], [[24, 0.94]]],
+  [[[201, 0.97]], [[159, 1]]],
+  [[[180, 0.76]], [[180, 0.76]]],
+  [[[315, 0.85]], [[315, 0.85]]],
+  [[[315, 0.91]], [[45, 0.94]]],
+  [[[42, 0.88]], [[318, 0.91]]],
+  [[[42, 0.76]], [[327, 0.88]]],
+  [[[126, 0.94]], [[234, 0.97]]],
+  [[[21, 0.58]], [[339, 0.58]]],
+  [[[165, 0.97]], [[336, 0.67]]],
+  [[[318, 0.91]], [[42, 0.85]]],
+  [[[189, 0.97]], [[171, 1]]],
+  [[[108, 0.67]], [[108, 0.67]]],
 ];
 
 function plainHole(parts: Partial<Hole> = {}): Hole {
@@ -103,6 +115,8 @@ function plainHole(parts: Partial<Hole> = {}): Hole {
     sand: [],
     water: [],
     slopes: [],
+    ice: [],
+    springs: [],
     tee: [50, 110],
     cup: [50, 20],
     ...parts,
@@ -231,6 +245,9 @@ describe("rolling the ball", () => {
         for (const [x, y] of pointsOf(rolled.path)) {
           expect(inside(hole.edge, x, y)).toBe(true);
           expect(hole.blocks.some((block) => inside(block, x, y))).toBe(false);
+          for (const { at, r } of hole.springs ?? []) {
+            expect(Math.hypot(x - at[0], y - at[1])).toBeGreaterThan(r);
+          }
         }
         if (rolled.outcome === "rest") {
           expect(restsOnCourse(hole, rolled.end)).toBe(true);
@@ -277,6 +294,49 @@ describe("rolling the ball", () => {
     const onGrass = roll(open, open.tee, 0, 0.5).end;
     const inSand = roll(bunker, bunker.tee, 0, 0.5).end;
     expect(inSand[1]).toBeGreaterThan(onGrass[1]);
+  });
+
+  test("slides further on ice", () => {
+    const open = plainHole();
+    const rink = plainHole({
+      ice: [
+        [
+          [20, 40],
+          [80, 40],
+          [80, 100],
+          [20, 100],
+        ],
+      ],
+    });
+    const onGrass = roll(open, open.tee, 0, 0.4).end;
+    const onIce = roll(rink, rink.tee, 0, 0.4).end;
+    expect(onIce[1]).toBeLessThan(onGrass[1]);
+  });
+
+  test("is kicked back off a spring faster than off a wall", () => {
+    const hole = plainHole();
+    const sprung = plainHole({ springs: [{ at: [50, 80], r: 5 }] });
+    const walled = plainHole({
+      blocks: [
+        [
+          [45, 75],
+          [55, 75],
+          [55, 85],
+          [45, 85],
+        ],
+      ],
+    });
+    const offSpring = roll(sprung, sprung.tee, 0, 0.5);
+    const offWall = roll(walled, walled.tee, 0, 0.5);
+    expect(offSpring.end[1]).toBeGreaterThan(offWall.end[1]);
+    expect(roll(hole, hole.tee, 0, 0.5).end[1]).toBeLessThan(80);
+    expect(fits(sprung, 50, 80 - 5 - BALL_R / 2)).toBe(false);
+  });
+
+  test("plays a hole laid out before there was ice or springs", () => {
+    const { ice: _ice, springs: _springs, ...before } = plainHole({ cup: [50, 96] });
+    expect(roll(before, before.tee, 0, 0.3).outcome).toBe("holed");
+    expect(mirror(before)).toMatchObject({ ice: [], springs: [] });
   });
 
   test("rolls back down a slope it was hit too softly to climb", () => {

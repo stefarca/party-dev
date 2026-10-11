@@ -93,6 +93,11 @@
  *   board-hole on golf-green (the cup)                       4.48    4.48   >= 3.0
  *   golf-flag on golf-green (the flag, before its outline)   3.02    3.02   >= 3.0
  *   golf-wave on golf-water (the ripples marking water)      3.28    3.28   >= 3.0
+ *   golf-ice on golf-stripe (ice, tightest turf)             3.07    3.07   >= 3.0
+ *   golf-ice on golf-water (ice beside a pond)               4.01    4.01   >= 3.0
+ *   golf-ball-ring on golf-ice (the ball on ice)            15.67   15.67   >= 3.0
+ *   golf-wall on golf-spring (a spring's lip)                4.25    4.25   >= 3.0
+ *   golf-ball on golf-spring (the ball against a spring)     3.97    3.97   >= 3.0
  *
  * The seat ramp, the tile ramp, the code pegs, the golf course and the board
  * colours do not change between themes (see the note on `--board-well`
@@ -239,8 +244,9 @@
 
   /* Mini golf's course: cross-mown turf inside pale rails, raised bumpers,
      and hazards that each carry a texture of their own (grains in sand,
-     ripples on water, chevrons down a slope), so none is told apart by
-     colour alone. A course is a board, so the same in both themes. A rail
+     ripples on water, glints across ice, chevrons down a slope), so none is
+     told apart by colour alone. A spring is a bumper of its own: round, in a
+     pinball's red and yellow rather than the rail's white. A course is a board, so the same in both themes. A rail
      and a bumper are drawn in `--golf-rail` with a thin `--golf-wall` lip
      where they meet the turf, so either alone outlines the course. The ball
      is ringed in the dark ink, which is what keeps it visible in a light
@@ -258,6 +264,10 @@
   --golf-sand: hsl(42, 62%, 72%);
   --golf-sand-grain: hsl(34, 45%, 50%);
   --golf-sand-shade: hsl(34, 50%, 40%);
+  --golf-ice: hsl(192, 60%, 90%);
+  --golf-ice-shade: hsl(200, 40%, 56%);
+  --golf-spring: hsl(352, 80%, 56%);
+  --golf-spring-ring: hsl(48, 96%, 60%);
   --golf-water: hsl(206, 76%, 42%);
   --golf-water-deep: hsl(212, 78%, 32%);
   --golf-wave: hsl(198, 90%, 80%);
