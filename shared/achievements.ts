@@ -1,8 +1,8 @@
 // The achievements a player can earn, in the order the stats page shows them. Each one measures
-// one thing the match index (or, for `lockedIn`, the player registry) already records — wins, finished matches, play days, daily runs —
-// and has one or more tiers: the values of that measure at which it is reached, smallest first.
-// Its level is how many tiers the player has reached, so an achievement with one tier is simply
-// earned or not.
+// one thing the match index (or, for `lockedIn`, the player registry) already records — wins,
+// finished matches, play days, daily runs — and has one or more tiers: the values of that measure
+// at which it is reached, smallest first. Its level is how many tiers the player has reached, so
+// an achievement with one tier is simply earned or not.
 //
 // Every tier is a fixed number rather than "every game" or "the whole catalog": a tier a player
 // has reached must stay reached when a game is added. And every measure only ever grows, so an
