@@ -8,7 +8,9 @@ import { Legend } from "./Legend";
 // own name. `ids` is the prefix the course's fills were defined under.
 export function HazardLegend({ hole, ids }: { hole: Hole; ids: string }) {
   const { t } = useTranslation("minigolf");
-  const hazards = [hole.water, hole.sand, hole.slopes, hole.blocks];
+  const ice = hole.ice ?? [];
+  const springs = hole.springs ?? [];
+  const hazards = [hole.water, hole.sand, ice, hole.slopes, hole.blocks, springs];
   if (hazards.every((areas) => areas.length === 0)) return null;
   return (
     <div
@@ -17,6 +19,12 @@ export function HazardLegend({ hole, ids }: { hole: Hole; ids: string }) {
     >
       {hole.water.length > 0 && <Legend fill={`url(#${ids}-water)`}>{t("legend.water")}</Legend>}
       {hole.sand.length > 0 && <Legend fill={`url(#${ids}-sand)`}>{t("legend.sand")}</Legend>}
+      {ice.length > 0 && <Legend fill={`url(#${ids}-ice)`}>{t("legend.ice")}</Legend>}
+      {springs.length > 0 && (
+        <Legend fill={`url(#${ids}-spring)`} back="var(--golf-spring)">
+          {t("legend.spring")}
+        </Legend>
+      )}
       {hole.slopes.length > 0 && (
         <Legend fill={`url(#${ids}-slope-0)`} back="var(--golf-green)">
           {t("legend.slope")}

@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { AlertDialog, Button } from "@heroui/react";
 import { useTranslation } from "react-i18next";
 
+import { addDays, dayOf } from "../../shared/daily";
 import type {
   ChampionEntry,
   Leaderboard,
@@ -12,6 +13,7 @@ import type {
   Rival,
   ShameEntry,
 } from "../../shared/protocol";
+import { FREEZE_EVERY, MAX_FREEZES } from "../../shared/streak";
 import { useAchievements } from "../achievements";
 import { ApiError, getLeaderboard, getMyStats, resetStats } from "../api";
 import { AchievementList, levelsReached } from "../components/AchievementList";
@@ -105,7 +107,8 @@ function CompactDuration({ ms }: { ms: number }) {
 }
 
 // One streak: its size, its best, and a line on what to do about it. The play
-// streak's flame is grey until today counts, the same as on the hub.
+// streak's flame is grey until today counts, the same as on the hub, and its
+// card also says what freezes it holds and how to earn them.
 function StreakCard({
   glyph,
   label,
@@ -114,6 +117,7 @@ function StreakCard({
   note,
   lit,
   atRisk = false,
+  children,
 }: {
   glyph: string;
   label: string;
@@ -122,6 +126,7 @@ function StreakCard({
   note: string;
   lit: boolean;
   atRisk?: boolean;
+  children?: ReactNode;
 }) {
   return (
     <div
@@ -147,6 +152,7 @@ function StreakCard({
           {note}
         </p>
         <p className="m-0 text-xs text-[var(--text-muted)]">{best}</p>
+        {children}
       </div>
     </div>
   );
@@ -160,7 +166,10 @@ function Streaks({ stats }: { stats: PlayerStatsDetail }) {
       ? t("stats.streaks.playNone")
       : play.today
         ? t("stats.streaks.playDone")
-        : t("stats.streaks.playAtRisk");
+        : play.freezes > 0
+          ? t("stats.streaks.playAtRiskFrozen")
+          : t("stats.streaks.playAtRisk");
+  const frozeYesterday = play.current > 0 && play.frozen.includes(addDays(dayOf(Date.now()), -1));
   return (
     <section
       aria-label={t("stats.streaks.label")}
@@ -174,7 +183,24 @@ function Streaks({ stats }: { stats: PlayerStatsDetail }) {
         note={playNote}
         lit={play.current > 0 && play.today}
         atRisk={play.current > 0 && !play.today}
-      />
+      >
+        {frozeYesterday && (
+          <p className="m-0 text-sm text-[var(--text-secondary)]">
+            {t("stats.streaks.frozeYesterday")}
+          </p>
+        )}
+        <p className="m-0 mt-1 flex items-start gap-1.5 text-xs text-[var(--text-muted)]">
+          <span aria-hidden="true">🧊</span>
+          <span>
+            {play.current > 0 && (
+              <span className="font-bold text-[var(--text-secondary)]">
+                {t("stats.streaks.freezes", { count: play.freezes })}.{" "}
+              </span>
+            )}
+            {t("stats.streaks.freezeHow", { every: FREEZE_EVERY, max: MAX_FREEZES })}
+          </span>
+        </p>
+      </StreakCard>
       <StreakCard
         glyph="🏆"
         label={t("stats.streaks.wins")}

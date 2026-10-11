@@ -486,8 +486,14 @@ export interface Streak {
 // a match or played a daily game. A streak is still `current` on the day after
 // its last day, since that day is not over yet; `today` says whether today
 // already counts, which is what tells a player their streak is at risk.
+// A missed day is no break while the streak holds a freeze for it
+// (shared/streak.ts).
 export interface PlayStreak extends Streak {
   today: boolean;
+  // Freezes the current streak holds now; 0 with no streak.
+  freezes: number;
+  // The days in the current streak a freeze covered, oldest first.
+  frozen: string[];
 }
 
 export interface PlayerStreaks {

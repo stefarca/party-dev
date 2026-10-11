@@ -63,6 +63,12 @@ describe("playRuns and fromRuns", () => {
     expect(steps.map((s) => s.run)).toEqual([1, 2, 3, 1]);
     expect(fromRuns(steps, [2, 3, 4])).toEqual({ value: 3, unlockedAt: [2, 3] });
   });
+
+  it("carries a run over a missed day it earned a freeze for", () => {
+    const days = Array.from({ length: 7 }, (_, i) => ({ day: `2026-09-0${i + 1}`, at: i }));
+    const steps = playRuns([...days, { day: "2026-09-09", at: 8 }, { day: "2026-09-11", at: 10 }]);
+    expect(steps.map((s) => s.run)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 1]);
+  });
 });
 
 async function seedPlayer(db: D1Database, id: string, statsSince: number | null = null) {

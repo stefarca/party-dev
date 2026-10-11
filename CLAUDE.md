@@ -180,7 +180,10 @@ does not hold, so a mismatch counts once rather than twice or forever. Two count
 player's record (wins, win streak, rivalries, per-game lines) follows their `stats_since` reset,
 like the hub's; a week's boards (champions, wall of shame) and the play streak do not. A finished
 match with a NULL `result_kind` counts for neither side. A play streak is UTC days (the daily
-games' `dayOf()`) with a move or a daily run, alive through the day after its last one. In SQL,
+games' `dayOf()`) with a move or a daily run, alive through the day after its last one. A streak
+earns a freeze every `FREEZE_EVERY` days played and holds up to `MAX_FREEZES`; a missed day uses
+one instead of ending it. Freezes are worked out from the play days (`shared/streak.ts`), never
+stored, and the `regular` achievement counts runs the same way. In SQL,
 beware that a HAVING clause resolves an alias that shares a column's name (`won`) to the column.
 
 **Achievements are worked out, never stored.** `shared/achievements.ts` is the catalog: an id, a

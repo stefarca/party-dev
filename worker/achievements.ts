@@ -6,7 +6,8 @@ import {
   getAchievement,
 } from "../shared/achievements";
 import type { AchievementId } from "../shared/achievements";
-import { addDays, dayEnd, dayOf } from "../shared/daily";
+import { dayEnd, dayOf } from "../shared/daily";
+import { playSteps } from "../shared/streak";
 import type { AchievementProgress, AchievementsResponse, PlayerId } from "../shared/protocol";
 
 // What a player has earned, worked out from the derived index on every read,
@@ -83,15 +84,11 @@ export function fromRuns(steps: { at: number; run: number }[], tiers: readonly n
 }
 
 // How a sorted list of days with something played on them makes a play
-// streak: each day continues the run if the day before it is in the list.
+// streak: each day continues the run if the day before it is in the list, or
+// if the run held a freeze for every day missed since (shared/streak.ts).
 export function playRuns(days: { day: string; at: number }[]): { at: number; run: number }[] {
-  const steps: { at: number; run: number }[] = [];
-  days.forEach(({ day, at }, i) => {
-    const previous = steps[i - 1];
-    const continues = previous !== undefined && addDays(days[i - 1].day, 1) === day;
-    steps.push({ at, run: continues ? previous.run + 1 : 1 });
-  });
-  return steps;
+  const steps = playSteps(days.map((d) => d.day));
+  return days.map(({ at }, i) => ({ at, run: steps[i].run }));
 }
 
 // The player's matches, oldest first. A lobby is in here too, and counts for

@@ -8,7 +8,9 @@
     "water": "water",
     "sand": "sand",
     "slope": "a slope",
-    "blocks": "obstacles"
+    "blocks": "obstacles",
+    "ice": "ice",
+    "springs": "springs"
   },
   "stats": {
     "label": "Your round",
@@ -27,7 +29,9 @@
   "legend": {
     "water": "Water: a penalty stroke",
     "sand": "Sand slows the ball",
-    "slope": "Slope: rolls the way the arrows point"
+    "slope": "Slope: rolls the way the arrows point",
+    "ice": "Ice: the ball hardly slows",
+    "spring": "Spring: kicks the ball back harder"
   },
   "cup": {
     "ace": "Hole in one!",

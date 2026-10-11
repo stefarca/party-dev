@@ -48,6 +48,9 @@ test("finished matches add up to streaks and a rivalry on both sides", async ({ 
     streaks.getByText("Done for today. Come back tomorrow to keep it going."),
   ).toBeVisible();
   await expect(streaks.getByText("2 wins", { exact: true })).toBeVisible();
+  // A one-day streak has earned no freeze yet, and the card says how to earn one.
+  await expect(streaks.getByText("0 freezes held.")).toBeVisible();
+  await expect(streaks.getByText(/Earn a freeze every 7 days in a row, up to 3\./)).toBeVisible();
 
   const rivals = ada.page.getByRole("list", { name: "Rivalries" });
   await expect(rivals.getByText(`You're 2–0 against ${bob.nickname}`)).toBeVisible();

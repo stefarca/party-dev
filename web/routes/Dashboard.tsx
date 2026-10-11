@@ -286,7 +286,8 @@ function DashboardSkeleton() {
 // Under the greeting on every section: what waits on the player, then the
 // streaks, since they are what brings a player back. While today still has to
 // be played for the play streak, its flame goes grey and it says so, the way a
-// streak app nags. A win streak shows only once it is a streak. The record
+// streak app nags, and a streak freeze it holds shows beside it, since a
+// missed day would use one. A win streak shows only once it is a streak. The record
 // itself, and the breakdowns — by game, by opponent — are on the stats page it
 // links to. All of it wraps as one row, so the pills share a line with the
 // sentence whenever there is room.
@@ -313,8 +314,23 @@ function StatusRow({ movesNeeded, streaks }: { movesNeeded: number; streaks: Pla
             {t("hub.stats.playStreak", { count: play.current })}
           </span>
           {!play.today && (
-            <span className="font-bold text-[var(--warn-fg)]">{t("hub.stats.keepStreak")}</span>
+            <span className="font-bold text-[var(--warn-fg)]">
+              {play.freezes > 0 ? t("hub.stats.keepStreakFrozen") : t("hub.stats.keepStreak")}
+            </span>
           )}
+        </p>
+      )}
+      {play.current > 0 && play.freezes > 0 && (
+        <p
+          aria-label={t("hub.stats.freezesLabel", { count: play.freezes })}
+          className="m-0 flex items-center gap-1.5 rounded-[var(--radius-pill)] border border-[var(--border-subtle)] bg-[var(--surface-1)] px-3 py-1 text-xs"
+        >
+          <span aria-hidden="true" className="text-base">
+            🧊
+          </span>
+          <span className="font-display text-sm font-bold text-[var(--text-primary)]">
+            {t("hub.stats.freezes", { count: play.freezes })}
+          </span>
         </p>
       )}
       {wins.current >= 2 && (
@@ -645,7 +661,7 @@ export function Dashboard({ tab }: { tab: HubTab | null }) {
     open: [],
     stats: { played: 0, finished: 0, won: 0, since: null },
     streaks: {
-      play: { current: 0, best: 0, today: false },
+      play: { current: 0, best: 0, today: false, freezes: 0, frozen: [] },
       wins: { current: 0, best: 0 },
     },
   };

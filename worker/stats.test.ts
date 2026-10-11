@@ -107,6 +107,8 @@ describe("playStreak", () => {
       current: 3,
       best: 3,
       today: true,
+      freezes: 0,
+      frozen: [],
     });
   });
 
@@ -115,21 +117,97 @@ describe("playStreak", () => {
       current: 2,
       best: 2,
       today: false,
+      freezes: 0,
+      frozen: [],
     });
   });
 
   it("drops a streak with a whole day missed, but remembers the best one", () => {
     const days = ["2026-09-01", "2026-09-02", "2026-09-03", "2026-09-04", "2026-09-12"];
-    expect(playStreak(days, "2026-09-14")).toEqual({ current: 0, best: 4, today: false });
+    expect(playStreak(days, "2026-09-14")).toEqual({
+      current: 0,
+      best: 4,
+      today: false,
+      freezes: 0,
+      frozen: [],
+    });
   });
 
   it("reads days in any order and with repeats, across a month's end", () => {
     const days = ["2026-10-01", "2026-09-30", "2026-10-01", "2026-09-29"];
-    expect(playStreak(days, "2026-10-01")).toEqual({ current: 3, best: 3, today: true });
+    expect(playStreak(days, "2026-10-01")).toEqual({
+      current: 3,
+      best: 3,
+      today: true,
+      freezes: 0,
+      frozen: [],
+    });
   });
 
   it("is nothing for a player who never played", () => {
-    expect(playStreak([], "2026-09-14")).toEqual({ current: 0, best: 0, today: false });
+    expect(playStreak([], "2026-09-14")).toEqual({
+      current: 0,
+      best: 0,
+      today: false,
+      freezes: 0,
+      frozen: [],
+    });
+  });
+});
+
+describe("playStreak with freezes", () => {
+  // Every day of September from the 1st to the `last`th, as days.
+  const september = (last: number) =>
+    Array.from({ length: last }, (_, i) => `2026-09-${String(i + 1).padStart(2, "0")}`);
+
+  it("earns a freeze on the seventh day, and holds it while the streak goes on", () => {
+    expect(playStreak(september(7), "2026-09-07")).toMatchObject({ current: 7, freezes: 1 });
+    expect(playStreak(september(6), "2026-09-06")).toMatchObject({ current: 6, freezes: 0 });
+  });
+
+  it("uses a freeze for a missed day, and the streak carries on without counting it", () => {
+    const days = [...september(7), "2026-09-09"];
+    expect(playStreak(days, "2026-09-09")).toEqual({
+      current: 8,
+      best: 8,
+      today: true,
+      freezes: 0,
+      frozen: ["2026-09-08"],
+    });
+  });
+
+  it("uses a freeze for yesterday while today is still to play", () => {
+    expect(playStreak(september(7), "2026-09-09")).toEqual({
+      current: 7,
+      best: 7,
+      today: false,
+      freezes: 0,
+      frozen: ["2026-09-08"],
+    });
+  });
+
+  it("ends a streak that missed more days than it held freezes for, freezes and all", () => {
+    expect(playStreak(september(7), "2026-09-10")).toMatchObject({ current: 0, freezes: 0 });
+    const days = [...september(7), "2026-09-10", "2026-09-11"];
+    expect(playStreak(days, "2026-09-11")).toEqual({
+      current: 2,
+      best: 7,
+      today: true,
+      freezes: 0,
+      frozen: [],
+    });
+  });
+
+  it("holds at most three, and three cover three days in a row", () => {
+    const days = september(28);
+    expect(playStreak(september(21), "2026-09-21")).toMatchObject({ current: 21, freezes: 3 });
+    expect(playStreak(days, "2026-09-28")).toMatchObject({ current: 28, freezes: 3 });
+    expect(playStreak(days, "2026-10-02")).toMatchObject({
+      current: 28,
+      freezes: 0,
+      frozen: ["2026-09-29", "2026-09-30", "2026-10-01"],
+    });
+    expect(playStreak(days, "2026-10-03")).toMatchObject({ current: 0, freezes: 0 });
   });
 });
 
@@ -164,7 +242,7 @@ describe("stats queries", () => {
       await seedWait(db, "M1", "ada", T0 - HOUR, T0);
 
       const { play } = await playerStreaks(db, "ada", T0);
-      expect(play).toEqual({ current: 3, best: 3, today: true });
+      expect(play).toEqual({ current: 3, best: 3, today: true, freezes: 0, frozen: [] });
     });
 
     it("does not count a turn that ended without the player moving", async () => {
