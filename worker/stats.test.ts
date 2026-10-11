@@ -198,14 +198,16 @@ describe("playStreak with freezes", () => {
     });
   });
 
-  it("holds at most two, and two cover two days in a row", () => {
-    const days = september(21);
-    expect(playStreak(days, "2026-09-21")).toMatchObject({ current: 21, freezes: 2 });
-    expect(playStreak(days, "2026-09-24")).toMatchObject({
-      current: 21,
+  it("holds at most three, and three cover three days in a row", () => {
+    const days = september(28);
+    expect(playStreak(september(21), "2026-09-21")).toMatchObject({ current: 21, freezes: 3 });
+    expect(playStreak(days, "2026-09-28")).toMatchObject({ current: 28, freezes: 3 });
+    expect(playStreak(days, "2026-10-02")).toMatchObject({
+      current: 28,
       freezes: 0,
-      frozen: ["2026-09-22", "2026-09-23"],
+      frozen: ["2026-09-29", "2026-09-30", "2026-10-01"],
     });
+    expect(playStreak(days, "2026-10-03")).toMatchObject({ current: 0, freezes: 0 });
   });
 });
 

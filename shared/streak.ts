@@ -14,7 +14,7 @@ import { addDays, dayStart } from "./daily";
 // Its own module rather than part of the Worker, since the client tells the player how to earn one.
 
 export const FREEZE_EVERY = 7;
-export const MAX_FREEZES = 2;
+export const MAX_FREEZES = 3;
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
