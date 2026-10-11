@@ -66,12 +66,12 @@ test("a newcomer sees every achievement still to earn, and how far each is", asy
   await expect(newcomer.page.getByRole("heading", { name: "Achievements" })).toBeVisible();
   await expect(
     newcomer.page.getByText(
-      "0 of 35 unlocked. They're yours for good: resetting your record keeps them.",
+      "0 of 36 unlocked. They're yours for good: resetting your record keeps them.",
     ),
   ).toBeVisible();
 
   const list = newcomer.page.getByRole("list", { name: "Your achievements" });
-  await expect(list.getByRole("listitem")).toHaveCount(14);
+  await expect(list.getByRole("listitem")).toHaveCount(15);
   const item = (name: string) =>
     list.getByRole("listitem").filter({
       has: newcomer.page.getByRole("heading", { name, exact: true }),

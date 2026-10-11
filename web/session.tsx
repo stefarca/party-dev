@@ -12,6 +12,10 @@ interface SessionValue {
   player: Me | null;
   error: string | null;
   signIn: (nickname: string) => Promise<void>;
+  // Takes up a session a sign-in flow other than `signIn` has already
+  // started — the owner's approval, a PIN, a passkey — whose reply set the
+  // cookie.
+  adopt: (me: Me) => void;
   rename: (nickname: string) => Promise<void>;
   // Ends the session on this device and returns to the nickname gate. The
   // only way to sign in as a different player here — `rename` deliberately
@@ -63,6 +67,12 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     setState("ready");
   }, []);
 
+  const adopt = useCallback((me: Me) => {
+    setPlayer(me);
+    setError(null);
+    setState("ready");
+  }, []);
+
   const rename = useCallback(async (nickname: string) => {
     const me = await setIdentity(nickname);
     setPlayer(me);
@@ -95,12 +105,13 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       player,
       error,
       signIn,
+      adopt,
       rename,
       signOut: endSession,
       retry,
       notifyUnauthorized,
     }),
-    [state, player, error, signIn, rename, endSession, retry, notifyUnauthorized],
+    [state, player, error, signIn, adopt, rename, endSession, retry, notifyUnauthorized],
   );
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;

@@ -265,6 +265,18 @@ describe("achievementsOf", () => {
     expect((await progress()).get("winner")?.unlockedAt).toEqual([T0 - DAY]);
   });
 
+  it("earns lockedIn when the name is first locked, and keeps it once the lock comes off", async () => {
+    expect((await progress()).get("lockedIn")?.value).toBe(0);
+    await db
+      .prepare("UPDATE players SET locked_at = ? WHERE id = 'ada'")
+      .bind(T0 - DAY)
+      .run();
+    expect((await progress()).get("lockedIn")).toMatchObject({ value: 1, unlockedAt: [T0 - DAY] });
+    // worker/lock.ts never clears locked_at, so taking the PIN off leaves it be.
+    await db.prepare("UPDATE players SET pin_hash = NULL WHERE id = 'ada'").bind().run();
+    expect((await progress()).get("lockedIn")?.unlockedAt).toEqual([T0 - DAY]);
+  });
+
   it("counts play days from moves and daily runs, as the play streak does", async () => {
     // Three days in a row — a move, a daily run, a move — then a gap, then one more.
     await seedWait(db, "ada", T0 - 3 * DAY, T0 - 2 * DAY - HOUR);

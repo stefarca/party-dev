@@ -5,6 +5,10 @@ import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 // passwords, no KV/D1 session store — the cookie itself is the session,
 // authenticated with Web Crypto HMAC-SHA256 and a secret held in
 // env.SESSION_SECRET (a Worker secret, never committed).
+//
+// What makes a cookie revocable anyway is the epoch it carries: "sign out
+// everywhere" bumps `players.session_epoch`, and a cookie issued under an
+// older one stops being a session on its next request.
 
 export const SESSION_COOKIE = "party_session";
 
@@ -12,6 +16,13 @@ export interface Session {
   pid: string; // playerId — crypto.randomUUID(), minted once, preserved across nickname changes
   nick: string;
   iat: number; // epoch ms the session was first minted
+  // The player's `session_epoch` when this cookie was issued. Absent on a
+  // cookie from before epochs existed, which counts as epoch 0.
+  ep?: number;
+  // The sign-in (a `sign_ins` row) that put this device on a nickname
+  // somebody already held, so the device does not list its own sign-in as
+  // one to worry about. Absent for the device that claimed the nickname.
+  sid?: string;
 }
 
 export type SessionBindings = {
@@ -90,7 +101,9 @@ function decodeSession(encoded: string): Session | null {
       parsed !== null &&
       typeof (parsed as Session).pid === "string" &&
       typeof (parsed as Session).nick === "string" &&
-      typeof (parsed as Session).iat === "number"
+      typeof (parsed as Session).iat === "number" &&
+      ["number", "undefined"].includes(typeof (parsed as Session).ep) &&
+      ["string", "undefined"].includes(typeof (parsed as Session).sid)
     ) {
       return parsed as Session;
     }
@@ -145,12 +158,34 @@ export function clearSession(c: Context<SessionBindings>): void {
   c.set("session", null);
 }
 
+// The epoch a player's sessions must carry, or null when the registry has no
+// row for them. A missing row is not a revocation: GET /api/me registers a
+// session the registry lacks.
+async function currentEpoch(db: D1Database, playerId: string): Promise<number | null> {
+  const row = await db
+    .prepare("SELECT session_epoch AS epoch FROM players WHERE id = ?")
+    .bind(playerId)
+    .first<{ epoch: number }>();
+  return row ? row.epoch : null;
+}
+
 // Parses the session cookie (if any) and puts it on the context. Does not
-// itself require a session — see requireSession for that.
+// itself require a session — see requireSession for that. A cookie from
+// before the player's last "sign out everywhere" is dropped here, which is
+// what signs every other device out: it costs each signed-in request one
+// read of the registry.
 export function sessionMiddleware(): MiddlewareHandler<SessionBindings> {
   return async (c, next) => {
     try {
-      c.set("session", await readSession(c));
+      let session = await readSession(c);
+      if (session) {
+        const epoch = await currentEpoch(c.env.DB, session.pid);
+        if (epoch !== null && epoch !== (session.ep ?? 0)) {
+          deleteCookie(c, SESSION_COOKIE, { path: "/" });
+          session = null;
+        }
+      }
+      c.set("session", session);
     } catch (err) {
       if (err instanceof MissingSecretError) {
         return c.json({ error: "missing_binding", binding: "SESSION_SECRET" }, 500);
@@ -168,4 +203,68 @@ export function requireSession(): MiddlewareHandler<SessionBindings> {
     }
     await next();
   };
+}
+
+// A WebAuthn ceremony's challenge, between the request that hands out its
+// options and the one that answers them. Kept in a signed cookie of its own,
+// so the Worker stays without a session store: the browser hands back the
+// challenge it was given, and the signature proves the Worker gave it.
+export const CHALLENGE_COOKIE = "party_webauthn";
+const CHALLENGE_TTL_MS = 5 * 60 * 1000;
+
+export type ChallengePurpose = "register" | "signin";
+
+interface Challenge {
+  challenge: string;
+  purpose: ChallengePurpose;
+  pid: string; // whose passkey is being made, or signed in with
+  exp: number;
+}
+
+export async function writeChallenge(
+  c: Context<SessionBindings>,
+  value: Omit<Challenge, "exp">,
+): Promise<void> {
+  const secret = requireSecret(c.env);
+  const payload = base64urlEncode(
+    new TextEncoder().encode(JSON.stringify({ ...value, exp: Date.now() + CHALLENGE_TTL_MS })),
+  );
+  setCookie(c, CHALLENGE_COOKIE, `${payload}.${await sign(payload, secret)}`, {
+    httpOnly: true,
+    path: "/api",
+    sameSite: "Strict",
+    maxAge: CHALLENGE_TTL_MS / 1000,
+    secure: new URL(c.req.url).protocol === "https:",
+  });
+}
+
+// The challenge for `purpose`, if one was handed out to this browser and has
+// not expired. Reading it drops the cookie: a challenge answers one ceremony.
+export async function takeChallenge(
+  c: Context<SessionBindings>,
+  purpose: ChallengePurpose,
+): Promise<{ challenge: string; pid: string } | null> {
+  const raw = getCookie(c, CHALLENGE_COOKIE);
+  if (!raw) return null;
+  deleteCookie(c, CHALLENGE_COOKIE, { path: "/api" });
+  const split = splitCookie(raw);
+  if (!split) return null;
+  if (!(await verify(split.payload, split.signature, requireSecret(c.env)))) return null;
+  try {
+    const value = JSON.parse(
+      new TextDecoder().decode(base64urlDecode(split.payload)),
+    ) as Partial<Challenge>;
+    if (
+      value.purpose !== purpose ||
+      typeof value.challenge !== "string" ||
+      typeof value.pid !== "string" ||
+      typeof value.exp !== "number" ||
+      value.exp < Date.now()
+    ) {
+      return null;
+    }
+    return { challenge: value.challenge, pid: value.pid };
+  } catch {
+    return null;
+  }
 }

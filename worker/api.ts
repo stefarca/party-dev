@@ -11,7 +11,6 @@ import {
   CreateMatchRequestSchema,
   DailyFinishRequestSchema,
   DailyStartRequestSchema,
-  IdentityRequestSchema,
   JoinMatchRequestSchema,
   PushSubscribeRequestSchema,
   PushUnsubscribeRequestSchema,
@@ -32,6 +31,7 @@ import type {
   PushKeyResponse,
   RematchResponse,
 } from "../shared/protocol";
+import { account } from "./account";
 import { achievementsOf, markAchievementsSeen, seenAchievements } from "./achievements";
 import type { Session, SessionBindings } from "./auth";
 import {
@@ -51,7 +51,6 @@ import {
   playerStats,
   renamePlayer,
   resetStats,
-  signIn,
 } from "./players";
 import { forgetSubscription, pushPublicKey, saveSubscription } from "./push";
 import { leaderboard, playerStatsDetail, playerStreaks } from "./stats";
@@ -70,6 +69,9 @@ api.onError((err, c) => {
 // identity is not itself an error here — requireSession() below is what
 // enforces that on the routes that need one.
 api.use("*", sessionMiddleware());
+
+// Signing in, renaming, and everything that keeps a nickname to its owner.
+api.route("/", account);
 
 api.get("/health", async (c) => {
   let doResult: unknown;
@@ -109,46 +111,6 @@ async function readJsonBody(request: Request): Promise<unknown> {
     return undefined;
   }
 }
-
-// Sign in, and rename. Which one it is depends on whether the caller
-// already has a session, and the difference matters:
-//
-//  - no session: whoever holds this nickname *is* who you are signing in
-//    as, matches and record included. That is what makes the app work on a
-//    second device, and it is also why there is nothing here stopping you
-//    from signing in as a coworker — a nickname is a claim, not a proof.
-//  - a session: you keep your player id and move it onto the new nickname,
-//    so nothing you have played is left behind. A nickname somebody else
-//    holds is refused rather than silently switching you into their
-//    account; signing out first is the way to do that on purpose.
-api.post("/identity", async (c) => {
-  const body = await readJsonBody(c.req.raw);
-  const parsed = IdentityRequestSchema.safeParse(body);
-  if (!parsed.success) {
-    return c.json({ error: "invalid_body" }, 400);
-  }
-
-  const existing = c.get("session");
-  let player;
-  try {
-    player = existing
-      ? await renamePlayer(c.env.DB, existing.pid, parsed.data.nickname)
-      : await signIn(c.env.DB, parsed.data.nickname);
-  } catch (err) {
-    if (err instanceof NicknameTakenError) {
-      return c.json({ error: "nickname_taken" }, 409);
-    }
-    throw err;
-  }
-
-  const session: Session = {
-    pid: player.id,
-    nick: player.nickname,
-    iat: existing?.iat ?? Date.now(),
-  };
-  await writeSession(c, session);
-  return c.json({ playerId: session.pid, nickname: session.nick });
-});
 
 // Drops the cookie, so the next load shows the nickname gate. The only way
 // to sign in as a different player on a device that already has a session.

@@ -20,6 +20,9 @@ import type {
   PushKeyResponse,
   PushSubscriptionPayload,
   RematchResponse,
+  SecurityState,
+  SignInNotices,
+  SignInPollResponse,
 } from "../shared/protocol";
 import type { Reaction } from "../shared/reactions";
 
@@ -38,12 +41,16 @@ export interface ApiErrorShape {
 export class ApiError extends Error implements ApiErrorShape {
   status: number;
   code: string;
+  // The whole error body, for the few errors that carry more than a code (a
+  // sign-in that needs the owner's approval says how to get it).
+  body: unknown;
 
-  constructor({ status, code, message }: ApiErrorShape) {
+  constructor({ status, code, message }: ApiErrorShape, body?: unknown) {
     super(message);
     this.name = "ApiError";
     this.status = status;
     this.code = code;
+    this.body = body;
   }
 }
 
@@ -57,16 +64,18 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   if (!res.ok) {
     let code = "unknown_error";
     let message = `request to ${path} failed with status ${res.status}`;
+    let body: unknown;
     try {
-      const body = (await res.json()) as { error?: string };
-      if (body && typeof body.error === "string") {
-        code = body.error;
-        message = body.error;
+      body = await res.json();
+      const error = (body as { error?: unknown } | null)?.error;
+      if (typeof error === "string") {
+        code = error;
+        message = error;
       }
     } catch {
       // Non-JSON error body — keep the generic message above.
     }
-    throw new ApiError({ status: res.status, code, message });
+    throw new ApiError({ status: res.status, code, message }, body);
   }
 
   if (res.status === 204) return undefined as T;
@@ -93,6 +102,89 @@ export function setIdentity(nickname: string): Promise<Me> {
 // signing in with the same nickname anywhere brings it all back.
 export function signOut(): Promise<void> {
   return request<void>("/api/identity/signout", { method: "POST", body: JSON.stringify({}) });
+}
+
+// Where a sign-in waiting on the owner's approval stands. Once it goes through,
+// the reply has set this device's session cookie.
+export function pollSignIn(id: string, secret: string): Promise<SignInPollResponse> {
+  return request<SignInPollResponse>(`/api/identity/requests/${encodeURIComponent(id)}`, {
+    method: "POST",
+    body: JSON.stringify({ secret }),
+  });
+}
+
+export function signInWithPin(nickname: string, pin: string): Promise<Me> {
+  return request<Me>("/api/identity/pin", {
+    method: "POST",
+    body: JSON.stringify({ nickname, pin }),
+  });
+}
+
+// The two halves of a passkey sign-in: the options to hand the browser, and
+// the browser's answer. The JSON types are @simplewebauthn/browser's.
+export function passkeySignInOptions(nickname: string): Promise<unknown> {
+  return request<unknown>("/api/identity/passkey/options", {
+    method: "POST",
+    body: JSON.stringify({ nickname }),
+  });
+}
+
+export function signInWithPasskey(response: unknown): Promise<Me> {
+  return request<Me>("/api/identity/passkey", {
+    method: "POST",
+    body: JSON.stringify({ response }),
+  });
+}
+
+// Sign-ins to the player's name that their devices should know about.
+export function getSignInNotices(): Promise<SignInNotices> {
+  return request<SignInNotices>("/api/me/sign-ins");
+}
+
+export function answerSignIn(id: string, answer: "approve" | "deny" | "ack"): Promise<void> {
+  return request<void>(`/api/me/sign-ins/${encodeURIComponent(id)}/${answer}`, {
+    method: "POST",
+    body: JSON.stringify({}),
+  });
+}
+
+// Signs every other device out of this player, keeping this one, and its
+// notifications when `keepEndpoint` is its push endpoint.
+export function signOutEverywhere(keepEndpoint?: string): Promise<void> {
+  return request<void>("/api/me/sign-out-everywhere", {
+    method: "POST",
+    body: JSON.stringify(keepEndpoint ? { keepEndpoint } : {}),
+  });
+}
+
+export function getSecurity(): Promise<SecurityState> {
+  return request<SecurityState>("/api/me/security");
+}
+
+export function setPin(pin: string): Promise<SecurityState> {
+  return request<SecurityState>("/api/me/pin", { method: "POST", body: JSON.stringify({ pin }) });
+}
+
+export function removePin(): Promise<SecurityState> {
+  return request<SecurityState>("/api/me/pin/remove", { method: "POST", body: JSON.stringify({}) });
+}
+
+export function passkeyRegistrationOptions(): Promise<unknown> {
+  return request<unknown>("/api/me/passkeys/options", { method: "POST", body: JSON.stringify({}) });
+}
+
+export function addPasskey(response: unknown): Promise<SecurityState> {
+  return request<SecurityState>("/api/me/passkeys", {
+    method: "POST",
+    body: JSON.stringify({ response }),
+  });
+}
+
+export function removePasskeys(): Promise<SecurityState> {
+  return request<SecurityState>("/api/me/passkeys/remove", {
+    method: "POST",
+    body: JSON.stringify({}),
+  });
 }
 
 // The application server key a push subscription has to be created with, or

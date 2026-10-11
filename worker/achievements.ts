@@ -11,7 +11,9 @@ import type { AchievementProgress, AchievementsResponse, PlayerId } from "../sha
 
 // What a player has earned, worked out from the derived index on every read,
 // the way the stats are: `matches`/`match_players` for results, `turn_waits`
-// for moves, `daily_runs` for the daily games. Nothing here is stored, so a
+// for moves, `daily_runs` for the daily games. The one exception is
+// `players.locked_at`, for locking a name, which only ever goes from NULL to
+// a time. Nothing here is stored, so a
 // player who had played before achievements existed has every one they had
 // already earned the first time they look, and nothing in a Durable Object
 // has to know achievements exist.
@@ -123,7 +125,7 @@ export async function achievementsOf(
   playerId: PlayerId,
   now: number,
 ): Promise<AchievementProgress[]> {
-  const [matches, opponents, days, runs, slowMoves] = await Promise.all([
+  const [matches, opponents, days, runs, slowMoves, lock] = await Promise.all([
     db
       .prepare(
         `SELECT m.game_id AS gameId, m.status AS status,
@@ -187,6 +189,12 @@ export async function achievementsOf(
       )
       .bind(playerId, SLOWPOKE_MS)
       .all<{ at: number }>(),
+    // When the player first locked their name. The registry keeps it even
+    // once the lock comes off.
+    db
+      .prepare("SELECT locked_at AS at FROM players WHERE id = ?")
+      .bind(playerId)
+      .first<{ at: number | null }>(),
   ]);
 
   // A void match, one nobody moved in before time ran out, finished nothing:
@@ -292,6 +300,7 @@ export async function achievementsOf(
         topped.map((r) => dayEnd(r.day)),
         tiers,
       ),
+    lockedIn: (tiers) => fromCount(lock?.at != null ? [lock.at] : [], tiers),
   };
 
   return ACHIEVEMENTS.map((achievement) => ({

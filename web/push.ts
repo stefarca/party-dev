@@ -164,6 +164,16 @@ export async function disablePush(): Promise<PushState> {
   return Notification.permission === "denied" ? "denied" : "off";
 }
 
+// This browser's push endpoint, or undefined where it has none. "Sign out
+// everywhere" names it, so this device keeps its notifications while every
+// other one loses them.
+export async function currentPushEndpoint(): Promise<string | undefined> {
+  if (!supported()) return undefined;
+  const registration = await activeRegistration();
+  const subscription = await registration?.pushManager.getSubscription();
+  return subscription?.endpoint;
+}
+
 // Re-registers the current subscription so the server composes this device's
 // notifications in `language`. Best-effort: a failure costs a player one
 // notification in their previous language, never the language switch itself.

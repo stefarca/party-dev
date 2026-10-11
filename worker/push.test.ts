@@ -5,7 +5,9 @@ import { describe, expect, it, vi } from "vitest";
 import { decodeBase64Url, encodeBase64Url } from "../shared/base64url";
 import { createMigratedDb } from "./__fixtures__/d1";
 import {
+  ACCOUNT_COPY,
   COPY,
+  composeAccountNotice,
   composeNudge,
   encryptPayload,
   forgetSubscription,
@@ -159,6 +161,24 @@ describe("wording", () => {
       .filter((file) => file.endsWith(".json"))
       .map((file) => file.replace(/\.json$/, ""));
     expect(Object.keys(COPY).sort()).toEqual(languages.sort());
+    expect(Object.keys(ACCOUNT_COPY).sort()).toEqual(languages.sort());
+  });
+
+  it("tells the owner which device is signing in as them, and sends them to the hub", () => {
+    const notice = composeAccountNotice("it", {
+      kind: "signInRequest",
+      device: "Chrome on Android",
+      nickname: "Ada",
+    });
+    expect(notice.body).toBe(
+      "Chrome on Android vuole entrare come Ada. Tocca per consentire o rifiutare.",
+    );
+    expect(notice.url).toBe("/");
+    // An unknown language falls back to English.
+    expect(
+      composeAccountNotice("xx", { kind: "signedIn", device: "Safari on iPhone", nickname: "Ada" })
+        .title,
+    ).toBe("New sign-in to Ada");
   });
 
   const match = { matchId: "ABCDEF", gameId: "connect4", opponents: ["Ada"] };

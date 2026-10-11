@@ -57,22 +57,24 @@ knowledge; it looks games up through `games/registry.ts`. The daily single-playe
 `DailyDO` instead (see below). The Durable Object is authoritative; D1's `matches`,
 `match_players` and `turn_waits` (`migrations/*.sql`) are a derived index, read by the hub, the
 stats page, the achievements and the weekly recap, that may be rebuilt or lag without affecting
-correctness. Never read match truth from D1. D1 has five other jobs. One is
+correctness. Never read match truth from D1. D1 has six other jobs. One is
 match-code reservation: `POST /api/matches` inserts a placeholder `matches` row to claim a fresh
 code (retrying on a primary-key collision) and deletes it if the DO create fails, and join checks
 that row before it contacts the DO. The second is the player registry. The third is
 `push_subscriptions`, the devices to notify, which is authoritative for the same reason `players`
 is: a subscription is a capability a browser granted once and nothing can rebuild it. The fourth is
 `recaps`, the weeks whose Slack recap has already gone out (see below). The fifth is
-`achievements_seen`, the achievement levels each player has already been told about.
+`achievements_seen`, the achievement levels each player has already been told about. The sixth is
+what keeps a nickname to its owner (see Identity): `passkeys` and `sign_ins`, both authoritative
+like `players`, plus the PIN and `session_epoch` columns on `players` itself.
 
 **`players` is authoritative, not derived.** A nickname is the account — the same one on a
 second device is the same player, with the same matches and record — so `players` and its unique
 index on `nickname_key` (`shared/nickname.ts` folds case, whitespace and NFKC) cannot be rebuilt
 from anything. `worker/players.ts` owns every read and write of it. The unique index, not any check
 in that file, is what makes a claim atomic, so each write there is written to lose that race
-gracefully. There is no password: whoever claims a nickname first owns it, and whoever types it
-afterwards is signed in as them. The hub's record (`played`/`finished`/`won`) is read from the
+gracefully. There is no registration: whoever claims a nickname first owns it. Who may sign in to
+it afterwards is decided in `worker/account.ts` (see Identity). The hub's record (`played`/`finished`/`won`) is read from the
 derived index — `match_players.won` is written by `writeIndexNow()` from `result()` — and follows
 the player id, so a rename keeps it. So does the won/lost/draw on each finished match the hub
 lists, read with `matches.result_kind`. A reset sets `players.stats_since`, and the record then
@@ -188,7 +190,8 @@ on top of a final daily chart). `achievementsOf()` in `worker/achievements.ts` r
 D1 on every `GET /api/me/achievements`, the way the stats are read, with the time each tier was
 reached, so nothing in a Durable Object knows they exist and a player who played before one was
 added has it at once. Unlike the record they ignore `stats_since`: a reset never takes one back.
-Two rules keep them from ever being lost. A tier is a fixed number, never "every game", which a
+The one measure not in the index is `lockedIn`'s `players.locked_at`, which is set the first time
+a player locks their name and never cleared. Two rules keep them from ever being lost. A tier is a fixed number, never "every game", which a
 new game would move. And a measure may only grow: count only what the index never deletes (a
 lobby's rows are the only ones it does), and a daily chart only once its day is over. The one
 thing stored is `achievements_seen`, written by `POST /api/me/achievements/seen` with the levels
@@ -332,11 +335,29 @@ and a socket whose last one (or whose `connectedAt`, before the first) is older 
 message exists only to answer non-conforming clients and must not be used for keepalives.
 
 **Identity** is a nickname plus an HMAC-signed cookie (`worker/auth.ts`, Web Crypto, key in
-`SESSION_SECRET`). No password, no session store. A missing secret fails closed with a 500 —
+`SESSION_SECRET`). No password, no session store, and an optional PIN or passkey only for a player
+who asks for one. A missing secret fails closed with a 500 —
 never fall back to an unsigned or constant key. Every inbound payload, REST bodies included, is
 zod-validated with a schema from `shared/protocol.ts` or the game's own `actionSchema`.
-`POST /api/identity` does two different things. With no session it signs in, adopting whoever
-holds that nickname (which is what makes a second device work). With a session it renames that
+`POST /api/identity` does two different things. With no session it signs in. A nickname nobody
+holds is claimed on the spot, so the first visit is still one field and one button. One somebody
+holds goes one of three ways (`worker/account.ts`). If the owner has no device that could answer
+(none with the app open in the last five minutes, by `players.last_seen_at`, and no push
+subscription), the device is let in at once, as before. If they have one, the reply is a
+`409 approval_required` carrying a request (`sign_ins`) that the owner's devices list with Allow and
+Deny, and that goes through by itself after `AUTO_ALLOW_MS` unless they deny it. The new device
+polls `POST /api/identity/requests/:id` with the request's secret, and that reply sets its cookie.
+If the owner has locked the name with a PIN or a passkey, the reply is `409 nickname_locked`, and
+only the PIN (`/api/identity/pin`), a passkey (`/api/identity/passkey`, through
+`@simplewebauthn/server`) or the owner's Allow let the device in. Nothing goes through by itself. A
+PIN is an HMAC under `SESSION_SECRET` rather than a slow hash, which a Worker's CPU budget has no room
+for, and its guard is the wrong-guess block in `worker/lock.ts`. Every sign-in to a held name the
+owner did not approve is recorded and listed on their devices (`SignInAlerts`, which every
+signed-in page polls, which is also what keeps `last_seen_at` fresh) until one says "That was me",
+and pushed to them as a notification. The cookie carries the player's `session_epoch` (`ep`), and
+`sessionMiddleware` drops one from an older epoch, so "sign out everywhere" (`/api/me/sign-out-everywhere`)
+ends every other device's session on its next request and drops their push subscriptions. A cookie
+from before epochs counts as epoch 0. With a session, `POST /api/identity` renames that
 player, keeping their id and refusing (`409 nickname_taken`) a nickname someone else holds.
 `POST /api/identity/signout` is the only way to switch players on a device that already has a
 session. `GET /api/me` re-reads the registry instead of trusting the cookie's copy of the nickname,
