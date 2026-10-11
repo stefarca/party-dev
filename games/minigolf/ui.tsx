@@ -130,8 +130,10 @@ export default function MinigolfUi({ view, status, send }: DailyUiProps) {
   const hazards = [
     hole.water.length > 0 && t("hazard.water"),
     hole.sand.length > 0 && t("hazard.sand"),
+    (hole.ice ?? []).length > 0 && t("hazard.ice"),
     hole.slopes.length > 0 && t("hazard.slope"),
     hole.blocks.length > 0 && t("hazard.blocks"),
+    (hole.springs ?? []).length > 0 && t("hazard.springs"),
   ].filter((hazard): hazard is string => typeof hazard === "string");
   const where = {
     hole: holeIndex + 1,

@@ -5,11 +5,13 @@ import { Drift } from "./Drift";
 import { Rim } from "./Rim";
 
 // The hole itself, drawn to scale: the turf inside its edge, and the water,
-// sand, slopes and blocks laid on it. Every fill it defines is named from
+// sand, ice, slopes, blocks and springs laid on it. Every fill it defines is named from
 // `ids`, which keeps two courses on one page apart.
 
 export function Course({ hole, ids }: { hole: Hole; ids: string }) {
   const edge = points(hole.edge);
+  const ice = hole.ice ?? [];
+  const springs = hole.springs ?? [];
   return (
     <>
       <defs>
@@ -20,6 +22,7 @@ export function Course({ hole, ids }: { hole: Hole; ids: string }) {
           [
             ["sand", hole.sand],
             ["water", hole.water],
+            ["ice", ice],
             ["block", hole.blocks],
             ["slope", hole.slopes.map(({ area }) => area)],
           ] as const
@@ -56,6 +59,33 @@ export function Course({ hole, ids }: { hole: Hole; ids: string }) {
           <circle cx="1.9" cy="3.2" r="0.3" fill="var(--golf-sand-grain)" />
           <circle cx="3.5" cy="3.6" r="0.2" fill="var(--golf-glint)" fillOpacity="0.6" />
         </pattern>
+        {/* Ice: pale and glassy, with long diagonal glints, so it reads apart from water by
+            more than its colour. */}
+        <pattern
+          id={`${ids}-ice`}
+          width="6"
+          height="6"
+          patternUnits="userSpaceOnUse"
+          patternTransform="rotate(-35)"
+        >
+          <rect width="6" height="6" fill="var(--golf-ice)" />
+          <line x1="0" y1="1.5" x2="6" y2="1.5" stroke="var(--golf-glint)" strokeWidth="0.5" />
+          <line
+            x1="1"
+            y1="4.2"
+            x2="3.4"
+            y2="4.2"
+            stroke="var(--golf-ice-shade)"
+            strokeWidth="0.3"
+            strokeLinecap="round"
+          />
+        </pattern>
+        {/* A spring: a ring of the springy stuff around a pale cap, lit from the top left. */}
+        <radialGradient id={`${ids}-spring`} cx="0.38" cy="0.34" r="0.7">
+          <stop offset="0" stopColor="var(--golf-glint)" />
+          <stop offset="0.5" stopColor="var(--golf-rail)" />
+          <stop offset="1" stopColor="var(--golf-rail-side)" />
+        </radialGradient>
         {/* Water as the legend shows it: one colour, with ripples. The course paints its depth
             and its ripples apart, so the ripples can drift. */}
         <pattern id={`${ids}-water`} width="8" height="4" patternUnits="userSpaceOnUse">
@@ -169,6 +199,19 @@ export function Course({ hole, ids }: { hole: Hole; ids: string }) {
       <polygon points={edge} fill={`url(#${ids}-mow)`} />
       <polygon points={edge} fill={`url(#${ids}-grain)`} />
 
+      {/* Ice under any slope on it, so the slope's chevrons show over it. */}
+      {ice.map((area, i) => (
+        <g key={i}>
+          <polygon points={points(area)} fill={`url(#${ids}-ice)`} />
+          <Rim
+            area={area}
+            clip={`${ids}-ice-${i}-clip`}
+            width={0.7}
+            stroke="var(--golf-ice-shade)"
+            opacity={0.6}
+          />
+        </g>
+      ))}
       {hole.slopes.map((slope, i) => (
         <g key={i}>
           <polygon points={points(slope.area)} fill={`url(#${ids}-slope-${i}-fall)`} />
@@ -244,6 +287,9 @@ export function Course({ hole, ids }: { hole: Hole; ids: string }) {
             fill="var(--golf-shadow)"
           />
         ))}
+        {springs.map(({ at: [x, y], r }, i) => (
+          <circle key={i} cx={x + 0.9} cy={y + 1.5} r={r} fill="var(--golf-shadow)" />
+        ))}
       </g>
 
       {/* Bumpers: raised blocks of the rail's own stuff, lit from the top left. */}
@@ -264,6 +310,24 @@ export function Course({ hole, ids }: { hole: Hole; ids: string }) {
             strokeWidth="0.6"
             strokeLinejoin="round"
           />
+        </g>
+      ))}
+
+      {/* Springs: a pinball bumper's coloured ring around a pale cap, with the dark lip a
+          bumper has where it meets the turf. */}
+      {springs.map(({ at: [x, y], r }, i) => (
+        <g key={i}>
+          <circle cx={x} cy={y} r={r} fill="var(--golf-spring)" />
+          <circle
+            cx={x}
+            cy={y}
+            r={r * 0.78}
+            fill="none"
+            stroke="var(--golf-spring-ring)"
+            strokeWidth={r * 0.12}
+          />
+          <circle cx={x} cy={y} r={r * 0.52} fill={`url(#${ids}-spring)`} />
+          <circle cx={x} cy={y} r={r} fill="none" stroke="var(--golf-wall)" strokeWidth="0.6" />
         </g>
       ))}
 
