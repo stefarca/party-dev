@@ -8,7 +8,9 @@
     "water": "acqua",
     "sand": "sabbia",
     "slope": "una pendenza",
-    "blocks": "ostacoli"
+    "blocks": "ostacoli",
+    "ice": "ghiaccio",
+    "springs": "respingenti"
   },
   "stats": {
     "label": "Il tuo giro",
@@ -27,7 +29,9 @@
   "legend": {
     "water": "Acqua: un colpo di penalità",
     "sand": "La sabbia rallenta la pallina",
-    "slope": "Pendenza: si rotola dove puntano le frecce"
+    "slope": "Pendenza: si rotola dove puntano le frecce",
+    "ice": "Ghiaccio: la pallina quasi non rallenta",
+    "spring": "Respingente: rilancia la pallina più forte"
   },
   "cup": {
     "ace": "Buca in uno!",
