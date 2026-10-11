@@ -18,7 +18,8 @@ export const ACHIEVEMENTS = [
   { id: "hotStreak", glyph: "⚡", tiers: [3, 5, 10] },
   // Matches finished.
   { id: "veteran", glyph: "🎖️", tiers: [10, 50, 200] },
-  // The longest play streak: UTC days in a row with a move or a daily run.
+  // The longest play streak: UTC days in a row with a move or a daily run, missed days a streak
+  // freeze covered aside.
   { id: "regular", glyph: "🔥", tiers: [3, 7, 30] },
   // Different games finished, matches and daily games alike.
   { id: "explorer", glyph: "🧭", tiers: [3, 6, 10] },

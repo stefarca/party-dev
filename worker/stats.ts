@@ -1,4 +1,4 @@
-import { addDays, dayOf } from "../shared/daily";
+import { dayOf } from "../shared/daily";
 import { UNKNOWN_NICKNAME } from "../shared/nickname";
 import type {
   ChampionEntry,
@@ -13,6 +13,7 @@ import type {
   ShameEntry,
   Streak,
 } from "../shared/protocol";
+import { playSteps, streakOn } from "../shared/streak";
 import { playerStats } from "./players";
 
 // Every stat the app shows beyond the hub's three numbers: a player's record
@@ -48,27 +49,20 @@ export const RIVAL_LIMIT = 20;
 // A play streak from the days a player did something, in any order and with
 // repeats. The current streak runs back from today, or from yesterday while
 // today is still going — a player who played every day up to yesterday has
-// not lost their streak, they just have not kept it yet.
+// not lost their streak, they just have not kept it yet. A missed day the
+// streak held a freeze for (shared/streak.ts) does not end it either.
 export function playStreak(days: Iterable<string>, today: string): PlayStreak {
-  const played = new Set(days);
-  let best = 0;
-  let run = 0;
-  let previous: string | null = null;
-  for (const day of [...played].sort()) {
-    run = previous !== null && addDays(previous, 1) === day ? run + 1 : 1;
-    best = Math.max(best, run);
-    previous = day;
-  }
-  const playedToday = played.has(today);
-  let current = 0;
-  for (
-    let day = playedToday ? today : addDays(today, -1);
-    played.has(day);
-    day = addDays(day, -1)
-  ) {
-    current++;
-  }
-  return { current, best, today: playedToday };
+  const steps = playSteps([...new Set(days)].sort());
+  const best = steps.reduce((most, step) => Math.max(most, step.run), 0);
+  const last = steps.at(-1);
+  const now = last ? streakOn(last, today) : null;
+  return {
+    current: now?.run ?? 0,
+    best,
+    today: last?.day === today,
+    freezes: now?.freezes ?? 0,
+    frozen: now?.frozen ?? [],
+  };
 }
 
 // A win streak from a player's finished matches, oldest first: true for each
