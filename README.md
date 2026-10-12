@@ -3,9 +3,10 @@
 A collection of small async, turn-based party games for playing with coworkers, hosted on
 Cloudflare's free tier (Worker + Static Assets + Durable Objects + D1).
 
-**What works today:** nickname-only identity (no passwords) where the nickname is unique and
+**What works today:** nickname-only identity (no registration) where the nickname is unique and
 _is_ the account — sign in with the same one on another device and your matches and record come
-with you — a dashboard that buckets your matches into "your turn" / "waiting on others" /
+with you, once a device you are already signed in on allows it (or, for a name locked with an
+optional PIN or passkey, with that) — a dashboard that buckets your matches into "your turn" / "waiting on others" /
 "finished", five games (Battleship, Checkers, Connect 4, Tic-tac-toe and Trivia) playable over a
 live WebSocket (with an HTTP fallback for every action) with a plain-language move history,
 daily single-player challenges (2048, Sudoku and Minesweeper) where everyone gets the same board

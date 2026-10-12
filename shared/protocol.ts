@@ -603,3 +603,105 @@ export const AchievementsSeenRequestSchema = z.object({
   seen: z.record(z.string().max(64), z.number().int().min(1).max(1000)),
 });
 export type AchievementsSeenRequest = z.infer<typeof AchievementsSeenRequestSchema>;
+
+// ---------------------------------------------------------------------------
+// Keeping a nickname to its owner (worker/account.ts). A nickname nobody holds
+// is claimed by typing it, as ever. Typing one somebody holds lets the new
+// device in at once when the owner has no device that could object; otherwise
+// it waits on the owner's approval, or takes their PIN or passkey.
+// ---------------------------------------------------------------------------
+
+// How a sign-in to a nickname somebody already held got through: the owner
+// approved it, it waited out the owner's silence, the owner had no device to
+// ask, or it came with the owner's PIN or passkey.
+export type SignInMethod = "approved" | "auto" | "open" | "pin" | "passkey";
+
+// A request the new device holds while it waits. `secret` is what lets that
+// device, and only it, collect the session once the request goes through.
+export interface SignInRequestTicket {
+  id: string;
+  secret: string;
+  // When it goes through by itself unless the owner says no. Null when it
+  // never does: the owner has locked their name.
+  autoAt: number | null;
+  expiresAt: number;
+}
+
+// The 409 body of `POST /api/identity` for a nickname that cannot be signed
+// into straight away. `error` is `approval_required`, or `nickname_locked`
+// when the owner's PIN or passkey is also (or the only) way in. `request` is
+// null when there is no device of the owner's to ask.
+export interface SignInChallenge {
+  error: "approval_required" | "nickname_locked";
+  nickname: string;
+  request: SignInRequestTicket | null;
+  methods: { pin: boolean; passkey: boolean };
+}
+
+export const SignInPollRequestSchema = z.object({ secret: z.string().min(1).max(100) });
+
+export type SignInPollResponse =
+  | { status: "pending"; autoAt: number | null; expiresAt: number }
+  | { status: "denied" }
+  | { status: "expired" }
+  | { status: "signedIn"; playerId: PlayerId; nickname: string };
+
+// A PIN is 4 to 8 digits: easy to type on a phone, and guarded by the
+// server's limit on wrong guesses rather than by its length.
+export const PIN_RE = /^\d{4,8}$/;
+export const PinSchema = z.string().regex(PIN_RE, "a PIN is 4 to 8 digits");
+
+export const PinSignInRequestSchema = z.object({
+  nickname: IdentityRequestSchema.shape.nickname,
+  pin: PinSchema,
+});
+export const SetPinRequestSchema = z.object({ pin: PinSchema });
+
+export const PasskeyOptionsRequestSchema = z.object({
+  nickname: IdentityRequestSchema.shape.nickname,
+});
+
+// A WebAuthn credential as the browser serialises it (`PublicKeyCredential.toJSON()`, or
+// @simplewebauthn/browser's equivalent). Only its outline is checked here: verifying what is
+// inside is @simplewebauthn/server's job, and it rejects anything malformed.
+export const PasskeyResponseSchema = z.object({
+  response: z.looseObject({
+    id: z.string().min(1).max(2048),
+    rawId: z.string().min(1).max(2048),
+    type: z.literal("public-key"),
+    response: z.looseObject({ clientDataJSON: z.string().max(8192) }),
+    clientExtensionResults: z.looseObject({}),
+  }),
+});
+
+// What the profile shows about the lock on the player's name.
+export interface SecurityState {
+  pin: boolean;
+  passkeys: number;
+}
+
+export interface PendingSignIn {
+  id: string;
+  device: string;
+  createdAt: number;
+  autoAt: number | null;
+}
+
+export interface RecentSignIn {
+  id: string;
+  device: string;
+  method: SignInMethod;
+  at: number;
+}
+
+// What every signed-in page polls for: requests waiting on this player, and
+// sign-ins to their name that none of their devices has answered yet.
+export interface SignInNotices {
+  pending: PendingSignIn[];
+  recent: RecentSignIn[];
+}
+
+export const SignOutEverywhereRequestSchema = z.object({
+  // This device's push endpoint, which stays subscribed when every other one is dropped.
+  keepEndpoint: z.string().max(2048).optional(),
+});

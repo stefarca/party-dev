@@ -23,6 +23,8 @@
   "dependencies": {
     "@heroui/react": "^3.2.5",
     "@heroui/styles": "^3.2.5",
+    "@simplewebauthn/browser": "^14.0.0",
+    "@simplewebauthn/server": "^14.0.3",
     "hono": "^4.13.0",
     "i18next": "^26.4.2",
     "react": "^19.3.0",

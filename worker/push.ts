@@ -250,6 +250,53 @@ export const COPY: Record<
   },
 };
 
+// Notifications about the player's own account rather than a match: a device
+// asking to sign in as them, and one that has. Like the nudges, one set per
+// language `web/locales/` ships, checked by worker/push.test.ts.
+export type AccountNoticeKind = "signInRequest" | "signedIn";
+
+export const ACCOUNT_COPY: Record<
+  string,
+  Record<AccountNoticeKind, { title: string; body: string }>
+> = {
+  en: {
+    signInRequest: {
+      title: "Is this you signing in?",
+      body: "{{device}} wants to sign in as {{nickname}}. Tap to allow or deny it.",
+    },
+    signedIn: {
+      title: "New sign-in to {{nickname}}",
+      body: "{{device}} just signed in as you. Not you? Tap to sign it out.",
+    },
+  },
+  it: {
+    signInRequest: {
+      title: "Sei tu che stai entrando?",
+      body: "{{device}} vuole entrare come {{nickname}}. Tocca per consentire o rifiutare.",
+    },
+    signedIn: {
+      title: "Nuovo accesso a {{nickname}}",
+      body: "{{device}} è appena entrato come te. Non sei tu? Tocca per farlo uscire.",
+    },
+  },
+};
+
+export function composeAccountNotice(
+  language: string | null,
+  notice: { kind: AccountNoticeKind; device: string; nickname: string },
+): PushMessage {
+  const lang = language && language in ACCOUNT_COPY ? language : "en";
+  const copy = ACCOUNT_COPY[lang][notice.kind];
+  const values = { device: notice.device, nickname: notice.nickname };
+  return {
+    title: fill(copy.title, values),
+    body: fill(copy.body, values),
+    // The hub, where every signed-in page shows the sign-in with its answers.
+    url: "/",
+    tag: "sign-in",
+  };
+}
+
 function fill(template: string, values: Record<string, string>): string {
   return template.replace(/\{\{(\w+)\}\}/g, (_, key: string) => values[key] ?? "");
 }
@@ -555,6 +602,42 @@ export async function sendPushNudges(
     }),
   );
 
+  for (const { endpoint, outcome } of deliveries) {
+    if (outcome !== "gone") continue;
+    try {
+      await forgetDeadEndpoint(env.DB, endpoint);
+    } catch (err) {
+      console.error("forgetting a dead push subscription failed", err);
+    }
+  }
+}
+
+// Tells every device of `playerId`'s about a sign-in to their name. Never
+// throws, and no-ops without VAPID keys, like the nudges.
+export async function sendAccountNotice(
+  env: Env,
+  playerId: PlayerId,
+  notice: { kind: AccountNoticeKind; device: string; nickname: string },
+): Promise<void> {
+  const config = readConfig(env);
+  if (!config) return;
+  let subscriptions: StoredSubscription[];
+  try {
+    subscriptions = await subscriptionsFor(env.DB, [playerId]);
+  } catch (err) {
+    console.error("push subscription lookup failed", err);
+    return;
+  }
+  const deliveries = await Promise.all(
+    subscriptions.map(async (subscription) => ({
+      endpoint: subscription.endpoint,
+      outcome: await sendPush(
+        config,
+        subscription,
+        composeAccountNotice(subscription.language, notice),
+      ),
+    })),
+  );
   for (const { endpoint, outcome } of deliveries) {
     if (outcome !== "gone") continue;
     try {

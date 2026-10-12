@@ -19,7 +19,8 @@ test("a new visitor picks a nickname and stays signed in", async ({ page }) => {
 });
 
 // The nickname is the account: the same one in a second browser is the same player, with the
-// matches and the record that go with it. This is the whole reason nicknames are unique.
+// matches and the record that go with it. This is the whole reason nicknames are unique. Alice
+// has just used the app on her first device, so that device is asked to let the second one in.
 test("the same nickname in another browser is the same player", async ({ newPlayer, browser }) => {
   const alice = await newPlayer("Alice");
   const bob = await newPlayer("Bob");
@@ -32,6 +33,13 @@ test("the same nickname in another browser is the same player", async ({ newPlay
     await page.goto("/");
     await page.getByRole("textbox", { name: "Pick a nickname" }).fill(alice.nickname);
     await page.getByRole("button", { name: "Let's play" }).click();
+    await expect(page.getByText("Waiting for the owner's other device")).toBeVisible();
+
+    await alice.page.goto("/");
+    const request = alice.page.getByRole("region", { name: "Sign-in request" });
+    await expect(request).toContainText("wants to sign in as you");
+    await request.getByRole("button", { name: "Allow" }).click();
+    await expect(request).toHaveCount(0);
 
     await expect(page.getByRole("heading", { name: `Hey ${alice.nickname} 👋` })).toBeVisible();
     // Alice's match followed her here, and so did the record it counts towards.
@@ -70,7 +78,7 @@ test("signing out returns to the nickname gate", async ({ newPlayer }) => {
   await alice.page
     .getByRole("button", { name: `Signed in as ${alice.nickname}. Profile and settings` })
     .click();
-  await alice.page.getByRole("button", { name: "Sign out" }).click();
+  await alice.page.getByRole("button", { name: "Sign out", exact: true }).click();
 
   await expect(alice.page.getByRole("textbox", { name: "Pick a nickname" })).toBeVisible();
   await alice.page.reload();

@@ -6,7 +6,10 @@ import type { TFunction } from "i18next";
 import { useTranslation } from "react-i18next";
 
 import { NICKNAME_MAX_LENGTH } from "../../shared/nickname";
+import type { SignInChallenge } from "../../shared/protocol";
+import { ApiError } from "../api";
 import { BrandName, Buddy } from "../components/Brand";
+import { ClaimPanel } from "../components/ClaimPanel";
 import { LanguagePicker } from "../components/LanguagePicker";
 import { ThemeToggle } from "../components/ThemeToggle";
 import { errorText } from "../errors";
@@ -31,12 +34,17 @@ function validate(nickname: string, t: TFunction): string | null {
 // the URL (e.g. a deep link to /m/ABCDEF) stays put, and once signIn()
 // succeeds App.tsx swaps this out for the real route's content, so the
 // intended destination is preserved for free.
+//
+// A nickname somebody already holds may not sign in at once: the server then
+// answers with the ways in its owner left open, and the form makes way for
+// them (ClaimPanel) until the player is in or picks another name.
 export function NicknameGate() {
   const { t } = useTranslation();
-  const { signIn } = useSession();
+  const { signIn, adopt } = useSession();
   const [nickname, setNickname] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [challenge, setChallenge] = useState<SignInChallenge | null>(null);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -50,6 +58,13 @@ export function NicknameGate() {
     try {
       await signIn(nickname.trim());
     } catch (err) {
+      if (
+        err instanceof ApiError &&
+        (err.code === "approval_required" || err.code === "nickname_locked")
+      ) {
+        setChallenge(err.body as SignInChallenge);
+        return;
+      }
       setError(errorText(t, err, t("gate.failed")));
     } finally {
       setSubmitting(false);
@@ -70,30 +85,40 @@ export function NicknameGate() {
           <p className="m-0 text-balance text-[var(--text-secondary)]">{t("gate.tagline")}</p>
         </div>
 
-        <Form onSubmit={handleSubmit} className="flex w-full flex-col gap-4 text-left">
-          {/* The error clears on every edit: while `isInvalid` is set, the input carries a
-              custom validity and the browser refuses to submit the form at all. */}
-          <TextField
-            value={nickname}
-            onChange={(value) => {
-              setNickname(value);
-              setError(null);
-            }}
-            maxLength={MAX_LEN}
-            isInvalid={!!error}
-          >
-            <Label className="text-xs font-bold text-[var(--text-muted)]">{t("gate.label")}</Label>
-            <Input autoFocus placeholder={t("gate.placeholder")} className="text-base" />
-            {error && <FieldError>{error}</FieldError>}
-          </TextField>
-          <Button
-            type="submit"
-            isDisabled={submitting}
-            className="w-full rounded-[var(--radius-pill)] py-3 font-display text-base font-bold transition-transform duration-[var(--dur-fast)] ease-[var(--ease-spring)] not-disabled:hover:scale-[1.03] not-disabled:active:scale-95"
-          >
-            {submitting ? t("gate.submitting") : t("gate.submit")}
-          </Button>
-        </Form>
+        {challenge ? (
+          <ClaimPanel
+            challenge={challenge}
+            onSignedIn={adopt}
+            onCancel={() => setChallenge(null)}
+          />
+        ) : (
+          <Form onSubmit={handleSubmit} className="flex w-full flex-col gap-4 text-left">
+            {/* The error clears on every edit: while `isInvalid` is set, the input carries a
+                custom validity and the browser refuses to submit the form at all. */}
+            <TextField
+              value={nickname}
+              onChange={(value) => {
+                setNickname(value);
+                setError(null);
+              }}
+              maxLength={MAX_LEN}
+              isInvalid={!!error}
+            >
+              <Label className="text-xs font-bold text-[var(--text-muted)]">
+                {t("gate.label")}
+              </Label>
+              <Input autoFocus placeholder={t("gate.placeholder")} className="text-base" />
+              {error && <FieldError>{error}</FieldError>}
+            </TextField>
+            <Button
+              type="submit"
+              isDisabled={submitting}
+              className="w-full rounded-[var(--radius-pill)] py-3 font-display text-base font-bold transition-transform duration-[var(--dur-fast)] ease-[var(--ease-spring)] not-disabled:hover:scale-[1.03] not-disabled:active:scale-95"
+            >
+              {submitting ? t("gate.submitting") : t("gate.submit")}
+            </Button>
+          </Form>
+        )}
 
         <p className="m-0 text-xs text-[var(--text-muted)]">{t("gate.footnote")}</p>
       </div>

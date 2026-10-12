@@ -11,6 +11,8 @@ import { BrandName, Buddy } from "./components/Brand";
 import { LanguagePicker } from "./components/LanguagePicker";
 import { NotificationToggle } from "./components/NotificationToggle";
 import { PlayerAvatar } from "./components/PlayerAvatar";
+import { SecuritySettings } from "./components/SecuritySettings";
+import { SignInAlerts } from "./components/SignInAlerts";
 import { Spinner } from "./components/states";
 import { ThemeToggle } from "./components/ThemeToggle";
 import { UpdatePrompt } from "./components/UpdatePrompt";
@@ -41,7 +43,8 @@ function SettingRow({ label, children }: { label: string; children: ReactNode })
 // someone else can sign in on this device. Renaming into a nickname somebody
 // else holds is refused by the server — signing out is the way to switch
 // into it deliberately. The theme and the language live here too, as the
-// player's settings, which keeps the header down to what fits on a phone.
+// player's settings, which keeps the header down to what fits on a phone, and
+// so does the optional lock on the nickname.
 //
 // Nothing takes focus inside the popup when it opens (the dialog itself
 // does): focusing the nickname field would raise a phone's keyboard over the
@@ -108,7 +111,7 @@ function ProfileControl() {
         </svg>
       </Button>
       <Popover.Content placement="bottom end">
-        <Popover.Dialog aria-label={t("profile.dialog")} className="flex w-64 flex-col gap-4 p-4">
+        <Popover.Dialog aria-label={t("profile.dialog")} className="flex w-72 flex-col gap-4 p-4">
           <Form onSubmit={handleRename} className="flex flex-col gap-3">
             <TextField value={value} onChange={setValue} maxLength={NICKNAME_MAX_LENGTH}>
               <Label className="text-xs font-bold text-[var(--text-muted)]">
@@ -138,6 +141,9 @@ function ProfileControl() {
             <SettingRow label={t("language.label")}>
               <LanguagePicker />
             </SettingRow>
+          </div>
+          <div className="border-t border-[var(--border-subtle)] pt-4">
+            <SecuritySettings />
           </div>
           <div className="border-t border-[var(--border-subtle)] pt-3">
             <Button
@@ -233,6 +239,7 @@ function AppShell() {
   return (
     <AchievementsProvider>
       <Header />
+      <SignInAlerts />
       <RouteContent />
     </AchievementsProvider>
   );

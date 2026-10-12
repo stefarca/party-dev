@@ -14,9 +14,11 @@ export type { PlayerStats };
 // Objects: a match index can be replayed, an identity cannot. Match truth
 // still never comes from here.
 //
-// There is no password. Whoever types a nickname first owns it, and
-// whoever types it afterwards is treated as them — the same trust model the
-// app had when a nickname was just a label, now with a memory.
+// There is no password, and no registration. Whoever types a nickname first
+// owns it. Whoever types it afterwards is let in by worker/account.ts, which
+// decides how: at once when the owner has no device that could object, after
+// the owner's approval when they have one, and only with the owner's PIN or
+// passkey when they have locked their name.
 
 export interface PlayerRecord {
   id: string;
@@ -49,25 +51,39 @@ export function findPlayerById(db: D1Database, id: string): Promise<PlayerRecord
   return db.prepare("SELECT id, nickname FROM players WHERE id = ?").bind(id).first<PlayerRecord>();
 }
 
-// Signs in under `nickname`: returns the player who already holds it, or
-// mints one if nobody does. Never throws `NicknameTakenError` — for a
-// caller with no session, an already-claimed nickname is the whole point.
-export async function signIn(db: D1Database, nickname: string): Promise<PlayerRecord> {
+// The player who holds `nickname`, under the same fold that makes two
+// spellings the same name.
+export function findPlayerByNickname(
+  db: D1Database,
+  nickname: string,
+): Promise<PlayerRecord | null> {
+  return findByKey(db, nicknameKey(nickname));
+}
+
+// The epoch a session for `playerId` has to be issued under, so that it
+// survives the middleware's check. 0 for a player the registry lacks.
+export async function sessionEpoch(db: D1Database, playerId: string): Promise<number> {
+  const row = await db
+    .prepare("SELECT session_epoch AS epoch FROM players WHERE id = ?")
+    .bind(playerId)
+    .first<{ epoch: number }>();
+  return row?.epoch ?? 0;
+}
+
+// Claims `nickname` for a new player if nobody holds it. `claimed` says
+// which happened: true with the new player, false with whoever already held
+// it, who is left untouched — letting someone in as them is not this
+// function's call.
+export async function claimNickname(
+  db: D1Database,
+  nickname: string,
+): Promise<{ claimed: boolean; player: PlayerRecord }> {
   const key = nicknameKey(nickname);
   const display = displayNickname(nickname);
   const now = Date.now();
 
   const existing = await findByKey(db, key);
-  if (existing) {
-    // The registry keeps whatever spelling was used most recently: it is
-    // the same account either way, and a player who capitalises their name
-    // differently today meant to.
-    await db
-      .prepare("UPDATE players SET nickname = ?, last_seen_at = ? WHERE id = ?")
-      .bind(display, now, existing.id)
-      .run();
-    return { id: existing.id, nickname: display };
-  }
+  if (existing) return { claimed: false, player: existing };
 
   const id = crypto.randomUUID();
   try {
@@ -77,15 +93,47 @@ export async function signIn(db: D1Database, nickname: string): Promise<PlayerRe
       )
       .bind(id, display, key, now, now)
       .run();
-    return { id, nickname: display };
+    return { claimed: true, player: { id, nickname: display } };
   } catch {
     // Two devices claimed the same new nickname at once and the unique
     // index turned one of them away. The winner's row is the answer — the
     // loser must not mint a second player under the same name.
     const winner = await findByKey(db, key);
     if (!winner) throw new Error(`nickname "${key}" could not be claimed or read back`);
-    return { id: winner.id, nickname: winner.nickname };
+    return { claimed: false, player: winner };
   }
+}
+
+// Notes that one of the player's devices has the app open. Written at most
+// once a minute per player, since every open page asks every few seconds;
+// worker/account.ts reads it to tell whether the player has a device that
+// could approve a sign-in right now.
+export const SEEN_THROTTLE_MS = 60 * 1000;
+
+export async function touchPlayer(db: D1Database, playerId: string, now: number): Promise<void> {
+  await db
+    .prepare("UPDATE players SET last_seen_at = ? WHERE id = ? AND last_seen_at <= ?")
+    .bind(now, playerId, now - SEEN_THROTTLE_MS)
+    .run();
+}
+
+// Signs in under `nickname`: returns the player who already holds it, or
+// mints one if nobody does. Never throws `NicknameTakenError` — for a
+// caller with no session, an already-claimed nickname is the whole point.
+// Whether that caller should be let in as the holder is decided before this
+// is called.
+export async function signIn(db: D1Database, nickname: string): Promise<PlayerRecord> {
+  const { claimed, player } = await claimNickname(db, nickname);
+  if (claimed) return player;
+  // The registry keeps whatever spelling was used most recently: it is the
+  // same account either way, and a player who capitalises their name
+  // differently today meant to.
+  const display = displayNickname(nickname);
+  await db
+    .prepare("UPDATE players SET nickname = ?, last_seen_at = ? WHERE id = ?")
+    .bind(display, Date.now(), player.id)
+    .run();
+  return { id: player.id, nickname: display };
 }
 
 // Moves an existing player onto `nickname`, keeping their id (and therefore
