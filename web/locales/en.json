@@ -371,6 +371,21 @@
       "lost": "{{name}} is still ahead. There's always tomorrow.",
       "tie": "Dead heat with {{name}}!",
       "otherDay": "That was on {{day}}. Today's board is a new one, so set a score of your own."
+    },
+    "practice": {
+      "chip": "Practice",
+      "label": "Practice board",
+      "title": "Practice board",
+      "doneTitle": "Practice board over",
+      "body": "A fresh board just for fun. It doesn't count towards charts, streaks, stats or achievements.",
+      "score": "You scored {{score}}.",
+      "unranked": "It ended without a score.",
+      "newBoard": "New board",
+      "backToToday": "Today's run",
+      "action": "Play again for fun",
+      "continue": "Continue practice",
+      "locked": "Practice boards open once today's run is over. Play today's board first.",
+      "goToToday": "Go to today's run"
     }
   },
   "join": {
