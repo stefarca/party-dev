@@ -142,3 +142,55 @@ test("a move the run cannot take any more is refused where it lands", async ({ n
   await expect(ada.page.getByText("This run is already over.")).toBeVisible();
   await expect(ada.page.getByRole("heading", { name: "Today's run is over" })).toBeVisible();
 });
+
+test("practice opens once today's run is over, survives a reload, and counts for nothing", async ({
+  newPlayer,
+}) => {
+  const ada = await newPlayer("Ada");
+  const board = ada.page.getByRole("table", { name: "Board" }).getByRole("cell");
+  const moves = ada.page.getByRole("definition").filter({ hasText: "Moves" });
+
+  // Before today's run, the practice address only points back to it.
+  await ada.page.goto("/daily/2048/practice");
+  await expect(ada.page.getByText(/Practice boards open once today's run is over/)).toBeVisible();
+  await expect(ada.page.getByRole("group", { name: "Slide the tiles" })).toHaveCount(0);
+  await ada.page.getByRole("button", { name: "Go to today's run" }).click();
+  await expect(ada.page).toHaveURL(/\/daily\/2048$/);
+
+  await ada.page.getByRole("button", { name: "Start today's run" }).click();
+  await expect(ada.page.getByRole("group", { name: "Slide the tiles" })).toBeVisible();
+  await endRun(ada);
+  const daily = await board.allTextContents();
+
+  await ada.page.getByRole("button", { name: "Play again for fun" }).click();
+  await expect(ada.page).toHaveURL(/\/daily\/2048\/practice$/);
+  await expect(ada.page.getByRole("heading", { name: "Practice board" })).toBeVisible();
+  await expect(ada.page.getByRole("list", { name: /^Chart for / })).toHaveCount(0);
+  await expect(moves).toHaveText(/Moves\s*0/);
+
+  for (const key of ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"]) {
+    await ada.page.keyboard.press(key);
+  }
+  await expect(moves).not.toHaveText(/Moves\s*0$/);
+  const played = await board.allTextContents();
+  const movesPlayed = await moves.textContent();
+  expect(played).not.toEqual(daily);
+
+  // The board in progress is kept on this device.
+  await ada.page.reload();
+  await expect(ada.page.getByRole("heading", { name: "Practice board" })).toBeVisible();
+  await expect(moves).toHaveText(movesPlayed ?? "");
+  expect(await board.allTextContents()).toEqual(played);
+
+  await ada.page.getByRole("button", { name: "New board" }).click();
+  await expect(moves).toHaveText(/Moves\s*0/);
+
+  // Nothing of it reached the server: today's run still scored 0.
+  await ada.page.getByRole("button", { name: "Today's run" }).click();
+  await expect(ada.page.getByText("You scored 0.")).toBeVisible();
+  await expect(ada.page.getByRole("button", { name: "Continue practice" })).toBeVisible();
+  const today = await ada.context.request.get("/api/daily/2048");
+  const { run } = (await today.json()) as { run: { status: string; score: { value: number } } };
+  expect(run.status).toBe("done");
+  expect(run.score.value).toBe(0);
+});

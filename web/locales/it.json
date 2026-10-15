@@ -371,6 +371,21 @@
       "lost": "{{name}} è ancora avanti. Domani è un altro giorno.",
       "tie": "Pareggio con {{name}}!",
       "otherDay": "Era {{day}}. Oggi la sfida è nuova: fai un punteggio tutto tuo."
+    },
+    "practice": {
+      "chip": "Allenamento",
+      "label": "Partita di allenamento",
+      "title": "Partita di allenamento",
+      "doneTitle": "Allenamento finito",
+      "body": "Una sfida nuova, solo per divertimento. Non conta per classifiche, serie, statistiche o achievement.",
+      "score": "Hai fatto {{score}}.",
+      "unranked": "È finita senza un punteggio.",
+      "newBoard": "Nuova partita",
+      "backToToday": "Sfida di oggi",
+      "action": "Gioca ancora per divertimento",
+      "continue": "Continua l'allenamento",
+      "locked": "L'allenamento si apre quando hai finito la sfida di oggi. Gioca prima quella.",
+      "goToToday": "Vai alla sfida di oggi"
     }
   },
   "join": {

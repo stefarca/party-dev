@@ -11,6 +11,7 @@ import { useSyncExternalStore } from "react";
 //   /daily           -> dashboard, today's daily games
 //   /m/:code         -> match/lobby page
 //   /daily/:gameId   -> today's run at a daily game, and its chart
+//   /daily/:gameId/practice -> a practice board of that game, once today's run is over
 //   /stats           -> the player's stats and achievements, and the week's boards
 
 // The dashboard's sections. Each has an address of its own, so a reload or the
@@ -22,7 +23,7 @@ export type Route =
   // `tab` is null at `/`, where the dashboard picks the section itself.
   | { name: "dashboard"; tab: HubTab | null }
   | { name: "match"; code: string }
-  | { name: "daily"; gameId: string }
+  | { name: "daily"; gameId: string; practice: boolean }
   | { name: "stats" }
   | { name: "not-found" };
 
@@ -33,8 +34,10 @@ function parseRoute(pathname: string): Route {
   if (/^\/stats\/?$/.test(pathname)) return { name: "stats" };
   const match = pathname.match(/^\/m\/([^/]+)\/?$/);
   if (match) return { name: "match", code: match[1] };
-  const daily = pathname.match(/^\/daily\/([^/]+)\/?$/);
-  if (daily) return { name: "daily", gameId: decodeURIComponent(daily[1]) };
+  const daily = pathname.match(/^\/daily\/([^/]+)(\/practice)?\/?$/);
+  if (daily) {
+    return { name: "daily", gameId: decodeURIComponent(daily[1]), practice: !!daily[2] };
+  }
   return { name: "not-found" };
 }
 

@@ -276,6 +276,15 @@ player, and every daily route replies with the run as it now stands. The client
 (`web/useDaily.ts`) posts actions one at a time, in order, from a short queue, so a game UI may
 call `send` as fast as its player acts.
 
+**Practice boards never touch the server.** Once today's run is `done`, `/daily/:gameId/practice`
+deals the same game again on a board of its own: `web/usePractice.ts` runs the game module's
+`init`/`reduce` in the browser with a random seed (never `daySeed()`, or practice would be today's
+board without the stakes) and keeps the board in progress in `localStorage`, per player and game.
+Nothing about it reaches a `DailyDO` or D1, so no chart, streak, achievement or recap can count
+it, and none needs a guard against it. The seed and PRNG sitting in the page are fine here only
+because nothing rides on a practice board. The lock until today's run is over is client-side,
+for the same reason.
+
 **Game modules** implement `GameModule<S, A>` (`shared/game.ts`). The four binding rules — server
 authority, mandatory per-player `view()`, seeded PRNG from `shared/prng.ts` threaded through state,
 idempotent `onDeadline` — are enforced by convention and by each game's own tests, not by the

@@ -27,11 +27,16 @@ import { navigate } from "../router";
 import { useSession } from "../session";
 import { shareLink, shareUrl } from "../share";
 import { useDailyChart, useDailyRun } from "../useDaily";
+import { hasPracticeInProgress, usePracticeRun } from "../usePractice";
 
 // Today's run at one daily game, beside the day's chart. The game's own UI
 // renders the board; everything around it — starting the run, ending it,
 // what it scored and where that placed — is this page's, and the same for
 // every daily game. Keep game-specific logic out of it.
+//
+// Once today's run is over, the same page at `/daily/:gameId/practice` deals
+// practice boards: the game again, on a random board, played in the browser
+// and counted nowhere (see web/usePractice.ts).
 
 // Created once per game, never per render: a fresh `lazy()` would remount the
 // board on every render.
@@ -210,16 +215,19 @@ function RunResult({
       <p className="m-0 text-sm text-[var(--text-muted)]">
         {t("daily.result.comeBack", { when: relativeTime(language, run.endsAt, now) })}
       </p>
-      {run.score.value !== null && (
-        <ChallengeFriends
-          meta={meta}
-          name={name}
-          day={run.day}
-          score={run.score.value}
-          rank={standing?.rank ?? null}
-          count={chart?.finished ?? 0}
-        />
-      )}
+      <div className="mt-2 flex flex-wrap gap-2">
+        {run.score.value !== null && (
+          <ChallengeFriends
+            meta={meta}
+            name={name}
+            day={run.day}
+            score={run.score.value}
+            rank={standing?.rank ?? null}
+            count={chart?.finished ?? 0}
+          />
+        )}
+        <PracticeLink gameId={meta.id} />
+      </div>
     </section>
   );
 }
@@ -265,10 +273,118 @@ function ChallengeFriends({
   return (
     <Button
       onPress={() => void handlePress()}
-      className="mt-2 self-start rounded-[var(--radius-pill)] px-6 font-display font-bold transition-transform duration-[var(--dur-fast)] ease-[var(--ease-spring)] hover:scale-105 active:scale-95"
+      className="self-start rounded-[var(--radius-pill)] px-6 font-display font-bold transition-transform duration-[var(--dur-fast)] ease-[var(--ease-spring)] hover:scale-105 active:scale-95"
     >
       {copied ? t("daily.challenge.copied") : t("daily.challenge.action")}
     </Button>
+  );
+}
+
+// Opens a practice board, or the one still under way.
+function PracticeLink({ gameId }: { gameId: string }) {
+  const { t } = useTranslation();
+  const { player } = useSession();
+  const [resume] = useState(() => !!player && hasPracticeInProgress(gameId, player.playerId));
+  return (
+    <Button
+      variant="secondary"
+      onPress={() => navigate(`/daily/${encodeURIComponent(gameId)}/practice`)}
+      className="self-start rounded-[var(--radius-pill)] px-6 font-display font-bold"
+    >
+      {resume ? t("daily.practice.continue") : t("daily.practice.action")}
+    </Button>
+  );
+}
+
+// The page's board in practice: no chart, no challenge, no end-of-day. What
+// it scores is shown and then forgotten.
+function PracticeBoard({
+  meta,
+  name,
+  playerId,
+}: {
+  meta: DailyGameMeta;
+  name: string;
+  playerId: string;
+}) {
+  const { t } = useTranslation();
+  const language = useLanguage();
+  const { run, board, send, newBoard } = usePracticeRun(meta.id, playerId);
+  const Lazy = getLazyUi(meta.id);
+  if (!run) return <Notice tone="danger">{t("match.failed")}</Notice>;
+  const done = run.status === "done";
+
+  return (
+    <>
+      <section
+        aria-label={t("daily.practice.label")}
+        className="party-pop flex flex-col gap-1.5 rounded-[var(--radius-xl)] border-2 border-[var(--border-accent)] bg-[var(--surface-1)] p-5 shadow-[var(--shadow-2),var(--glow-accent)]"
+      >
+        <h2 className="m-0 font-display text-xl font-bold text-[var(--text-primary)]">
+          {done ? t("daily.practice.doneTitle") : t("daily.practice.title")}
+        </h2>
+        {done && (
+          <p className="m-0 text-[var(--text-secondary)]">
+            {run.score.value !== null
+              ? t("daily.practice.score", {
+                  score: scoreText(language, run.score.value, meta.format),
+                })
+              : t("daily.practice.unranked")}
+          </p>
+        )}
+        <p className="m-0 text-sm text-[var(--text-muted)]">{t("daily.practice.body")}</p>
+        <div className="mt-2 flex flex-wrap gap-2">
+          <Button
+            variant={done ? "primary" : "tertiary"}
+            onPress={newBoard}
+            className="self-start rounded-[var(--radius-pill)] px-6 font-display font-bold"
+          >
+            {t("daily.practice.newBoard")}
+          </Button>
+          <Button
+            variant="tertiary"
+            onPress={() => navigate(`/daily/${encodeURIComponent(meta.id)}`)}
+            className="self-start rounded-[var(--radius-pill)] px-6 font-bold"
+          >
+            {t("daily.practice.backToToday")}
+          </Button>
+        </div>
+      </section>
+      <GameSurface title={name}>
+        <GameErrorBoundary
+          key={`${meta.id}:${board}`}
+          fallback={<Notice tone="danger">{t("match.failed")}</Notice>}
+        >
+          <Suspense
+            fallback={
+              <div role="status">
+                <span className="sr-only">{t("match.loadingGame")}</span>
+                <Skeleton height="22rem" rounded="lg" />
+              </div>
+            }
+          >
+            {Lazy && <Lazy view={run.view} status={run.status} send={send} />}
+          </Suspense>
+        </GameErrorBoundary>
+      </GameSurface>
+    </>
+  );
+}
+
+// Practice opens only once today's run is over, so the first play of each
+// day is always the one that counts.
+function PracticeLocked({ gameId }: { gameId: string }) {
+  const { t } = useTranslation();
+  return (
+    <Notice
+      tone="info"
+      action={{
+        label: t("daily.practice.goToToday"),
+        onClick: () => navigate(`/daily/${encodeURIComponent(gameId)}`, { replace: true }),
+      }}
+    >
+      {t("daily.practice.locked")}
+    </Notice>
   );
 }
 
@@ -384,10 +500,10 @@ function RunSkeleton() {
   );
 }
 
-export function DailyPage({ gameId }: { gameId: string }) {
+export function DailyPage({ gameId, practice }: { gameId: string; practice: boolean }) {
   const meta = getDailyMeta(gameId);
   if (!meta) return <UnknownDaily />;
-  return <DailyGame key={gameId} meta={meta} />;
+  return <DailyGame key={`${gameId}:${practice}`} meta={meta} practice={practice} />;
 }
 
 function UnknownDaily() {
@@ -400,7 +516,7 @@ function UnknownDaily() {
   );
 }
 
-function DailyGame({ meta }: { meta: DailyGameMeta }) {
+function DailyGame({ meta, practice }: { meta: DailyGameMeta; practice: boolean }) {
   const { t } = useTranslation();
   const language = useLanguage();
   const gameName = useGameName();
@@ -418,7 +534,7 @@ function DailyGame({ meta }: { meta: DailyGameMeta }) {
     chart,
     error: chartError,
     reload: reloadChart,
-  } = useDailyChart(meta.id, chartDay, notifyUnauthorized);
+  } = useDailyChart(meta.id, practice ? null : chartDay, notifyUnauthorized);
 
   // A run that has just ended is on the chart now: show it there.
   const runStatus = today?.run?.status;
@@ -443,6 +559,13 @@ function DailyGame({ meta }: { meta: DailyGameMeta }) {
         {errorText(t, loadError, t("daily.loadFailed"))}
       </Notice>
     );
+  } else if (practice) {
+    main =
+      run?.status === "done" && player ? (
+        <PracticeBoard meta={meta} name={name} playerId={player.playerId} />
+      ) : (
+        <PracticeLocked gameId={meta.id} />
+      );
   } else if (!run) {
     main = <StartCard starting={starting} error={error} onStart={() => void start()} />;
   } else {
@@ -494,31 +617,37 @@ function DailyGame({ meta }: { meta: DailyGameMeta }) {
               className="rounded-[var(--radius-pill)] px-2 py-0.5 text-xs font-bold"
               style={{ background: "var(--party-pink-soft)", color: "var(--party-pink-on-soft)" }}
             >
-              {t("daily.chip")}
+              {practice ? t("daily.practice.chip") : t("daily.chip")}
             </span>
-            {today && (
+            {today && !practice && (
               <span className="text-sm text-[var(--text-muted)]">
                 {dayLabel(language, today.day)}
               </span>
             )}
           </div>
         </div>
-        {today && (
+        {today && !practice && (
           <span className="text-xs font-semibold text-[var(--text-muted)]">
             {t("daily.newBoard", { when: relativeTime(language, today.endsAt, now) })}
           </span>
         )}
       </header>
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
+      <div
+        className={
+          practice
+            ? "flex flex-col gap-4"
+            : "grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start"
+        }
+      >
         <div className="flex min-w-0 flex-col gap-4">
-          {closedDay && <Notice tone="info">{t("daily.dayOver")}</Notice>}
-          {challenge && today && (
+          {closedDay && !practice && <Notice tone="info">{t("daily.dayOver")}</Notice>}
+          {challenge && today && !practice && (
             <ChallengeCard standing={challenge} meta={meta} today={today.day} run={run} />
           )}
           {main}
         </div>
-        {today && chartDay && (
+        {today && chartDay && !practice && (
           <DailyChart
             meta={meta}
             day={chartDay}

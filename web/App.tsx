@@ -201,7 +201,7 @@ function RouteContent() {
   // Keyed by code, so following a rematch from one match to the next starts
   // the page afresh rather than showing the old match until the new loads.
   if (route.name === "match") return <MatchPage key={route.code} code={route.code} />;
-  if (route.name === "daily") return <DailyPage gameId={route.gameId} />;
+  if (route.name === "daily") return <DailyPage gameId={route.gameId} practice={route.practice} />;
   if (route.name === "stats") return <StatsPage />;
   return (
     <main id="main-content" className="app-container">
