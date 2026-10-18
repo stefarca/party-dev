@@ -11,8 +11,8 @@
   "cell": {
     "label": "Riga {{row}}, colonna {{col}}: {{content}}",
     "empty": "vuota",
-    "notes": "vuota, appunti {{notes}}",
-    "given": "{{digit}}, fisso",
+    "notes": "vuota, note {{notes}}",
+    "given": "{{digit}}, dato",
     "entered": "{{digit}}",
     "clash": "{{content}}, in conflitto con un altro {{digit}}"
   },
@@ -20,12 +20,12 @@
     "label": "Numeri",
     "digit_one": "{{digit}}, ne manca {{count}}",
     "digit_other": "{{digit}}, ne mancano {{count}}",
-    "notes": "Appunti",
+    "notes": "Note",
     "on": "Sì",
     "off": "No",
     "erase": "Cancella"
   },
-  "hint": "Scegli una casella, poi un numero. Ogni riga, colonna e riquadro 3×3 deve contenere i numeri da 1 a 9 una volta sola. Da tastiera: digita la cifra, spostati con le frecce, cancella con Backspace e premi N per gli appunti.",
+  "hint": "Scegli una casella, poi un numero. Ogni riga, colonna e riquadro 3×3 deve contenere i numeri da 1 a 9 una volta sola. Da tastiera: digita la cifra, spostati con le frecce, cancella con Backspace e premi N per le note.",
   "full": "Tutte le caselle sono piene, ma alcuni numeri sono in conflitto.",
   "solved": "Risolto in {{time}}!",
   "ended": "Questa partita è finita.",

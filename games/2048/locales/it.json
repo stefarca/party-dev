@@ -6,7 +6,7 @@
   "stats": {
     "label": "La tua partita",
     "score": "Punti",
-    "best": "Tessera migliore",
+    "best": "Tessera più alta",
     "moves": "Mosse"
   },
   "controls": "Fai scorrere le tessere",
@@ -20,9 +20,9 @@
   "over": "Nessuna mossa rimasta: la griglia è piena.",
   "ended": "Questa partita è finita.",
   "goal": "2048! Continua, il punteggio conta ancora.",
-  "announce": "Punti {{score}}, tessera migliore {{best}}",
+  "announce": "Punti {{score}}, tessera più alta {{best}}",
   "chart": {
-    "detail_one": "Tessera migliore {{tile}} · {{count}} mossa",
-    "detail_other": "Tessera migliore {{tile}} · {{count}} mosse"
+    "detail_one": "Tessera più alta {{tile}} · {{count}} mossa",
+    "detail_other": "Tessera più alta {{tile}} · {{count}} mosse"
   }
 }

@@ -1,0 +1,28 @@
+{
+  "name": "2048",
+  "loading": "Chargement de la grille…",
+  "board": "Grille",
+  "empty": "vide",
+  "stats": {
+    "label": "Ta partie",
+    "score": "Score",
+    "best": "Meilleure tuile",
+    "moves": "Coups"
+  },
+  "controls": "Fais glisser les tuiles",
+  "move": {
+    "up": "Glisser vers le haut",
+    "down": "Glisser vers le bas",
+    "left": "Glisser vers la gauche",
+    "right": "Glisser vers la droite"
+  },
+  "hint": "Balaie la grille, ou utilise les flèches, pour faire glisser toutes les tuiles d'un coup. Deux tuiles identiques qui se rencontrent fusionnent, et leur somme s'ajoute à ton score.",
+  "over": "Plus aucun coup possible : la grille est pleine.",
+  "ended": "Cette partie est finie.",
+  "goal": "2048 ! Continue, ton score compte toujours.",
+  "announce": "Score {{score}}, meilleure tuile {{best}}",
+  "chart": {
+    "detail_one": "Meilleure tuile {{tile}} · {{count}} coup",
+    "detail_other": "Meilleure tuile {{tile}} · {{count}} coups"
+  }
+}

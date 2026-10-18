@@ -1,0 +1,633 @@
+{
+  "languageName": "Français",
+  "loading": "Chargement",
+  "retry": "Réessayer",
+  "app": {
+    "loading": "Chargement de Pimpom",
+    "skipToContent": "Aller au contenu"
+  },
+  "notFound": {
+    "title": "Il n'y a rien ici",
+    "body": "Ce lien ne mène à aucune partie.",
+    "back": "Retour à l'accueil"
+  },
+  "update": {
+    "title": "Mise à jour disponible",
+    "body": "Recharge pour passer à la dernière version. Tes parties ne risquent rien.",
+    "reload": "Recharger",
+    "later": "Plus tard"
+  },
+  "install": {
+    "title": "Installer Pimpom",
+    "body": "Ouvre-la comme n'importe quelle autre appli, sans chercher l'onglet.",
+    "bodyNotify": "Reçois une notification quand c'est ton tour, et ouvre-la comme n'importe quelle autre appli.",
+    "iosSteps": "Touche Partager, puis Sur l'écran d'accueil.",
+    "action": "Installer",
+    "dismiss": "Pas maintenant"
+  },
+  "language": {
+    "label": "Langue",
+    "current": "Langue : {{language}}"
+  },
+  "theme": {
+    "label": "Thème",
+    "system": "Système",
+    "light": "Clair",
+    "dark": "Sombre"
+  },
+  "notifications": {
+    "on": "Désactiver les notifications de tour",
+    "off": "Me prévenir quand c'est mon tour",
+    "blocked": "Les notifications sont bloquées pour ce site dans les réglages de ton navigateur",
+    "failed": "Impossible de modifier le réglage des notifications."
+  },
+  "nickname": {
+    "required": "Saisis un pseudo pour continuer.",
+    "tooLong": "Le pseudo ne doit pas dépasser {{max}} caractères.",
+    "controlCharacters": "Le pseudo ne doit pas contenir de caractères de contrôle."
+  },
+  "gate": {
+    "tagline": "Des jeux asynchrones avec tes collègues. Un coup à la fois, sans rendez-vous.",
+    "label": "Choisis un pseudo",
+    "placeholder": "ex. alice",
+    "submit": "C'est parti",
+    "submitting": "Un instant…",
+    "footnote": "Pas de mot de passe. Ton pseudo est ton compte — saisis le même sur n'importe quel appareil pour retrouver tes parties.",
+    "failed": "Connexion impossible — réessaie."
+  },
+  "profile": {
+    "trigger": "Connecté en tant que {{nickname}}. Profil et réglages",
+    "dialog": "Profil et réglages"
+  },
+  "rename": {
+    "label": "Pseudo",
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "failed": "Impossible de changer de pseudo.",
+    "hint": "Changer de pseudo garde tes parties et ton bilan.",
+    "signOut": "Se déconnecter",
+    "signOutFailed": "Impossible de se déconnecter."
+  },
+  "hub": {
+    "greeting": "Salut {{nickname}} 👋",
+    "greetingNoName": "Salut 👋",
+    "movesNeeded_one": "{{count}} partie attend ton coup.",
+    "movesNeeded_other": "{{count}} parties attendent ton coup.",
+    "noMovesNeeded": "Aucune partie n'attend ton coup.",
+    "pickGame": "Choisis un jeu",
+    "loadFailed": "Impossible de charger les parties.",
+    "createFailed": "Impossible de créer la partie.",
+    "nav": {
+      "label": "Accueil",
+      "matches": "Parties",
+      "play": "Jouer",
+      "daily": "Défi du jour",
+      "matchesWaiting_one": "Parties, {{count}} attend ton coup",
+      "matchesWaiting_other": "Parties, {{count}} attendent ton coup",
+      "dailyWaiting": "Défi du jour, pas encore joué aujourd'hui"
+    },
+    "lists": {
+      "yourTurn": "À toi de jouer",
+      "open": "Salons publics",
+      "waiting": "À eux de jouer",
+      "finished": "Terminées"
+    },
+    "noMatches": "Pas encore de partie. Lances-en une depuis Jouer, ou rejoins-en une avec un code.",
+    "showAll": "Tout afficher ({{total}})",
+    "stats": {
+      "played": "jouées",
+      "finished": "terminées",
+      "won": "gagnées",
+      "reset": {
+        "trigger": "Réinitialiser",
+        "label": "Réinitialiser ton bilan",
+        "title": "Réinitialiser ton bilan ?",
+        "body": "Jouées, gagnées et terminées, ta série de victoires et tes rivalités repartent de zéro et ne comptent que les parties lancées à partir de maintenant. Ta série de jours et tes succès restent, et chaque partie reste dans tes listes — rien n'est supprimé.",
+        "confirm": "Réinitialiser le bilan",
+        "cancel": "Annuler",
+        "failed": "Impossible de réinitialiser ton bilan."
+      },
+      "playStreak_one": "{{count}} jour d'affilée",
+      "playStreak_other": "{{count}} jours d'affilée",
+      "keepStreak": "Joue aujourd'hui pour la garder",
+      "keepStreakFrozen": "Joue aujourd'hui, sinon un gel de série sera utilisé",
+      "freezes_one": "{{count}} gel",
+      "freezes_other": "{{count}} gels",
+      "freezesLabel_one": "Ta série a {{count}} gel de série",
+      "freezesLabel_other": "Ta série a {{count}} gels de série",
+      "winStreak_one": "{{count}} victoire d'affilée",
+      "winStreak_other": "{{count}} victoires d'affilée",
+      "seeAll": "Stats et rivaux ▸"
+    }
+  },
+  "stats": {
+    "title": "Tes stats",
+    "loadFailed": "Impossible de charger tes stats.",
+    "since": "Ton bilan compte les parties lancées depuis le {{date}}.",
+    "streaks": {
+      "label": "Tes séries",
+      "play": "Série de jours",
+      "days_one": "{{count}} jour",
+      "days_other": "{{count}} jours",
+      "playDone": "C'est bon pour aujourd'hui. Reviens demain pour la prolonger.",
+      "playAtRisk": "Joue un coup ou un défi du jour aujourd'hui, sinon elle s'arrête à minuit.",
+      "playNone": "Joue un coup ou un défi du jour pour en lancer une.",
+      "playAtRiskFrozen": "Joue un coup ou un défi du jour aujourd'hui pour garder ton gel. Si tu le rates, un gel de série couvre la journée.",
+      "frozeYesterday": "Un gel de série a couvert la journée d'hier, ta série continue.",
+      "freezes_one": "{{count}} gel en réserve",
+      "freezes_other": "{{count}} gels en réserve",
+      "freezeHow": "Gagne un gel de série tous les {{every}} jours d'affilée, jusqu'à {{max}}. Un jour manqué en utilise un au lieu de briser ta série.",
+      "wins": "Série de victoires",
+      "winsCount_one": "{{count}} victoire",
+      "winsCount_other": "{{count}} victoires",
+      "winsLive": "D'affilée, et ce n'est pas fini.",
+      "winsNone": "Gagne ta prochaine partie pour en lancer une.",
+      "best": "Record : {{value}}"
+    },
+    "record": {
+      "title": "Bilan",
+      "winRate": "de victoires",
+      "reply": "Temps de réponse habituel",
+      "replyHint": "Le temps que tu mets d'habitude à jouer quand c'est ton tour, sur les {{days}} derniers jours.",
+      "replyNone": "Aucun coup récemment"
+    },
+    "games": {
+      "title": "Par jeu",
+      "label": "Ton bilan par jeu",
+      "game": "Jeu",
+      "played": "Jouées",
+      "won": "Gagnées",
+      "winRate": "Victoires",
+      "empty": "Joue une partie et ton bilan apparaîtra ici."
+    },
+    "rivals": {
+      "title": "Rivalités",
+      "hint": "Tous ceux contre qui tu as terminé une partie, les plus fréquents d'abord.",
+      "record": "Tu mènes {{wins}}–{{losses}} contre {{name}}",
+      "draws_one": "{{count}} match nul",
+      "draws_other": "{{count}} matchs nuls",
+      "game": "{{game}} : {{wins}}–{{losses}}",
+      "nemesis": "Bête noire",
+      "victim": "Souffre-douleur",
+      "empty": "Termine une partie contre quelqu'un et votre rivalité commence ici."
+    },
+    "week": {
+      "title": "Cette semaine",
+      "hint": "Les sept derniers jours, pour tout le monde.",
+      "loadFailed": "Impossible de charger les classements de la semaine.",
+      "you": "toi",
+      "rank": "#{{rank}}",
+      "champions": "Champions",
+      "championsLabel": "Le plus de victoires cette semaine",
+      "championLine": "{{won}} gagnées sur {{finished}}",
+      "championsEmpty": "Personne n'a encore gagné de partie cette semaine. Le titre est à prendre.",
+      "shame": "Le pilori",
+      "shameLabel": "Qui a fait attendre tout le monde le plus longtemps cette semaine",
+      "shameHint": "Qui a fait attendre tout le monde le plus longtemps.",
+      "turns_one": "{{count}} tour",
+      "turns_other": "{{count}} tours",
+      "longest": "le plus long",
+      "stalled_one": "{{count}} partie l'attend en ce moment",
+      "stalled_other": "{{count}} parties l'attendent en ce moment",
+      "shameEmpty": "Personne n'a fait attendre personne cette semaine. Louche."
+    }
+  },
+  "achievements": {
+    "title": "Succès",
+    "hint": "{{unlocked}} sur {{total}} débloqués. Ils sont à toi pour de bon : réinitialiser ton bilan ne les touche pas.",
+    "label": "Tes succès",
+    "level": "Niveau {{level}} sur {{total}}",
+    "progress": "{{value}} sur {{goal}}",
+    "unlocked": "Débloqué le {{date}}",
+    "new": "Nouveau",
+    "loadFailed": "Impossible de charger tes succès.",
+    "toast": {
+      "title_one": "Succès débloqué !",
+      "title_other": "{{count}} succès débloqués !",
+      "more_one": "…et {{count}} autre",
+      "more_other": "…et {{count}} autres",
+      "seeAll": "Tout voir",
+      "close": "Fermer"
+    },
+    "items": {
+      "winner": {
+        "name": "Vainqueur",
+        "goal_one": "Gagne une partie",
+        "goal_other": "Gagne {{count}} parties"
+      },
+      "hotStreak": {
+        "name": "Inarrêtable",
+        "goal_one": "Gagne {{count}} partie d'affilée",
+        "goal_other": "Gagne {{count}} parties d'affilée"
+      },
+      "veteran": {
+        "name": "Vétéran",
+        "goal_one": "Termine {{count}} partie",
+        "goal_other": "Termine {{count}} parties"
+      },
+      "regular": {
+        "name": "Fidèle au poste",
+        "goal_one": "Joue {{count}} jour d'affilée",
+        "goal_other": "Joue {{count}} jours d'affilée"
+      },
+      "explorer": {
+        "name": "Explorateur",
+        "goal_one": "Termine {{count}} jeu",
+        "goal_other": "Termine {{count}} jeux différents, parties ou défis du jour"
+      },
+      "social": {
+        "name": "Papillon social",
+        "goal_one": "Termine une partie contre {{count}} joueur",
+        "goal_other": "Termine une partie contre {{count}} joueurs différents"
+      },
+      "rivalry": {
+        "name": "Ennemis jurés",
+        "goal_one": "Termine {{count}} partie contre le même joueur",
+        "goal_other": "Termine {{count}} parties contre le même joueur"
+      },
+      "host": {
+        "name": "Maître de maison",
+        "goal_one": "Héberge une partie qui est jouée",
+        "goal_other": "Héberge {{count}} parties qui sont jouées"
+      },
+      "openHouse": {
+        "name": "Portes ouvertes",
+        "goal_one": "Héberge une partie publique qui est jouée",
+        "goal_other": "Héberge {{count}} parties publiques qui sont jouées"
+      },
+      "stalemate": {
+        "name": "Pat",
+        "goal_one": "Termine une partie sur un match nul",
+        "goal_other": "Termine {{count}} parties sur un match nul"
+      },
+      "slowpoke": {
+        "name": "Escargot",
+        "goal_one": "Mets 20 heures ou plus à jouer un coup",
+        "goal_other": "Mets 20 heures ou plus à jouer un coup, {{count}} fois"
+      },
+      "dailyHabit": {
+        "name": "Rendez-vous quotidien",
+        "goal_one": "Termine un défi du jour",
+        "goal_other": "Termine {{count}} défis du jour"
+      },
+      "cleanSweep": {
+        "name": "Grand chelem",
+        "goal_one": "Termine {{count}} défi du jour en une journée",
+        "goal_other": "Termine {{count}} défis du jour différents en une journée"
+      },
+      "topOfTheChart": {
+        "name": "Au sommet",
+        "goal_one": "Finis premier du classement d'un jour, avec au moins un autre joueur",
+        "goal_other": "Finis premier du classement d'un jour {{count}} fois"
+      },
+      "lockedIn": {
+        "name": "Verrouillé",
+        "goal_one": "Protège ton pseudo avec un code PIN ou une clé d'accès",
+        "goal_other": "Protège ton pseudo avec un code PIN ou une clé d'accès"
+      }
+    }
+  },
+  "tile": {
+    "players_one": "{{count}} joueur",
+    "players_other": "{{count}} joueurs",
+    "playerRange": "{{min}} à {{max}} joueurs",
+    "start": "Lancer une nouvelle partie de {{game}}, {{players}}",
+    "comingSoonLabel": "{{game}}, bientôt disponible",
+    "comingSoon": "Bientôt",
+    "starting": "Lancement…",
+    "play": "▸ Jouer"
+  },
+  "daily": {
+    "section": "Défi du jour",
+    "sectionHint": "La même grille pour tout le monde, une partie chacun.",
+    "chip": "Du jour",
+    "newBoard": "Nouvelle grille {{when}}",
+    "progress": "{{done}} sur {{total}} joués",
+    "allDone": "Tout est fait pour aujourd'hui 🎉",
+    "loadFailed": "Impossible de charger le défi du jour.",
+    "tile": {
+      "label": "{{game}}, défi du jour. {{status}}. {{line}}",
+      "play": "Jouer",
+      "continue": "Continuer",
+      "fresh": "Ta partie t'attend",
+      "inProgress": "Ta partie est en cours",
+      "scored": "Tu as marqué {{score}}",
+      "placed": "#{{rank}} sur {{count}}",
+      "unranked": "Terminée sans score",
+      "leader": "En tête aujourd'hui : {{name}}, {{score}}",
+      "youLead": "Tu es en tête aujourd'hui",
+      "noScores": "Pas encore de score au classement du jour"
+    },
+    "start": {
+      "title": "La grille du jour",
+      "body": "Aujourd'hui, tout le monde joue la même grille, et tu n'as droit qu'à une partie. Quand elle se termine, ton score entre au classement du jour.",
+      "action": "Lancer la partie du jour",
+      "starting": "Lancement…",
+      "failed": "Impossible de lancer la partie."
+    },
+    "end": {
+      "trigger": "Terminer la partie",
+      "title": "Terminer la partie du jour ?",
+      "body": "Le score obtenu jusqu'ici entre au classement du jour, et il n'y aura pas d'autre partie avant demain.",
+      "confirm": "Terminer la partie",
+      "cancel": "Continuer à jouer",
+      "failed": "Impossible de terminer la partie."
+    },
+    "result": {
+      "title": "La partie du jour est finie",
+      "score": "Tu as marqué {{score}}.",
+      "rank": "Ça te place #{{rank}} sur {{count}} au classement du jour pour l'instant.",
+      "unranked": "Elle s'est terminée sans score à classer.",
+      "comeBack": "Nouvelle grille {{when}}."
+    },
+    "dayOver": "La grille de ce jour est fermée, et ta partie est entrée au classement telle quelle.",
+    "moveFailed": "Un coup n'est pas passé. La grille montre où en est vraiment ta partie.",
+    "chart": {
+      "title": "Classement",
+      "label": "Classement du {{day}}",
+      "previous": "Jour précédent",
+      "next": "Jour suivant",
+      "empty": "Personne n'a encore terminé la partie du jour.",
+      "emptyPast": "Personne n'a joué ce jour-là.",
+      "playing_one": "{{count}} joue encore.",
+      "playing_other": "{{count}} jouent encore.",
+      "you": "toi",
+      "rank": "#{{rank}}",
+      "unranked": "Pas de score",
+      "loadFailed": "Impossible de charger le classement."
+    },
+    "challenge": {
+      "action": "Défie tes amis",
+      "copied": "Lien copié ! ✓",
+      "share": "J'ai marqué {{score}} au {{game}} du jour sur Pimpom. Tu peux faire mieux ?",
+      "shareRanked": "J'ai marqué {{score}} au {{game}} du jour sur Pimpom, #{{rank}} sur {{count}}. Tu peux faire mieux ?",
+      "label": "Défi",
+      "title": "{{name}} te défie",
+      "theirScore": "{{name}} a marqué {{score}}.",
+      "theirScoreRanked": "{{name}} a marqué {{score}}, #{{rank}} sur {{count}} au classement de ce jour-là.",
+      "toBeat": "Bats {{score}} pour gagner.",
+      "noScore": "Ta partie s'est terminée sans score, donc {{score}} tient toujours.",
+      "won": "Tu as battu {{name}} ! 🎉",
+      "lost": "{{name}} reste devant. Demain est un autre jour.",
+      "tie": "Égalité parfaite avec {{name}} !",
+      "otherDay": "C'était le {{day}}. La grille du jour est nouvelle, alors établis ton propre score."
+    },
+    "practice": {
+      "chip": "Entraînement",
+      "label": "Grille d'entraînement",
+      "title": "Grille d'entraînement",
+      "doneTitle": "Entraînement terminé",
+      "body": "Une nouvelle grille, juste pour le plaisir. Elle ne compte ni pour les classements, ni pour les séries, les stats ou les succès.",
+      "score": "Tu as marqué {{score}}.",
+      "unranked": "Elle s'est terminée sans score.",
+      "newBoard": "Nouvelle grille",
+      "backToToday": "Partie du jour",
+      "action": "Rejouer pour le plaisir",
+      "continue": "Continuer l'entraînement",
+      "locked": "L'entraînement s'ouvre une fois la partie du jour finie. Joue d'abord la grille du jour.",
+      "goToToday": "Aller à la partie du jour"
+    }
+  },
+  "join": {
+    "title": "Tu as un code ?",
+    "subtitle": "Rejoins la partie d'un collègue",
+    "label": "Code de la partie",
+    "submit": "Rejoindre",
+    "missingCode": "Saisis un code de partie.",
+    "failed": "Impossible de rejoindre cette partie."
+  },
+  "status": {
+    "lobby": "Salon",
+    "active": "En cours",
+    "done": "Terminée"
+  },
+  "card": {
+    "waitingForOthers": "en attente d'autres joueurs",
+    "due": "échéance {{when}}",
+    "deadlinePassed": "temps écoulé",
+    "play": "Jouer",
+    "join": "Rejoindre",
+    "turnOf": "En attente de {{names}}",
+    "seats": "{{taken}} sur {{max}}",
+    "outcome": {
+      "won": "Gagnée",
+      "lost": "Perdue",
+      "draw": "Nul",
+      "void": "Annulée",
+      "unknown": "Terminée"
+    }
+  },
+  "connection": {
+    "connecting": "Connexion…",
+    "live": "En direct",
+    "offline": "Reconnexion…",
+    "short": {
+      "connecting": "…",
+      "live": "Live",
+      "offline": "Off"
+    }
+  },
+  "match": {
+    "hub": "← Accueil",
+    "backToHub": "← Retour à l'accueil",
+    "loadFailed": "Impossible de charger cette partie.",
+    "loadingGame": "Chargement du jeu…",
+    "notAPlayer": "Cette partie a déjà commencé et tu n'en fais pas partie. Demande le lien de la prochaine.",
+    "failed": "Un problème est survenu — réessaie."
+  },
+  "share": {
+    "title": "Invite ta bande",
+    "body": "Partage ce code — toute personne qui l'a peut rejoindre la partie.",
+    "linkLabel": "Lien de la partie",
+    "copy": "Copier le lien",
+    "copied": "Copié !",
+    "copiedCheck": "Copié ! ✓",
+    "send": "Partager",
+    "invite": "Viens jouer à {{game}} avec moi sur Pimpom !"
+  },
+  "visibility": {
+    "private": "Partie privée",
+    "public": "Partie publique",
+    "about": "Ce que veulent dire privée et publique",
+    "hint": {
+      "private": "Sur invitation seulement — il faut le code pour rejoindre. Fermée un jour après sa création si elle ne commence pas.",
+      "public": "Affichée dans Salons publics sur l'accueil de tout le monde, donc n'importe qui peut rejoindre. Fermée un jour après être devenue publique si elle ne commence pas."
+    },
+    "failed": "Impossible de changer qui peut rejoindre."
+  },
+  "lobby": {
+    "players": "Joueurs",
+    "host": "hôte",
+    "you": "toi",
+    "openSeat": "Place libre",
+    "roomFor_one": "Encore de la place pour {{count}} joueur.",
+    "roomFor_other": "Encore de la place pour {{count}} joueurs.",
+    "needs": "{{game}} se joue à {{players}}.",
+    "waitingForHost": "En attente du lancement par l'hôte.",
+    "startsWhenFull": "La partie commence dès que toutes les places sont prises.",
+    "start": "Lancer la partie ▸"
+  },
+  "turn": {
+    "yours": "À toi de jouer",
+    "makeMove": "Joue ton coup ci-dessous",
+    "waiting": "En attente…",
+    "waitingOn": "En attente de {{names}}",
+    "remaining": "Encore {{time}}",
+    "timeUp": "temps écoulé",
+    "autoMovesLeft_one": "Si ton temps s'écoule, un coup est joué pour toi : encore {{count}}",
+    "autoMovesLeft_other": "Si ton temps s'écoule, un coup est joué pour toi : encore {{count}}",
+    "noAutoMovesLeft": "Plus de coup automatique : si ton temps s'écoule encore, tu perds"
+  },
+  "result": {
+    "draw": "Match nul",
+    "drawDetail": "Personne ne l'emporte.",
+    "won": "Tu as gagné !",
+    "youBeat": "Tu as battu {{names}}.",
+    "wonAlone": "Bien joué.",
+    "finished": "Partie terminée",
+    "noWinner": "Pas de vainqueur.",
+    "winners_one": "{{names}} a gagné.",
+    "winners_other": "{{names}} ont gagné.",
+    "scores": "Scores finaux : {{scores}}",
+    "void": "Partie annulée",
+    "voidDetail": "Personne n'a joué avant la fin du temps, elle ne compte donc pour personne.",
+    "youForfeited": "Ton temps s'est écoulé trop de fois.",
+    "forfeited_one": "Le temps de {{names}} s'est écoulé trop de fois.",
+    "forfeited_other": "Le temps de {{names}} s'est écoulé trop de fois."
+  },
+  "history": {
+    "title": "Historique",
+    "empty": "Pas encore de coup.",
+    "joined": "{{name}} a rejoint la partie",
+    "started": "La partie a commencé",
+    "move": "{{name}} a joué un coup",
+    "timedOut": "Temps écoulé — la manche a été résolue automatiquement",
+    "won_one": "{{names}} a gagné",
+    "won_other": "{{names}} ont gagné",
+    "draw": "La partie s'est terminée sur un match nul",
+    "noWinner": "La partie s'est terminée sans vainqueur",
+    "scores": "Scores finaux : {{scores}}",
+    "reacted": "{{name}} a réagi avec {{emoji}}",
+    "void": "Personne n'a joué à temps — la partie est annulée",
+    "forfeited_one": "Le temps de {{names}} s'est écoulé trop de fois : partie perdue",
+    "forfeited_other": "Le temps de {{names}} s'est écoulé trop de fois : partie perdue"
+  },
+  "rematch": {
+    "offer": "Revanche",
+    "open": "Aller à la revanche",
+    "join": "Rejoindre la revanche",
+    "offered": "{{name}} veut sa revanche !",
+    "failed": "Impossible d'ouvrir une revanche — réessaie."
+  },
+  "reactions": {
+    "label": "Réactions",
+    "send": "Réagir avec {{reaction}}",
+    "live": "Réactions en direct",
+    "reacted": "{{name}} a réagi avec {{reaction}}",
+    "names": {
+      "clap": "Bravo",
+      "laugh": "Mort de rire",
+      "wow": "Waouh",
+      "grr": "Grr",
+      "fire": "En feu",
+      "turtle": "Dépêche-toi",
+      "gg": "Bonne partie",
+      "skull": "Je suis mort"
+    }
+  },
+  "debug": {
+    "note": "Aucune interface n'est enregistrée pour ce jeu — voici la vue brute du moteur.",
+    "actionLabel": "Action (JSON)",
+    "invalidJson": "Saisis une action JSON valide (ou laisse vide).",
+    "send": "Envoyer"
+  },
+  "errors": {
+    "action_failed": "Ton coup n'est pas passé — réessaie.",
+    "already_started": "Cette partie a déjà commencé.",
+    "day_over": "La grille de ce jour est fermée.",
+    "game_unavailable": "Ce jeu ne peut pas être lancé pour le moment.",
+    "invalid_action": "Ce coup n'est pas autorisé.",
+    "invalid_move": "Ce coup n'est pas autorisé.",
+    "invalid_pin": "Un code PIN fait de 4 à 8 chiffres.",
+    "lobby_full": "Ce salon est complet.",
+    "nickname_taken": "Ce pseudo appartient à quelqu'un d'autre. Choisis-en un autre, ou déconnecte-toi et utilise-le pour te connecter.",
+    "no_identity": "Ta session a expiré — reconnecte-toi.",
+    "no_passkey": "Ce pseudo n'a pas de clé d'accès.",
+    "no_run": "Il n'y a pas encore de partie à jouer. Lance d'abord celle du jour.",
+    "not_a_player": "Tu ne joues pas dans cette partie.",
+    "not_active": "Cette partie n'est pas en cours.",
+    "not_finished": "Cette partie n'est pas encore finie.",
+    "not_found": "Aucune partie avec ce code.",
+    "not_host": "Seul l'hôte peut lancer la partie.",
+    "not_joinable": "Cette partie a déjà commencé.",
+    "not_today": "La grille de ce jour n'est pas encore ouverte.",
+    "not_your_turn": "Ce n'est pas ton tour.",
+    "passkey_failed": "La clé d'accès n'a pas fonctionné.",
+    "pin_blocked": "Trop de codes PIN erronés. Réessaie plus tard.",
+    "react_failed": "Ta réaction n'est pas passée — réessaie.",
+    "rematch_failed": "Impossible d'ouvrir une revanche — réessaie.",
+    "run_over": "Cette partie est déjà finie.",
+    "snapshot_failed": "Impossible de charger cette partie.",
+    "start_failed": "Impossible de lancer la partie.",
+    "too_fast": "Doucement — une réaction à la fois.",
+    "too_many_requests": "Trop de demandes de connexion en attente. Réessaie dans quelques minutes.",
+    "unknown_game": "Ce jeu n'existe pas.",
+    "wrong_pin": "Code PIN erroné.",
+    "wrong_player_count": "Cette partie n'a pas le bon nombre de joueurs pour commencer."
+  },
+  "claim": {
+    "title": "{{nickname}} est déjà pris",
+    "taken": "C'est le tien ? Autorise cette connexion depuis un appareil où tu es déjà connecté.",
+    "locked": "Ce pseudo est verrouillé. Utilise son code PIN ou une clé d'accès, ou autorise cette connexion depuis un appareil où tu es déjà connecté.",
+    "waiting": "En attente de l'autorisation depuis l'autre appareil du propriétaire…",
+    "autoIn": "Si personne ne répond, tu entres dans {{time}}.",
+    "denied": "La connexion a été refusée.",
+    "expired": "La demande a expiré. Reviens en arrière et réessaie.",
+    "pin": "Code PIN",
+    "pinSubmit": "Se connecter avec le code PIN",
+    "pinFormat": "Un code PIN fait de 4 à 8 chiffres.",
+    "pinBlocked": "Trop de codes PIN erronés. Réessaie après {{time}}.",
+    "passkey": "Utiliser une clé d'accès",
+    "passkeyFailed": "La clé d'accès n'a pas fonctionné.",
+    "failed": "Connexion impossible — réessaie.",
+    "cancel": "Utiliser un autre pseudo"
+  },
+  "signIns": {
+    "requestLabel": "Demande de connexion",
+    "requestTitle": "{{device}} veut se connecter en tant que toi",
+    "requestBody": "N'autorise que si c'est toi.",
+    "requestAuto": "N'autorise que si c'est toi. Elle passera dans {{time}} sauf si tu refuses.",
+    "allow": "Autoriser",
+    "deny": "Refuser",
+    "recentLabel": "Nouvelles connexions",
+    "recentTitle": "Nouvelles connexions à ton pseudo",
+    "recentItem": "{{device}}, {{time}}",
+    "recentHint": "Ce n'est pas toi ? Déconnecte-toi partout, puis verrouille ton pseudo avec un code PIN ou une clé d'accès depuis ton profil.",
+    "itWasMe": "C'était moi",
+    "signOutEverywhere": "Se déconnecter partout",
+    "signedOutEverywhere": "Tous les autres appareils sont déconnectés.",
+    "failed": "Ça n'a pas marché — réessaie."
+  },
+  "security": {
+    "title": "Verrouiller ton pseudo",
+    "unlockedHint": "Ajoute un code PIN ou une clé d'accès pour que toi seul puisses te connecter sous ton pseudo sur un nouvel appareil. Ça débloque le succès 🔐 Verrouillé.",
+    "lockedHint": "Verrouillé. Un nouvel appareil a besoin de ton code PIN, d'une clé d'accès ou de ton accord depuis un appareil où tu es connecté.",
+    "setPin": "Définir un code PIN",
+    "changePin": "Changer le code PIN",
+    "removePin": "Supprimer le code PIN",
+    "newPin": "Nouveau code PIN (4 à 8 chiffres)",
+    "savePin": "Enregistrer le code PIN",
+    "cancel": "Annuler",
+    "pinFormat": "Un code PIN fait de 4 à 8 chiffres.",
+    "pinSaved": "Code PIN enregistré.",
+    "pinRemoved": "Code PIN supprimé.",
+    "addPasskey": "Ajouter une clé d'accès",
+    "passkeySaved": "Clé d'accès ajoutée.",
+    "removePasskeys_one": "Supprimer la clé d'accès",
+    "removePasskeys_other": "Supprimer {{count}} clés d'accès",
+    "passkeysRemoved": "Clés d'accès supprimées.",
+    "signOutEverywhere": "Se déconnecter de tous les autres appareils",
+    "signedOutEverywhere": "Tous les autres appareils sont déconnectés.",
+    "failed": "Ça n'a pas marché — réessaie."
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "name": "Lights Out",
+  "loading": "Chargement de la grille…",
+  "board": "Lumières",
+  "stats": {
+    "label": "Ta partie",
+    "presses": "Appuis",
+    "par": "Par",
+    "time": "Temps"
+  },
+  "cell": {
+    "label": "Rangée {{row}}, colonne {{col}} : {{state}}",
+    "on": "allumée",
+    "off": "éteinte"
+  },
+  "hint": "Éteins toutes les lumières. Appuyer sur une lumière l'inverse, ainsi que celles au-dessus, en dessous et à côté ; appuyer à nouveau les remet comme avant. Le par est le plus petit nombre d'appuis qui suffit. Au clavier, déplace-toi avec les flèches et appuie avec Espace ou Entrée.",
+  "solved_one": "Tout éteint en {{count}} appui !",
+  "solved_other": "Tout éteint en {{count}} appuis !",
+  "atPar": "Pile dans le par : impossible de faire mieux.",
+  "overPar_one": "{{count}} appui au-dessus du par.",
+  "overPar_other": "{{count}} appuis au-dessus du par.",
+  "ended": "Cette partie est finie.",
+  "announce_one": "Encore {{count}} lumière allumée.",
+  "announce_other": "Encore {{count}} lumières allumées.",
+  "chart": {
+    "par": "Dans le par, en {{time}}",
+    "solved": "Résolu en {{time}}",
+    "ended_one": "{{count}} lumière restée allumée",
+    "ended_other": "{{count}} lumières restées allumées"
+  }
+}

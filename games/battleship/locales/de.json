@@ -1,0 +1,79 @@
+{
+  "name": "Schiffe versenken",
+  "you": "{{name}} (du)",
+  "loading": "Flotten werden geladen…",
+  "ship": {
+    "carrier": "Flugzeugträger",
+    "battleship": "Schlachtschiff",
+    "cruiser": "Kreuzer",
+    "submarine": "U-Boot",
+    "destroyer": "Zerstörer"
+  },
+  "theShip": {
+    "carrier": "den Flugzeugträger",
+    "battleship": "das Schlachtschiff",
+    "cruiser": "den Kreuzer",
+    "submarine": "das U-Boot",
+    "destroyer": "den Zerstörer"
+  },
+  "squares_one": "{{count}} Feld",
+  "squares_other": "{{count}} Felder",
+  "afloat_one": "{{count}} Schiff schwimmt noch",
+  "afloat_other": "{{count}} Schiffe schwimmen noch",
+  "board": {
+    "yours": "Deine Gewässer",
+    "enemy": "Feindliche Gewässer",
+    "of": "Gewässer von {{name}}"
+  },
+  "cell": {
+    "empty": "leer",
+    "unknown": "nicht beschossen",
+    "miss": "Wasser",
+    "hit": "Treffer",
+    "sunk": "versenkt",
+    "lastShot": "letzter Schuss",
+    "fireHere": "hierher feuern",
+    "placeHere": "{{ship}} hier platzieren"
+  },
+  "dock": {
+    "title": "Deine Flotte",
+    "placed": "platziert",
+    "notPlaced": "nicht platziert",
+    "rotate": "Drehen",
+    "rotateLabel": "Drehen (jetzt {{direction}})",
+    "horizontal": "waagerecht",
+    "vertical": "senkrecht",
+    "random": "Zufällig",
+    "clear": "Leeren",
+    "ready": "Bereit"
+  },
+  "status": {
+    "placeHorizontal": "Platziere {{ship}}: Wähle das Feld für sein linkes Ende.",
+    "placeVertical": "Platziere {{ship}}: Wähle das Feld für sein oberes Ende.",
+    "pickShip": "Flotte platziert — drück Bereit oder wähle ein Schiff, um es zu verschieben.",
+    "ready": "Deine Flotte ist bereit. Warte, bis {{name}} die eigene platziert…",
+    "placing": "Warte darauf, dass die Flotten platziert werden…",
+    "yourShot": "Du bist dran — wähle ein Feld in feindlichen Gewässern zum Feuern.",
+    "waitingShot": "Warte auf den Schuss von {{name}}…"
+  },
+  "lastShot": {
+    "youMiss": "Du hast auf {{cell}} gefeuert: Wasser.",
+    "youHit": "Du hast auf {{cell}} gefeuert: Treffer!",
+    "youSunk": "Du hast auf {{cell}} gefeuert und {{ship}} versenkt!",
+    "theyMiss": "{{name}} hat auf {{cell}} gefeuert: Wasser.",
+    "theyHit": "{{name}} hat auf {{cell}} gefeuert: Treffer!",
+    "theySunk": "{{name}} hat auf {{cell}} gefeuert und {{ship}} versenkt!"
+  },
+  "history": {
+    "placed": "{{name}} hat die Flotte platziert",
+    "miss": "{{name}} hat auf {{cell}} gefeuert: Wasser",
+    "hit": "{{name}} hat auf {{cell}} gefeuert: Treffer",
+    "sunk": {
+      "carrier": "{{name}} hat auf {{cell}} gefeuert und den Flugzeugträger versenkt",
+      "battleship": "{{name}} hat auf {{cell}} gefeuert und das Schlachtschiff versenkt",
+      "cruiser": "{{name}} hat auf {{cell}} gefeuert und den Kreuzer versenkt",
+      "submarine": "{{name}} hat auf {{cell}} gefeuert und das U-Boot versenkt",
+      "destroyer": "{{name}} hat auf {{cell}} gefeuert und den Zerstörer versenkt"
+    }
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "name": "Puissance 4",
+  "you": "{{name}} (toi)",
+  "player": "Joueur {{number}}",
+  "loading": "Chargement de la grille…",
+  "board": "Grille de Puissance 4, {{columns}} colonnes sur {{rows}} rangées",
+  "disc": {
+    "0": "jeton rouge à croix",
+    "1": "jeton bleu à cercle"
+  },
+  "lastMove": "{{disc}} (dernier coup)",
+  "column": {
+    "full": "Colonne {{column}}, pleine",
+    "drop": "Lâcher un jeton dans la colonne {{column}}",
+    "notYourTurn": "Lâcher un jeton dans la colonne {{column}}, ce n'est pas ton tour"
+  },
+  "status": {
+    "finished": "Partie terminée.",
+    "yourTurn": "À toi de jouer — choisis une colonne.",
+    "waiting": "En attente de l'autre joueur…"
+  },
+  "history": {
+    "drop": "{{name}} a lâché un jeton dans la colonne {{column}}"
+  }
+}

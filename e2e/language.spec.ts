@@ -75,3 +75,19 @@ test.describe("in a browser set to Italian", () => {
     ).toBeEnabled();
   });
 });
+
+for (const [locale, lang, play, nickname] of [
+  ["de-DE", "de", "Los geht's", "Wähle einen Nickname"],
+  ["fr-FR", "fr", "C'est parti", "Choisis un pseudo"],
+] as const) {
+  test.describe(`in a browser set to ${locale}`, () => {
+    test.use({ locale });
+
+    test(`the app opens in ${lang}`, async ({ page }) => {
+      await page.goto("/");
+      await expect(page.locator("html")).toHaveAttribute("lang", lang);
+      await expect(page.getByRole("textbox", { name: nickname })).toBeVisible();
+      await expect(page.getByRole("button", { name: play })).toBeVisible();
+    });
+  });
+}

@@ -1,0 +1,76 @@
+{
+  "name": "Yahtzee",
+  "loading": "Chargement des dés…",
+  "stats": {
+    "label": "Ta partie",
+    "round": "Tour",
+    "score": "Score"
+  },
+  "dice": "Dés",
+  "die": {
+    "face": "Dé {{number}} : {{face}}",
+    "blank": "Dé {{number}} : pas encore lancé"
+  },
+  "held": "Gardé",
+  "roll": {
+    "action": "Lancer",
+    "label_one": "Lancer (encore {{count}})",
+    "label_other": "Lancer (encore {{count}})",
+    "left_one": "encore {{count}}",
+    "left_other": "encore {{count}}"
+  },
+  "card": {
+    "label": "Feuille de score",
+    "upper": "Section haute",
+    "lower": "Section basse",
+    "choose": "Inscrire {{points}} en {{box}}",
+    "open": "libre",
+    "subtotal": "Sous-total",
+    "bonus": "Bonus",
+    "yahtzeeBonus": "Bonus Yahtzee",
+    "total": "Total"
+  },
+  "box": {
+    "ones": "As",
+    "twos": "Deux",
+    "threes": "Trois",
+    "fours": "Quatre",
+    "fives": "Cinq",
+    "sixes": "Six",
+    "threeKind": "Brelan",
+    "fourKind": "Carré",
+    "fullHouse": "Full",
+    "smallStraight": "Petite suite",
+    "largeStraight": "Grande suite",
+    "yahtzee": "Yahtzee",
+    "chance": "Chance"
+  },
+  "hint": "Lance jusqu'à trois fois par tour en gardant entre deux lancers les dés que tu veux conserver, puis inscris-les dans une case libre. Treize tours remplissent la feuille, et 63 points ou plus dans la section haute rapportent un bonus de 35. Au clavier, 1 à 5 gardent les dés et R lance.",
+  "next": "Tour {{round}} sur {{count}} : lance les dés.",
+  "hold": "Touche les dés pour les garder et relance, ou inscris-les maintenant.",
+  "pick": "Plus de lancer : inscris les dés dans une case libre.",
+  "joker": {
+    "upper": "Joker ! Ce Yahtzee doit aller en {{box}}.",
+    "lower": "Joker ! N'importe quelle case libre de la section basse compte ce Yahtzee en entier.",
+    "zero": "Joker ! Ce Yahtzee doit aller dans une case libre de la section haute, pour zéro."
+  },
+  "yahtzee": "Yahtzee !",
+  "yahtzeeBonus": "Yahtzee ! Avec un bonus de 100 points.",
+  "final_one": "Feuille complète : {{count}} point !",
+  "final_other": "Feuille complète : {{count}} points !",
+  "ended": "Cette partie est finie.",
+  "announce": {
+    "roll": "Lancer {{number}} : {{dice}}.",
+    "scored": "{{points}} en {{box}}."
+  },
+  "chart": {
+    "bonus_zero": "Bonus haut",
+    "bonus_one": "Bonus haut · {{count}} Yahtzee",
+    "bonus_other": "Bonus haut · {{count}} Yahtzees",
+    "plain_zero": "Toutes les cases remplies",
+    "plain_one": "{{count}} Yahtzee",
+    "plain_other": "{{count}} Yahtzees",
+    "ended_one": "Terminé avec {{count}} case vide",
+    "ended_other": "Terminé avec {{count}} cases vides"
+  }
+}

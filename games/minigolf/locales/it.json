@@ -10,7 +10,7 @@
     "slope": "una pendenza",
     "blocks": "ostacoli",
     "ice": "ghiaccio",
-    "springs": "respingenti"
+    "springs": "molle"
   },
   "stats": {
     "label": "Il tuo giro",
@@ -31,7 +31,7 @@
     "sand": "La sabbia rallenta la pallina",
     "slope": "Pendenza: si rotola dove puntano le frecce",
     "ice": "Ghiaccio: la pallina quasi non rallenta",
-    "spring": "Respingente: rilancia la pallina più forte"
+    "spring": "Molla: rilancia la pallina più forte"
   },
   "cup": {
     "ace": "Buca in uno!",
@@ -49,7 +49,7 @@
     "triple": "triplo bogey"
   },
   "scorecard": {
-    "caption": "Scheda dei punti",
+    "caption": "Cartellino",
     "hole": "Buca",
     "par": "Par",
     "score": "Colpi",

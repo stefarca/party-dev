@@ -64,7 +64,7 @@
     "save": "Salva",
     "cancel": "Annulla",
     "failed": "Impossibile cambiare nickname.",
-    "hint": "Cambiare nome non tocca le tue partite né il tuo bilancio.",
+    "hint": "Cambiare nickname non tocca le tue partite né i tuoi risultati.",
     "signOut": "Esci",
     "signOutFailed": "Impossibile uscire."
   },
@@ -88,9 +88,9 @@
     },
     "lists": {
       "yourTurn": "Tocca a te",
-      "open": "Partite pubbliche",
+      "open": "Lobby pubbliche",
       "waiting": "Tocca agli altri",
-      "finished": "Finite"
+      "finished": "Concluse"
     },
     "noMatches": "Ancora nessuna partita. Iniziane una da Gioca, o entra con un codice.",
     "showAll": "Mostra tutte ({{total}})",
@@ -100,21 +100,21 @@
       "won": "vinte",
       "reset": {
         "trigger": "Azzera",
-        "label": "Azzera il tuo bilancio",
-        "title": "Azzerare il tuo bilancio?",
-        "body": "Giocate, vinte e concluse, la serie di vittorie e le rivalità ripartono da zero e contano solo le partite iniziate da adesso. La serie di giorni e gli achievement restano, e tutte le partite restano nelle tue liste: non viene cancellato nulla.",
-        "confirm": "Azzera bilancio",
+        "label": "Azzera i tuoi risultati",
+        "title": "Azzerare i tuoi risultati?",
+        "body": "Giocate, vinte e concluse, la serie di vittorie e le rivalità ripartono da zero e contano solo le partite iniziate da adesso. La serie di giorni e i trofei restano, e tutte le partite restano nelle tue liste: non viene cancellato nulla.",
+        "confirm": "Azzera risultati",
         "cancel": "Annulla",
-        "failed": "Impossibile azzerare il bilancio."
+        "failed": "Impossibile azzerare i risultati."
       },
       "playStreak_one": "{{count}} giorno di fila",
       "playStreak_other": "{{count}} giorni di fila",
       "keepStreak": "Gioca oggi per non perderla",
-      "keepStreakFrozen": "Gioca oggi, o userai un salvaserie",
-      "freezes_one": "{{count}} salvaserie",
-      "freezes_other": "{{count}} salvaserie",
-      "freezesLabel_one": "La tua serie ha {{count}} salvaserie",
-      "freezesLabel_other": "La tua serie ha {{count}} salvaserie",
+      "keepStreakFrozen": "Gioca oggi, o userai uno scudo",
+      "freezes_one": "{{count}} scudo",
+      "freezes_other": "{{count}} scudi",
+      "freezesLabel_one": "La tua serie ha {{count}} scudo",
+      "freezesLabel_other": "La tua serie ha {{count}} scudi",
       "winStreak_one": "{{count}} vittoria di fila",
       "winStreak_other": "{{count}} vittorie di fila",
       "seeAll": "Statistiche e rivali ▸"
@@ -123,7 +123,7 @@
   "stats": {
     "title": "Le tue statistiche",
     "loadFailed": "Impossibile caricare le tue statistiche.",
-    "since": "Il tuo bilancio conta le partite iniziate dal {{date}}.",
+    "since": "I tuoi risultati contano le partite iniziate dal {{date}}.",
     "streaks": {
       "label": "Le tue serie",
       "play": "Serie di giorni",
@@ -132,33 +132,33 @@
       "playDone": "Fatto per oggi. Torna domani per continuarla.",
       "playAtRisk": "Fai una mossa o gioca una sfida del giorno oggi, o finisce a mezzanotte.",
       "playNone": "Fai una mossa o gioca una sfida del giorno per iniziarne una.",
-      "playAtRiskFrozen": "Fai una mossa o gioca una sfida del giorno oggi per tenerti il salvaserie. Se salti, il salvaserie copre la giornata.",
-      "frozeYesterday": "Ieri un salvaserie ha coperto la giornata, quindi la serie continua.",
-      "freezes_one": "{{count}} salvaserie da parte",
-      "freezes_other": "{{count}} salvaserie da parte",
-      "freezeHow": "Guadagni un salvaserie ogni {{every}} giorni di fila, fino a {{max}}. Un giorno saltato ne usa uno invece di chiudere la serie.",
+      "playAtRiskFrozen": "Fai una mossa o gioca una sfida del giorno oggi per tenerti lo scudo. Se salti, uno scudo copre la giornata.",
+      "frozeYesterday": "Ieri uno scudo ha coperto la giornata, quindi la serie continua.",
+      "freezes_one": "{{count}} scudo da parte",
+      "freezes_other": "{{count}} scudi da parte",
+      "freezeHow": "Guadagni uno scudo ogni {{every}} giorni di fila, fino a {{max}}. Un giorno saltato ne usa uno invece di interrompere la serie.",
       "wins": "Serie di vittorie",
       "winsCount_one": "{{count}} vittoria",
       "winsCount_other": "{{count}} vittorie",
-      "winsLive": "Di fila, e non è finita.",
+      "winsLive": "Di fila, e si continua.",
       "winsNone": "Vinci la prossima partita per iniziarne una.",
       "best": "Record: {{value}}"
     },
     "record": {
-      "title": "Bilancio",
-      "winRate": "vittorie",
+      "title": "Risultati",
+      "winRate": "% vittorie",
       "reply": "Risposta tipica",
       "replyHint": "Quanto ci metti di solito a muovere quando tocca a te, negli ultimi {{days}} giorni.",
       "replyNone": "Nessuna mossa di recente"
     },
     "games": {
       "title": "Per gioco",
-      "label": "Il tuo bilancio per gioco",
+      "label": "I tuoi risultati per gioco",
       "game": "Gioco",
       "played": "Giocate",
       "won": "Vinte",
-      "winRate": "Vittorie",
-      "empty": "Gioca una partita e il tuo bilancio comparirà qui."
+      "winRate": "% vittorie",
+      "empty": "Gioca una partita e i tuoi risultati compariranno qui."
     },
     "rivals": {
       "title": "Rivalità",
@@ -181,7 +181,7 @@
       "championsLabel": "Più vittorie questa settimana",
       "championLine": "{{won}} vinte su {{finished}}",
       "championsEmpty": "Nessuno ha ancora vinto una partita questa settimana. Il titolo è libero.",
-      "shame": "Muro della vergogna",
+      "shame": "La gogna",
       "shameLabel": "Chi ha fatto aspettare tutti più a lungo questa settimana",
       "shameHint": "Chi ha fatto aspettare tutti più a lungo.",
       "turns_one": "{{count}} turno",
@@ -193,17 +193,17 @@
     }
   },
   "achievements": {
-    "title": "Achievements",
-    "hint": "{{unlocked}} su {{total}} sbloccati. Sono tuoi per sempre: azzerare il bilancio non li tocca.",
-    "label": "I tuoi achievement",
+    "title": "Trofei",
+    "hint": "{{unlocked}} su {{total}} sbloccati. Sono tuoi per sempre: azzerare i risultati non li tocca.",
+    "label": "I tuoi trofei",
     "level": "Livello {{level}} di {{total}}",
     "progress": "{{value}} su {{goal}}",
     "unlocked": "Sbloccato il {{date}}",
     "new": "Nuovo",
-    "loadFailed": "Impossibile caricare i tuoi achievement.",
+    "loadFailed": "Impossibile caricare i tuoi trofei.",
     "toast": {
-      "title_one": "Achievement sbloccato!",
-      "title_other": "{{count}} achievement sbloccati!",
+      "title_one": "Trofeo sbloccato!",
+      "title_other": "{{count}} trofei sbloccati!",
       "more_one": "…e {{count}} altro",
       "more_other": "…e altri {{count}}",
       "seeAll": "Vedi tutti",
@@ -216,7 +216,7 @@
         "goal_other": "Vinci {{count}} partite"
       },
       "hotStreak": {
-        "name": "In serie",
+        "name": "Inarrestabile",
         "goal_one": "Vinci {{count}} partita di fila",
         "goal_other": "Vinci {{count}} partite di fila"
       },
@@ -226,7 +226,7 @@
         "goal_other": "Concludi {{count}} partite"
       },
       "regular": {
-        "name": "Habitué",
+        "name": "Fedelissimo",
         "goal_one": "Gioca {{count}} giorno di fila",
         "goal_other": "Gioca {{count}} giorni di fila"
       },
@@ -241,7 +241,7 @@
         "goal_other": "Concludi una partita contro {{count}} giocatori diversi"
       },
       "rivalry": {
-        "name": "Rivali storici",
+        "name": "Eterni rivali",
         "goal_one": "Concludi {{count}} partita contro lo stesso giocatore",
         "goal_other": "Concludi {{count}} partite contro lo stesso giocatore"
       },
@@ -266,7 +266,7 @@
         "goal_other": "Metti 20 ore o più a fare una mossa, {{count}} volte"
       },
       "dailyHabit": {
-        "name": "Abitudine quotidiana",
+        "name": "Appuntamento fisso",
         "goal_one": "Concludi una sfida del giorno",
         "goal_other": "Concludi {{count}} sfide del giorno"
       },
@@ -277,7 +277,7 @@
       },
       "topOfTheChart": {
         "name": "In vetta",
-        "goal_one": "Arriva primo nella classifica di un giorno, con qualcun altro in gara",
+        "goal_one": "Arriva primo nella classifica di un giorno, con almeno un altro in gara",
         "goal_other": "Arriva primo nella classifica di un giorno {{count}} volte"
       },
       "lockedIn": {
@@ -377,7 +377,7 @@
       "label": "Partita di allenamento",
       "title": "Partita di allenamento",
       "doneTitle": "Allenamento finito",
-      "body": "Una sfida nuova, solo per divertimento. Non conta per classifiche, serie, statistiche o achievement.",
+      "body": "Una sfida nuova, solo per divertimento. Non conta per classifiche, serie, statistiche o trofei.",
       "score": "Hai fatto {{score}}.",
       "unranked": "È finita senza un punteggio.",
       "newBoard": "Nuova partita",
@@ -451,7 +451,7 @@
     "about": "Cosa vuol dire privata e pubblica",
     "hint": {
       "private": "Solo su invito: per entrare serve il codice. Chiude un giorno dopo la creazione, se la partita non inizia.",
-      "public": "Elencata in Partite pubbliche nella home di tutti: chiunque può entrare. Chiude un giorno dopo essere diventata pubblica, se la partita non inizia."
+      "public": "Elencata in Lobby pubbliche nella home di tutti: chiunque può entrare. Chiude un giorno dopo essere diventata pubblica, se la partita non inizia."
     },
     "failed": "Impossibile cambiare chi può entrare."
   },
@@ -501,13 +501,13 @@
     "joined": "{{name}} è entrato",
     "started": "La partita è iniziata",
     "move": "{{name}} ha fatto una mossa",
-    "timedOut": "Tempo scaduto — il round è stato risolto automaticamente",
+    "timedOut": "Tempo scaduto: il turno è stato risolto in automatico",
     "won_one": "{{names}} ha vinto",
     "won_other": "{{names}} hanno vinto",
     "draw": "La partita è finita in parità",
     "noWinner": "La partita è finita senza vincitori",
     "scores": "Punteggi finali: {{scores}}",
-    "reacted": "{{name}} ha reagito {{emoji}}",
+    "reacted": "{{name}} ha reagito con {{emoji}}",
     "void": "Nessuno ha mosso in tempo — partita annullata",
     "forfeited_one": "{{names}} ha esaurito il tempo troppe volte e ha perso",
     "forfeited_other": "{{names}} hanno esaurito il tempo troppe volte e hanno perso"
@@ -532,7 +532,7 @@
       "fire": "In fiamme",
       "turtle": "Muoviti",
       "gg": "Bella partita",
-      "skull": "RIP"
+      "skull": "Sono morto"
     }
   },
   "debug": {
@@ -610,7 +610,7 @@
   },
   "security": {
     "title": "Proteggi il tuo nickname",
-    "unlockedHint": "Aggiungi un PIN o una passkey così solo tu puoi entrare come te da un nuovo dispositivo. Vale l'obiettivo 🔐 Blindato.",
+    "unlockedHint": "Aggiungi un PIN o una passkey così solo tu puoi entrare come te da un nuovo dispositivo. Ti fa sbloccare il trofeo 🔐 Blindato.",
     "lockedHint": "Protetto. Un nuovo dispositivo ha bisogno del tuo PIN, di una passkey o del tuo ok da un dispositivo su cui sei entrato.",
     "setPin": "Imposta un PIN",
     "changePin": "Cambia PIN",

@@ -1,0 +1,39 @@
+{
+  "name": "Minesweeper",
+  "loading": "Minenfeld wird geladen…",
+  "board": "Minenfeld",
+  "stats": {
+    "label": "Dein Durchgang",
+    "time": "Zeit",
+    "mines": "Minen",
+    "moves": "Züge"
+  },
+  "cell": {
+    "label": "Reihe {{row}}, Spalte {{col}}: {{content}}",
+    "hidden": "verdeckt",
+    "flag": "markiert",
+    "mine": "Mine",
+    "clear": "frei",
+    "number_one": "{{count}} Mine in der Nähe",
+    "number_other": "{{count}} Minen in der Nähe"
+  },
+  "flag": {
+    "mode": "Flagge",
+    "on": "An",
+    "off": "Aus"
+  },
+  "hint": "Decke jedes Feld auf, unter dem keine Mine liegt. Eine Zahl sagt, unter wie vielen Feldern ringsum eine liegt. Tippe, um ein Feld aufzudecken; halte gedrückt, klicke rechts oder schalte Flagge ein, um eine Mine zu markieren. Tippe auf eine Zahl, deren Minen alle markiert sind, um den Rest ringsum aufzudecken. Mit der Tastatur: Bewege dich mit den Pfeiltasten, decke mit der Leertaste auf und markiere mit F.",
+  "cleared": "Geräumt in {{time}}!",
+  "blast": "Bumm! Das war eine Mine, und dieser Durchgang ist vorbei.",
+  "ended": "Dieser Durchgang ist vorbei.",
+  "announce_one": "Noch {{count}} Feld aufzudecken.",
+  "announce_other": "Noch {{count}} Felder aufzudecken.",
+  "chart": {
+    "cleared_one": "Geräumt mit {{count}} Zug",
+    "cleared_other": "Geräumt mit {{count}} Zügen",
+    "blast_one": "Bumm! {{cleared}} von {{count}} aufgedeckt",
+    "blast_other": "Bumm! {{cleared}} von {{count}} aufgedeckt",
+    "unfinished_one": "{{cleared}} von {{count}} Feld aufgedeckt",
+    "unfinished_other": "{{cleared}} von {{count}} Feldern aufgedeckt"
+  }
+}

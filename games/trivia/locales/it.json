@@ -15,7 +15,7 @@
     "wrong": "Stavolta no."
   },
   "tag": {
-    "correct": "giusta",
+    "correct": "risposta giusta",
     "yourPick": "la tua scelta"
   },
   "answer": "{{name}}: {{answer}}",
@@ -24,6 +24,6 @@
   "finalScoreboard": "Classifica finale",
   "winner": "vincitore",
   "history": {
-    "answer": "{{name}} ha risposto al round {{round}}"
+    "answer": "{{name}} ha risposto alla domanda {{round}}"
   }
 }

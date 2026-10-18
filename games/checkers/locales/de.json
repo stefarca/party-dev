@@ -1,0 +1,53 @@
+{
+  "name": "Dame",
+  "you": "{{name}} (du)",
+  "loading": "Brett wird geladen…",
+  "side": {
+    "red": "Rot",
+    "blue": "Blau"
+  },
+  "left_one": "{{count}} Stein",
+  "left_other": "{{count}} Steine",
+  "board": {
+    "red": "Damebrett, {{size}} mal {{size}}, Rot unten",
+    "blue": "Damebrett, {{size}} mal {{size}}, Blau unten"
+  },
+  "piece": {
+    "red": {
+      "man": "roter Stein",
+      "king": "rote Dame"
+    },
+    "blue": {
+      "man": "blauer Stein",
+      "king": "blaue Dame"
+    },
+    "yours": "{{piece}} (gehört dir)"
+  },
+  "square": {
+    "position": "Reihe {{row}}, Spalte {{column}}",
+    "empty": "leer",
+    "pickedUp": "aufgenommen",
+    "jumpHere": "hierher springen",
+    "moveHere": "hierher ziehen",
+    "canMove": "kann ziehen",
+    "beingJumped": "wird übersprungen",
+    "lastMove": "Teil des letzten Zugs",
+    "capturedLastMove": "im letzten Zug geschlagen"
+  },
+  "status": {
+    "keepJumping": "Spring weiter — wähle das nächste Zielfeld.",
+    "pickJump": "Wähle, wohin du springst.",
+    "pickMove": "Wähle, wohin du ziehst.",
+    "mustJump": "Du bist dran — du musst schlagen.",
+    "pickPiece": "Du bist dran — wähle einen Stein zum Ziehen.",
+    "waitingFor": "Warte auf {{name}}…",
+    "finished": "Partie beendet."
+  },
+  "quietDraw_one": "Schon länger nichts geschlagen und kein Stein gezogen: Ohne beides endet die Partie in {{count}} weiteren Zug remis.",
+  "quietDraw_other": "Schon länger nichts geschlagen und kein Stein gezogen: Ohne beides endet die Partie in {{count}} weiteren Zügen remis.",
+  "history": {
+    "move": "{{name}} zog von {{from}} nach {{to}}",
+    "jump_one": "{{name}} sprang von {{from}} nach {{to}} und schlug {{count}} Stein",
+    "jump_other": "{{name}} sprang von {{from}} nach {{to}} und schlug {{count}} Steine"
+  }
+}

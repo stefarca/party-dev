@@ -1,0 +1,29 @@
+{
+  "name": "Quiz",
+  "you": "{{name}} (du)",
+  "loading": "Frage wird geladen…",
+  "round": "Frage {{round}} von {{total}}",
+  "choices": "Antwortmöglichkeiten",
+  "answered_one": "{{count}} von {{total}} hat geantwortet",
+  "answered_other": "{{count}} von {{total}} haben geantwortet",
+  "answeredLocked_one": "{{count}} von {{total}} hat geantwortet — deine Antwort ist eingeloggt.",
+  "answeredLocked_other": "{{count}} von {{total}} haben geantwortet — deine Antwort ist eingeloggt.",
+  "leading": "vorn",
+  "reveal": {
+    "correct": "Richtig!",
+    "timedOut": "Deine Zeit ist abgelaufen.",
+    "wrong": "Diesmal nicht."
+  },
+  "tag": {
+    "correct": "richtig",
+    "yourPick": "deine Wahl"
+  },
+  "answer": "{{name}}: {{answer}}",
+  "answerScored": "{{name}}: {{answer}} (+1)",
+  "noAnswer": "keine Antwort",
+  "finalScoreboard": "Endstand",
+  "winner": "Sieger",
+  "history": {
+    "answer": "{{name}} hat Frage {{round}} beantwortet"
+  }
+}

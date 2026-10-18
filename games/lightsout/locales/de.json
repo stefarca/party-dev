@@ -1,0 +1,31 @@
+{
+  "name": "Lichter aus",
+  "loading": "Spielfeld wird geladen…",
+  "board": "Lichter",
+  "stats": {
+    "label": "Dein Durchgang",
+    "presses": "Drücke",
+    "par": "Par",
+    "time": "Zeit"
+  },
+  "cell": {
+    "label": "Reihe {{row}}, Spalte {{col}}: {{state}}",
+    "on": "an",
+    "off": "aus"
+  },
+  "hint": "Schalte alle Lichter aus. Ein Druck auf ein Licht schaltet es um, dazu die Lichter darüber, darunter und daneben; ein zweiter Druck schaltet sie zurück. Par ist die kleinste Zahl an Drücken, die reicht. Mit der Tastatur: Bewege dich mit den Pfeiltasten und drücke mit Leertaste oder Enter.",
+  "solved_one": "Lichter aus mit {{count}} Druck!",
+  "solved_other": "Lichter aus mit {{count}} Drücken!",
+  "atPar": "Genau Par: Weniger geht nicht.",
+  "overPar_one": "{{count}} Druck über Par.",
+  "overPar_other": "{{count}} Drücke über Par.",
+  "ended": "Dieser Durchgang ist vorbei.",
+  "announce_one": "{{count}} Licht ist noch an.",
+  "announce_other": "{{count}} Lichter sind noch an.",
+  "chart": {
+    "par": "Par, in {{time}}",
+    "solved": "Gelöst in {{time}}",
+    "ended_one": "{{count}} Licht blieb an",
+    "ended_other": "{{count}} Lichter blieben an"
+  }
+}

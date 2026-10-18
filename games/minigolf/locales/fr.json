@@ -1,0 +1,71 @@
+{
+  "name": "Minigolf",
+  "loading": "Préparation du parcours…",
+  "field": "Trou {{hole}} sur {{holes}}, par {{par}}. Le trou est à {{distance}}, à {{bearing}}.",
+  "fieldHoled": "Trou {{hole}} sur {{holes}}, par {{par}}. La balle est dans le trou.",
+  "hazards": "Sur ce trou : {{list}}.",
+  "hazard": {
+    "water": "de l'eau",
+    "sand": "du sable",
+    "slope": "une pente",
+    "blocks": "des obstacles",
+    "ice": "de la glace",
+    "springs": "des ressorts"
+  },
+  "stats": {
+    "label": "Ton parcours",
+    "hole": "Trou",
+    "par": "Par",
+    "strokes": "Coups",
+    "total": "Écart"
+  },
+  "holeOf": "{{hole}}/{{holes}}",
+  "even": "Par",
+  "controls": "Ton coup",
+  "aim": "Visée",
+  "power": "Puissance",
+  "shoot": "Frapper",
+  "next": "Trou suivant",
+  "legend": {
+    "water": "Eau : un coup de pénalité",
+    "sand": "Le sable freine la balle",
+    "slope": "Pente : la balle roule dans le sens des flèches",
+    "ice": "Glace : la balle ralentit à peine",
+    "spring": "Ressort : renvoie la balle plus fort"
+  },
+  "cup": {
+    "ace": "Trou en un !",
+    "holed": "Dans le trou en {{strokes}} : {{term}}.",
+    "pickedUp": "Ramassée après {{max}} coups : ce trou compte {{cap}}.",
+    "splash": "Plouf ! Un coup de pénalité, et la balle revient à l'endroit d'où elle est partie.",
+    "rest": "Coup {{strokes}} : la balle s'est arrêtée à {{distance}} du trou."
+  },
+  "term": {
+    "eagle": "eagle",
+    "birdie": "birdie",
+    "par": "par",
+    "bogey": "bogey",
+    "double": "double bogey",
+    "triple": "triple bogey"
+  },
+  "scorecard": {
+    "caption": "Carte de score",
+    "hole": "Trou",
+    "par": "Par",
+    "score": "Coups",
+    "total": "Total",
+    "none": "–"
+  },
+  "hint": "Tire vers l'arrière depuis n'importe où sur le parcours et relâche pour frapper, ou règle la visée et la puissance ci-dessous. Une balle encore en jeu après {{max}} coups est ramassée, et le trou compte {{cap}}.",
+  "over": "Parcours terminé.",
+  "ended": "Cette partie est finie.",
+  "chart": {
+    "even": "Dans le par",
+    "under_one": "{{count}} sous le par",
+    "under_other": "{{count}} sous le par",
+    "over_one": "{{count}} au-dessus du par",
+    "over_other": "{{count}} au-dessus du par",
+    "ended_one": "Terminé après {{count}} trou",
+    "ended_other": "Terminé après {{count}} trous"
+  }
+}
