@@ -1,0 +1,39 @@
+{
+  "name": "Démineur",
+  "loading": "Chargement du champ de mines…",
+  "board": "Champ de mines",
+  "stats": {
+    "label": "Ta partie",
+    "time": "Temps",
+    "mines": "Mines",
+    "moves": "Coups"
+  },
+  "cell": {
+    "label": "Rangée {{row}}, colonne {{col}} : {{content}}",
+    "hidden": "cachée",
+    "flag": "drapeau",
+    "mine": "mine",
+    "clear": "dégagée",
+    "number_one": "{{count}} mine à côté",
+    "number_other": "{{count}} mines à côté"
+  },
+  "flag": {
+    "mode": "Drapeau",
+    "on": "Oui",
+    "off": "Non"
+  },
+  "hint": "Découvre toutes les cases qui ne cachent pas de mine. Un nombre indique combien de cases autour en cachent une. Touche une case pour la découvrir ; appui long, clic droit ou mode Drapeau pour marquer une mine. Touche un nombre dont toutes les mines sont marquées pour découvrir le reste autour. Au clavier, déplace-toi avec les flèches, découvre avec Espace et pose un drapeau avec F.",
+  "cleared": "Déminé en {{time}} !",
+  "blast": "Boum ! C'était une mine, et cette partie est finie.",
+  "ended": "Cette partie est finie.",
+  "announce_one": "Encore {{count}} case à découvrir.",
+  "announce_other": "Encore {{count}} cases à découvrir.",
+  "chart": {
+    "cleared_one": "Déminé en {{count}} coup",
+    "cleared_other": "Déminé en {{count}} coups",
+    "blast_one": "Boum ! {{cleared}} sur {{count}} découverte",
+    "blast_other": "Boum ! {{cleared}} sur {{count}} découvertes",
+    "unfinished_one": "{{cleared}} case sur {{count}} découverte",
+    "unfinished_other": "{{cleared}} cases sur {{count}} découvertes"
+  }
+}

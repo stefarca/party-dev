@@ -1,0 +1,25 @@
+{
+  "name": "Vier gewinnt",
+  "you": "{{name}} (du)",
+  "player": "Spieler {{number}}",
+  "loading": "Spielfeld wird geladen…",
+  "board": "Vier-gewinnt-Spielfeld, {{columns}} Spalten mal {{rows}} Reihen",
+  "disc": {
+    "0": "roter Spielstein mit Kreuz",
+    "1": "blauer Spielstein mit Kreis"
+  },
+  "lastMove": "{{disc}} (letzter Zug)",
+  "column": {
+    "full": "Spalte {{column}}, voll",
+    "drop": "Spielstein in Spalte {{column}} werfen",
+    "notYourTurn": "Spielstein in Spalte {{column}} werfen, du bist nicht dran"
+  },
+  "status": {
+    "finished": "Partie beendet.",
+    "yourTurn": "Du bist dran — wähle eine Spalte.",
+    "waiting": "Warte auf den anderen Spieler…"
+  },
+  "history": {
+    "drop": "{{name}} hat einen Spielstein in Spalte {{column}} geworfen"
+  }
+}

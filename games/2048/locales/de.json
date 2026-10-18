@@ -1,0 +1,28 @@
+{
+  "name": "2048",
+  "loading": "Spielfeld wird geladen…",
+  "board": "Spielfeld",
+  "empty": "leer",
+  "stats": {
+    "label": "Dein Durchgang",
+    "score": "Punkte",
+    "best": "Höchste Kachel",
+    "moves": "Züge"
+  },
+  "controls": "Kacheln schieben",
+  "move": {
+    "up": "Nach oben schieben",
+    "down": "Nach unten schieben",
+    "left": "Nach links schieben",
+    "right": "Nach rechts schieben"
+  },
+  "hint": "Wische über das Spielfeld oder nutze die Pfeiltasten, um alle Kacheln auf einmal zu schieben. Zwei gleiche Kacheln, die sich treffen, verschmelzen zu einer, und ihre Summe kommt auf deine Punkte.",
+  "over": "Keine Züge mehr: Das Spielfeld ist voll.",
+  "ended": "Dieser Durchgang ist vorbei.",
+  "goal": "2048! Mach weiter, deine Punkte zählen noch.",
+  "announce": "Punkte {{score}}, höchste Kachel {{best}}",
+  "chart": {
+    "detail_one": "Höchste Kachel {{tile}} · {{count}} Zug",
+    "detail_other": "Höchste Kachel {{tile}} · {{count}} Züge"
+  }
+}

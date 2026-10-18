@@ -1,0 +1,47 @@
+{
+  "name": "Mastermind",
+  "loading": "Chargement du plateau…",
+  "board": "Plateau",
+  "stats": {
+    "label": "Ta partie",
+    "guesses": "Essais",
+    "time": "Temps"
+  },
+  "color": {
+    "0": "Orange",
+    "1": "Bleu ciel",
+    "2": "Vert",
+    "3": "Jaune",
+    "4": "Bleu",
+    "5": "Rouge",
+    "6": "Rose"
+  },
+  "guesses": "Tes essais",
+  "guess": "Essai {{number}} : {{pegs}}. {{marks}}.",
+  "marks": "{{exact}} bien placés, {{near}} mal placés",
+  "draft": {
+    "label": "Essai {{number}} sur {{count}}",
+    "empty": "Emplacement {{slot}} : vide",
+    "filled": "Emplacement {{slot}} : {{color}}, appuie pour le retirer"
+  },
+  "palette": "Couleurs",
+  "erase": "Effacer",
+  "check": "Vérifier",
+  "legend": {
+    "exact": "bonne couleur, bien placée",
+    "near": "bonne couleur, mal placée"
+  },
+  "hint": "Choisis cinq couleurs différentes, puis vérifie ton essai. Tu as sept essais pour percer le code. Au clavier, tape 1 à 7 pour choisir une couleur, Retour arrière pour en retirer une et Entrée pour vérifier.",
+  "solved_one": "Code percé en {{count}} essai !",
+  "solved_other": "Code percé en {{count}} essais !",
+  "failed": "Plus d'essais. Le code reste secret : c'est le même pour tout le monde toute la journée.",
+  "ended": "Cette partie est finie.",
+  "announce": "Essai {{number}} : {{marks}}.",
+  "chart": {
+    "solved": "Percé en {{time}}",
+    "failed_one": "Pas percé en {{count}} essai",
+    "failed_other": "Pas percé en {{count}} essais",
+    "ended_one": "Terminé après {{count}} essai",
+    "ended_other": "Terminé après {{count}} essais"
+  }
+}

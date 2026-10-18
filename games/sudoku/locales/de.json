@@ -1,0 +1,41 @@
+{
+  "name": "Sudoku",
+  "loading": "Rätsel wird geladen…",
+  "board": "Rätsel",
+  "stats": {
+    "label": "Dein Durchgang",
+    "time": "Zeit",
+    "left": "Offen",
+    "moves": "Züge"
+  },
+  "cell": {
+    "label": "Reihe {{row}}, Spalte {{col}}: {{content}}",
+    "empty": "leer",
+    "notes": "leer, Notizen {{notes}}",
+    "given": "{{digit}}, vorgegeben",
+    "entered": "{{digit}}",
+    "clash": "{{content}}, Konflikt mit einer anderen {{digit}}"
+  },
+  "pad": {
+    "label": "Zahlen",
+    "digit_one": "{{digit}}, noch {{count}}",
+    "digit_other": "{{digit}}, noch {{count}}",
+    "notes": "Notizen",
+    "on": "An",
+    "off": "Aus",
+    "erase": "Löschen"
+  },
+  "hint": "Wähle ein Feld, dann eine Zahl. Jede Reihe, jede Spalte und jeder 3×3-Block braucht jede Zahl von 1 bis 9 genau einmal. Mit der Tastatur: Tippe die Ziffer, bewege dich mit den Pfeiltasten, lösche mit der Rücktaste und drück N für Notizen.",
+  "full": "Alle Felder sind gefüllt, aber einige Zahlen stehen im Konflikt.",
+  "solved": "Gelöst in {{time}}!",
+  "ended": "Dieser Durchgang ist vorbei.",
+  "announce_one": "Noch {{count}} Feld.",
+  "announce_other": "Noch {{count}} Felder.",
+  "announceClash": "Einige Zahlen stehen im Konflikt.",
+  "chart": {
+    "solved_one": "Gelöst mit {{count}} Zug",
+    "solved_other": "Gelöst mit {{count}} Zügen",
+    "unsolved_one": "{{filled}} von {{count}} Feld gefüllt",
+    "unsolved_other": "{{filled}} von {{count}} Feldern gefüllt"
+  }
+}

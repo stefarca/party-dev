@@ -205,7 +205,7 @@ async function forgetDeadEndpoint(db: D1Database, endpoint: string): Promise<voi
 // is how the app addresses a match, not how a person remembers one, and
 // "who is waiting on me" is what tells two games of the same thing apart.
 // `one`/`many` are the one-opponent and several-opponent forms, since the
-// verb agrees with them in Italian.
+// verb agrees with them in Italian, German and French.
 //
 // Exported for worker/push.test.ts, which fails when a language exists in
 // web/locales/ and not here — the one thing that keeps adding a language
@@ -248,6 +248,40 @@ export const COPY: Record<
       many: "{{names}} vogliono la rivincita. Tocca per entrare.",
     },
   },
+  de: {
+    turn: {
+      title: "Du bist dran bei {{game}}",
+      one: "{{names}} wartet auf deinen Zug.",
+      many: "{{names}} warten auf deinen Zug.",
+    },
+    lobbyExpiring: {
+      title: "Deine {{game}}-Lobby schließt in einer Stunde",
+      one: "{{names}} wartet darauf, dass du startest.",
+      many: "{{names}} warten darauf, dass du startest.",
+    },
+    rematch: {
+      title: "Revanche bei {{game}}?",
+      one: "{{names}} will eine Revanche. Tippe, um beizutreten.",
+      many: "{{names}} wollen eine Revanche. Tippe, um beizutreten.",
+    },
+  },
+  fr: {
+    turn: {
+      title: "À toi de jouer à {{game}}",
+      one: "{{names}} attend ton coup.",
+      many: "{{names}} attendent ton coup.",
+    },
+    lobbyExpiring: {
+      title: "Ton salon de {{game}} ferme dans une heure",
+      one: "{{names}} attend que tu lances la partie.",
+      many: "{{names}} attendent que tu lances la partie.",
+    },
+    rematch: {
+      title: "Revanche à {{game}} ?",
+      one: "{{names}} veut sa revanche. Touche pour rejoindre.",
+      many: "{{names}} veulent leur revanche. Touche pour rejoindre.",
+    },
+  },
 };
 
 // Notifications about the player's own account rather than a match: a device
@@ -277,6 +311,26 @@ export const ACCOUNT_COPY: Record<
     signedIn: {
       title: "Nuovo accesso a {{nickname}}",
       body: "{{device}} è appena entrato come te. Non sei tu? Tocca per farlo uscire.",
+    },
+  },
+  de: {
+    signInRequest: {
+      title: "Meldest du dich gerade an?",
+      body: "{{device}} möchte sich als {{nickname}} anmelden. Tippe, um es zu erlauben oder abzulehnen.",
+    },
+    signedIn: {
+      title: "Neue Anmeldung bei {{nickname}}",
+      body: "{{device}} hat sich gerade als du angemeldet. Nicht du? Tippe, um es abzumelden.",
+    },
+  },
+  fr: {
+    signInRequest: {
+      title: "C'est toi qui te connectes ?",
+      body: "{{device}} veut se connecter en tant que {{nickname}}. Touche pour autoriser ou refuser.",
+    },
+    signedIn: {
+      title: "Nouvelle connexion à {{nickname}}",
+      body: "{{device}} vient de se connecter en tant que toi. Ce n'est pas toi ? Touche pour le déconnecter.",
     },
   },
 };

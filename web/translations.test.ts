@@ -61,9 +61,11 @@ test.each([...GAME_CATALOG, ...DAILY_CATALOG])(
 
 test.each([
   [["it-IT", "en-US"], "it"],
-  [["fr-FR", "IT"], "it"],
+  [["pt-BR", "IT"], "it"],
+  [["de-AT", "en-US"], "de"],
+  [["fr-CA"], "fr"],
   [["en-GB"], "en"],
-  [["de-DE", "fr"], "en"],
+  [["pt-PT", "es"], "en"],
   [[], "en"],
 ])("matchLanguage(%j) picks %s", (preferred, expected) => {
   expect(matchLanguage(preferred)).toBe(expected);

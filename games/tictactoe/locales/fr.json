@@ -1,0 +1,22 @@
+{
+  "name": "Morpion",
+  "you": "{{name}} (toi)",
+  "loading": "Chargement de la grille…",
+  "board": "Grille de morpion, {{size}} sur {{size}}",
+  "square": {
+    "position": "Rangée {{row}}, colonne {{column}}",
+    "empty": "{{square}}, vide",
+    "emptyPlayable": "{{square}}, vide — place ton {{mark}}",
+    "taken": "{{square}}, {{mark}}",
+    "lastMove": "dernier coup",
+    "winningLine": "ligne gagnante"
+  },
+  "status": {
+    "yourTurn": "À toi de jouer — place ton {{mark}}.",
+    "waitingFor": "En attente de {{name}}…",
+    "finished": "Partie terminée."
+  },
+  "history": {
+    "place": "{{name}} a placé {{mark}} en rangée {{row}}, colonne {{column}}"
+  }
+}

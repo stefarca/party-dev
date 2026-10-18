@@ -187,6 +187,8 @@ describe("wording", () => {
     expect(composeNudge("en", match).title).toBe("Your turn in Connect 4");
     // The same game, from the same locale files the client reads.
     expect(composeNudge("it", match).title).toBe("Tocca a te in Forza 4");
+    expect(composeNudge("de", match).title).toBe("Du bist dran bei Vier gewinnt");
+    expect(composeNudge("fr", match).title).toBe("À toi de jouer à Puissance 4");
   });
 
   // The code is how the app addresses a match, not something a player reads.
@@ -210,7 +212,7 @@ describe("wording", () => {
 
   it("falls back to English for a language it has no copy for, and for none at all", () => {
     const english = composeNudge("en", match);
-    expect(composeNudge("de", match)).toEqual(english);
+    expect(composeNudge("xx", match)).toEqual(english);
     expect(composeNudge(null, match)).toEqual(english);
   });
 

@@ -56,14 +56,14 @@ describe("previewLanguage", () => {
   });
 
   it("falls back to the first language the crawler accepts that the app speaks", () => {
-    expect(previewLanguage(null, "fr-FR, it-IT;q=0.8, en;q=0.5")).toBe("it");
+    expect(previewLanguage(null, "pt-PT, it-IT;q=0.8, en;q=0.5")).toBe("it");
     expect(previewLanguage(null, "en;q=0.4, it;q=0.9")).toBe("it");
     expect(previewLanguage(null, "it;q=0, en")).toBe("en");
   });
 
   it("ends at English, whatever it is given", () => {
     expect(previewLanguage("xx", null)).toBe("en");
-    expect(previewLanguage(null, "fr")).toBe("en");
+    expect(previewLanguage(null, "pt")).toBe("en");
     expect(previewLanguage(null, "")).toBe("en");
   });
 

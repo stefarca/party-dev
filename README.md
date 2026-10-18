@@ -17,7 +17,7 @@ with play and win streaks, a record game by game, head-to-head rivalries ("you'r
 Luca"), the week's champions and a wall of shame for whoever keeps everyone waiting, tiered
 achievements (announced the moment you earn one, and kept through a record reset), a weekly
 recap of all of that posted to Slack every Monday, the whole UI in
-English or Italian (picked from the browser's languages, switchable from the header), and an
+English, Italian, German or French (picked from the browser's languages, switchable from the header), and an
 installable PWA build so the app can live on a phone's home screen like any other game. See
 [`games/README.md`](./games/README.md) for how to add another game.
 

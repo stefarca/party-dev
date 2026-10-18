@@ -1,0 +1,76 @@
+{
+  "name": "Kniffel",
+  "loading": "Würfel werden geladen…",
+  "stats": {
+    "label": "Dein Durchgang",
+    "round": "Runde",
+    "score": "Punkte"
+  },
+  "dice": "Würfel",
+  "die": {
+    "face": "Würfel {{number}}: {{face}}",
+    "blank": "Würfel {{number}}: noch nicht geworfen"
+  },
+  "held": "Gehalten",
+  "roll": {
+    "action": "Würfeln",
+    "label_one": "Würfeln (noch {{count}})",
+    "label_other": "Würfeln (noch {{count}})",
+    "left_one": "noch {{count}}",
+    "left_other": "noch {{count}}"
+  },
+  "card": {
+    "label": "Spielblock",
+    "upper": "Oberer Teil",
+    "lower": "Unterer Teil",
+    "choose": "{{points}} bei {{box}} eintragen",
+    "open": "offen",
+    "subtotal": "Zwischensumme",
+    "bonus": "Bonus",
+    "yahtzeeBonus": "Kniffel-Bonus",
+    "total": "Gesamt"
+  },
+  "box": {
+    "ones": "Einer",
+    "twos": "Zweier",
+    "threes": "Dreier",
+    "fours": "Vierer",
+    "fives": "Fünfer",
+    "sixes": "Sechser",
+    "threeKind": "Dreierpasch",
+    "fourKind": "Viererpasch",
+    "fullHouse": "Full House",
+    "smallStraight": "Kleine Straße",
+    "largeStraight": "Große Straße",
+    "yahtzee": "Kniffel",
+    "chance": "Chance"
+  },
+  "hint": "Würfle bis zu dreimal pro Runde und halte dazwischen die Würfel, die du behalten willst; trag sie dann in ein offenes Feld ein. Nach dreizehn Runden ist der Block voll, und 63 oder mehr im oberen Teil bringen 35 Bonuspunkte. Mit der Tastatur: 1 bis 5 halten die Würfel, R würfelt.",
+  "next": "Runde {{round}} von {{count}}: Würfle.",
+  "hold": "Tippe Würfel an, um sie zu halten, und würfle noch einmal, oder trag sie jetzt ein.",
+  "pick": "Kein Wurf mehr: Trag die Würfel in ein offenes Feld ein.",
+  "joker": {
+    "upper": "Joker! Dieser Kniffel muss bei {{box}} eingetragen werden.",
+    "lower": "Joker! Jedes offene Feld im unteren Teil wertet diesen Kniffel voll.",
+    "zero": "Joker! Dieser Kniffel muss mit null in ein offenes Feld im oberen Teil."
+  },
+  "yahtzee": "Kniffel!",
+  "yahtzeeBonus": "Kniffel! Dazu gibt es 100 Bonuspunkte.",
+  "final_one": "Block voll: {{count}} Punkt!",
+  "final_other": "Block voll: {{count}} Punkte!",
+  "ended": "Dieser Durchgang ist vorbei.",
+  "announce": {
+    "roll": "Wurf {{number}}: {{dice}}.",
+    "scored": "{{points}} bei {{box}}."
+  },
+  "chart": {
+    "bonus_zero": "Bonus oben",
+    "bonus_one": "Bonus oben · {{count}} Kniffel",
+    "bonus_other": "Bonus oben · {{count}} Kniffel",
+    "plain_zero": "Alle Felder gefüllt",
+    "plain_one": "{{count}} Kniffel",
+    "plain_other": "{{count}} Kniffel",
+    "ended_one": "Beendet mit {{count}} leeren Feld",
+    "ended_other": "Beendet mit {{count}} leeren Feldern"
+  }
+}

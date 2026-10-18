@@ -1,0 +1,53 @@
+{
+  "name": "Dames",
+  "you": "{{name}} (toi)",
+  "loading": "Chargement du damier…",
+  "side": {
+    "red": "Rouge",
+    "blue": "Bleu"
+  },
+  "left_one": "{{count}} pion",
+  "left_other": "{{count}} pions",
+  "board": {
+    "red": "Damier, {{size}} sur {{size}}, rouge en bas",
+    "blue": "Damier, {{size}} sur {{size}}, bleu en bas"
+  },
+  "piece": {
+    "red": {
+      "man": "pion rouge",
+      "king": "dame rouge"
+    },
+    "blue": {
+      "man": "pion bleu",
+      "king": "dame bleue"
+    },
+    "yours": "{{piece}} (à toi)"
+  },
+  "square": {
+    "position": "Rangée {{row}}, colonne {{column}}",
+    "empty": "vide",
+    "pickedUp": "sélectionné",
+    "jumpHere": "sauter ici",
+    "moveHere": "aller ici",
+    "canMove": "peut bouger",
+    "beingJumped": "va être pris",
+    "lastMove": "fait partie du dernier coup",
+    "capturedLastMove": "pris au dernier coup"
+  },
+  "status": {
+    "keepJumping": "Continue la rafle — choisis la prochaine case d'arrivée.",
+    "pickJump": "Choisis où sauter.",
+    "pickMove": "Choisis où aller.",
+    "mustJump": "À toi de jouer — la prise est obligatoire.",
+    "pickPiece": "À toi de jouer — choisis un pion à déplacer.",
+    "waitingFor": "En attente de {{name}}…",
+    "finished": "Partie terminée."
+  },
+  "quietDraw_one": "Ni prise ni pion déplacé depuis un moment : sans l'un ou l'autre, la partie sera nulle dans {{count}} tour.",
+  "quietDraw_other": "Ni prise ni pion déplacé depuis un moment : sans l'un ou l'autre, la partie sera nulle dans {{count}} tours.",
+  "history": {
+    "move": "{{name}} est allé de {{from}} à {{to}}",
+    "jump_one": "{{name}} a sauté de {{from}} à {{to}} en prenant {{count}} pion",
+    "jump_other": "{{name}} a sauté de {{from}} à {{to}} en prenant {{count}} pions"
+  }
+}

@@ -1,0 +1,47 @@
+{
+  "name": "Mastermind",
+  "loading": "Spielfeld wird geladen…",
+  "board": "Spielfeld",
+  "stats": {
+    "label": "Dein Durchgang",
+    "guesses": "Versuche",
+    "time": "Zeit"
+  },
+  "color": {
+    "0": "Orange",
+    "1": "Himmelblau",
+    "2": "Grün",
+    "3": "Gelb",
+    "4": "Blau",
+    "5": "Rot",
+    "6": "Rosa"
+  },
+  "guesses": "Deine Versuche",
+  "guess": "Versuch {{number}}: {{pegs}}. {{marks}}.",
+  "marks": "{{exact}} richtig platziert, {{near}} falsch platziert",
+  "draft": {
+    "label": "Versuch {{number}} von {{count}}",
+    "empty": "Platz {{slot}}: leer",
+    "filled": "Platz {{slot}}: {{color}}, drücken zum Entfernen"
+  },
+  "palette": "Farben",
+  "erase": "Löschen",
+  "check": "Prüfen",
+  "legend": {
+    "exact": "richtige Farbe, richtiger Platz",
+    "near": "richtige Farbe, falscher Platz"
+  },
+  "hint": "Wähle fünf verschiedene Farben und prüfe dann deinen Versuch. Du hast sieben Versuche, um den Code zu knacken. Mit der Tastatur: 1 bis 7 wählt eine Farbe, Rücktaste nimmt eine zurück und Enter prüft.",
+  "solved_one": "Geknackt mit {{count}} Versuch!",
+  "solved_other": "Geknackt mit {{count}} Versuchen!",
+  "failed": "Keine Versuche mehr. Der Code bleibt geheim: Er gilt den ganzen Tag für alle.",
+  "ended": "Dieser Durchgang ist vorbei.",
+  "announce": "Versuch {{number}}: {{marks}}.",
+  "chart": {
+    "solved": "Geknackt in {{time}}",
+    "failed_one": "Nicht geknackt mit {{count}} Versuch",
+    "failed_other": "Nicht geknackt mit {{count}} Versuchen",
+    "ended_one": "Beendet nach {{count}} Versuch",
+    "ended_other": "Beendet nach {{count}} Versuchen"
+  }
+}

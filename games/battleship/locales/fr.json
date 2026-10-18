@@ -1,0 +1,79 @@
+{
+  "name": "Bataille navale",
+  "you": "{{name}} (toi)",
+  "loading": "Chargement des flottes…",
+  "ship": {
+    "carrier": "Porte-avions",
+    "battleship": "Cuirassé",
+    "cruiser": "Croiseur",
+    "submarine": "Sous-marin",
+    "destroyer": "Torpilleur"
+  },
+  "theShip": {
+    "carrier": "le porte-avions",
+    "battleship": "le cuirassé",
+    "cruiser": "le croiseur",
+    "submarine": "le sous-marin",
+    "destroyer": "le torpilleur"
+  },
+  "squares_one": "{{count}} case",
+  "squares_other": "{{count}} cases",
+  "afloat_one": "{{count}} navire à flot",
+  "afloat_other": "{{count}} navires à flot",
+  "board": {
+    "yours": "Tes eaux",
+    "enemy": "Eaux ennemies",
+    "of": "Eaux de {{name}}"
+  },
+  "cell": {
+    "empty": "vide",
+    "unknown": "pas encore visée",
+    "miss": "à l'eau",
+    "hit": "touché",
+    "sunk": "coulé",
+    "lastShot": "dernier tir",
+    "fireHere": "tirer ici",
+    "placeHere": "placer {{ship}} ici"
+  },
+  "dock": {
+    "title": "Ta flotte",
+    "placed": "placé",
+    "notPlaced": "à placer",
+    "rotate": "Pivoter",
+    "rotateLabel": "Pivoter (actuellement {{direction}})",
+    "horizontal": "à l'horizontale",
+    "vertical": "à la verticale",
+    "random": "Au hasard",
+    "clear": "Tout retirer",
+    "ready": "Prêt"
+  },
+  "status": {
+    "placeHorizontal": "Place {{ship}} : choisis la case de son extrémité gauche.",
+    "placeVertical": "Place {{ship}} : choisis la case de son extrémité haute.",
+    "pickShip": "Flotte placée — appuie sur Prêt, ou choisis un navire pour le déplacer.",
+    "ready": "Ta flotte est prête. En attente que {{name}} place la sienne…",
+    "placing": "En attente du placement des flottes…",
+    "yourShot": "À toi de jouer — choisis une case dans les eaux ennemies pour tirer.",
+    "waitingShot": "En attente du tir de {{name}}…"
+  },
+  "lastShot": {
+    "youMiss": "Tu as tiré en {{cell}} : à l'eau.",
+    "youHit": "Tu as tiré en {{cell}} : touché !",
+    "youSunk": "Tu as tiré en {{cell}} et coulé {{ship}} !",
+    "theyMiss": "{{name}} a tiré en {{cell}} : à l'eau.",
+    "theyHit": "{{name}} a tiré en {{cell}} : touché !",
+    "theySunk": "{{name}} a tiré en {{cell}} et coulé {{ship}} !"
+  },
+  "history": {
+    "placed": "{{name}} a placé sa flotte",
+    "miss": "{{name}} a tiré en {{cell}} : à l'eau",
+    "hit": "{{name}} a tiré en {{cell}} : touché",
+    "sunk": {
+      "carrier": "{{name}} a tiré en {{cell}} et coulé le porte-avions",
+      "battleship": "{{name}} a tiré en {{cell}} et coulé le cuirassé",
+      "cruiser": "{{name}} a tiré en {{cell}} et coulé le croiseur",
+      "submarine": "{{name}} a tiré en {{cell}} et coulé le sous-marin",
+      "destroyer": "{{name}} a tiré en {{cell}} et coulé le torpilleur"
+    }
+  }
+}

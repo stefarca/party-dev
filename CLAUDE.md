@@ -507,7 +507,7 @@ The card's text is set in Fredoka and Nunito, so render it with both fonts insta
   lookup of complete class strings, or set a CSS variable inline. `.mcp.json` configures the
   `heroui-react` MCP server for HeroUI v3 component docs.
 - UI strings go through i18next + react-i18next, set up in `web/i18n.ts`. English is the source
-  and fallback; Italian ships too. `web/locales/<lng>.json` is the `common` namespace, and
+  and fallback; Italian, German and French ship too. `web/locales/<lng>.json` is the `common` namespace, and
   `games/<id>/locales/<lng>.json` is namespace `<id>`, which includes the game's display `name`.
   `web/translations.ts` globs both eagerly, so adding a language or a game's strings means adding
   files and nothing else; the pickable languages are those with a `web/locales/<lng>.json`. Keys

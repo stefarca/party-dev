@@ -1,0 +1,22 @@
+{
+  "name": "Tic-Tac-Toe",
+  "you": "{{name}} (du)",
+  "loading": "Spielfeld wird geladen…",
+  "board": "Tic-Tac-Toe-Spielfeld, {{size}} mal {{size}}",
+  "square": {
+    "position": "Reihe {{row}}, Spalte {{column}}",
+    "empty": "{{square}}, leer",
+    "emptyPlayable": "{{square}}, leer — setz dein {{mark}}",
+    "taken": "{{square}}, {{mark}}",
+    "lastMove": "letzter Zug",
+    "winningLine": "Siegreihe"
+  },
+  "status": {
+    "yourTurn": "Du bist dran — setz dein {{mark}}.",
+    "waitingFor": "Warte auf {{name}}…",
+    "finished": "Partie beendet."
+  },
+  "history": {
+    "place": "{{name}} hat {{mark}} in Reihe {{row}}, Spalte {{column}} gesetzt"
+  }
+}

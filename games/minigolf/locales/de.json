@@ -1,0 +1,71 @@
+{
+  "name": "Minigolf",
+  "loading": "Die Bahn wird aufgebaut…",
+  "field": "Bahn {{hole}} von {{holes}}, Par {{par}}. Das Loch ist {{distance}} entfernt, bei {{bearing}}.",
+  "fieldHoled": "Bahn {{hole}} von {{holes}}, Par {{par}}. Der Ball ist im Loch.",
+  "hazards": "Auf dieser Bahn: {{list}}.",
+  "hazard": {
+    "water": "Wasser",
+    "sand": "Sand",
+    "slope": "eine Schräge",
+    "blocks": "Hindernisse",
+    "ice": "Eis",
+    "springs": "Federn"
+  },
+  "stats": {
+    "label": "Deine Runde",
+    "hole": "Bahn",
+    "par": "Par",
+    "strokes": "Schläge",
+    "total": "Zum Par"
+  },
+  "holeOf": "{{hole}}/{{holes}}",
+  "even": "Par",
+  "controls": "Dein Schlag",
+  "aim": "Richtung",
+  "power": "Kraft",
+  "shoot": "Schlagen",
+  "next": "Nächste Bahn",
+  "legend": {
+    "water": "Wasser: ein Strafschlag",
+    "sand": "Sand bremst den Ball",
+    "slope": "Schräge: Der Ball rollt in Pfeilrichtung",
+    "ice": "Eis: Der Ball wird kaum langsamer",
+    "spring": "Feder: Schießt den Ball stärker zurück"
+  },
+  "cup": {
+    "ace": "Hole-in-one!",
+    "holed": "Im Loch mit {{strokes}}: {{term}}.",
+    "pickedUp": "Nach {{max}} Schlägen aufgehoben: Diese Bahn zählt {{cap}}.",
+    "splash": "Platsch! Ein Strafschlag, und der Ball kommt zurück, wo er geschlagen wurde.",
+    "rest": "Schlag {{strokes}}: Der Ball liegt {{distance}} vom Loch entfernt."
+  },
+  "term": {
+    "eagle": "Eagle",
+    "birdie": "Birdie",
+    "par": "Par",
+    "bogey": "Bogey",
+    "double": "Doppel-Bogey",
+    "triple": "Triple-Bogey"
+  },
+  "scorecard": {
+    "caption": "Scorekarte",
+    "hole": "Bahn",
+    "par": "Par",
+    "score": "Schläge",
+    "total": "Gesamt",
+    "none": "–"
+  },
+  "hint": "Zieh von irgendwo auf der Bahn nach hinten und lass los, um zu schlagen, oder stell Richtung und Kraft unten ein. Ein Ball, der nach {{max}} Schlägen noch draußen ist, wird aufgehoben, und die Bahn zählt {{cap}}.",
+  "over": "Runde beendet.",
+  "ended": "Dieser Durchgang ist vorbei.",
+  "chart": {
+    "even": "Genau Par",
+    "under_one": "{{count}} unter Par",
+    "under_other": "{{count}} unter Par",
+    "over_one": "{{count}} über Par",
+    "over_other": "{{count}} über Par",
+    "ended_one": "Beendet nach {{count}} Bahn",
+    "ended_other": "Beendet nach {{count}} Bahnen"
+  }
+}

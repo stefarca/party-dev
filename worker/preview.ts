@@ -91,6 +91,58 @@ export const PREVIEW_COPY: Record<
       body: "La stessa sfida per tutti, una partita a testa. Tocca a te.",
     },
   },
+  de: {
+    lobby: {
+      title: "{{host}} lädt dich zu {{game}} ein",
+      titleNoHost: "Du bist zu {{game}} eingeladen",
+      seats: {
+        one: "Noch 1 Platz frei. Tippe, um beizutreten, bevor er weg ist.",
+        many: "Noch {{count}} Plätze frei. Tippe, um beizutreten, bevor sie weg sind.",
+      },
+      full: "Die Lobby ist voll, und die Partie startet gleich.",
+    },
+    match: {
+      title: "{{game}} auf Pimpom",
+      active: "{{names}} spielen gerade.",
+      done: "{{names}} haben diese Partie gespielt.",
+    },
+    daily: {
+      title: "{{game}} von heute auf Pimpom",
+      body: "Dasselbe Spielfeld für alle, ein Durchgang pro Person. Wie weit kommst du?",
+    },
+    challenge: {
+      title: "{{name}} hat {{score}} bei {{game}} erreicht. Schaffst du mehr?",
+      open: "{{name}} fordert dich bei {{game}} heraus",
+      ranked: "Platz {{rank}} von {{count}} in der Rangliste vom {{day}}.",
+      body: "Dasselbe Spielfeld für alle, ein Durchgang pro Person. Du bist dran.",
+    },
+  },
+  fr: {
+    lobby: {
+      title: "{{host}} t'invite à jouer à {{game}}",
+      titleNoHost: "Tu es invité à jouer à {{game}}",
+      seats: {
+        one: "Plus qu'1 place. Touche pour rejoindre avant qu'elle soit prise.",
+        many: "Plus que {{count}} places. Touche pour rejoindre avant qu'elles soient prises.",
+      },
+      full: "Le salon est complet, et la partie va commencer.",
+    },
+    match: {
+      title: "{{game}} sur Pimpom",
+      active: "{{names}} sont en train de jouer.",
+      done: "{{names}} ont joué cette partie.",
+    },
+    daily: {
+      title: "{{game}} du jour sur Pimpom",
+      body: "La même grille pour tout le monde, une partie chacun. Jusqu'où iras-tu ?",
+    },
+    challenge: {
+      title: "{{name}} a marqué {{score}} à {{game}}. Tu peux faire mieux ?",
+      open: "{{name}} te défie à {{game}}",
+      ranked: "#{{rank}} sur {{count}} au classement du {{day}}.",
+      body: "La même grille pour tout le monde, une partie chacun. À toi de jouer.",
+    },
+  },
 };
 
 function fill(template: string, values: Record<string, string | number>): string {

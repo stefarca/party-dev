@@ -1,0 +1,41 @@
+{
+  "name": "Sudoku",
+  "loading": "Chargement de la grille…",
+  "board": "Grille",
+  "stats": {
+    "label": "Ta partie",
+    "time": "Temps",
+    "left": "Restantes",
+    "moves": "Coups"
+  },
+  "cell": {
+    "label": "Rangée {{row}}, colonne {{col}} : {{content}}",
+    "empty": "vide",
+    "notes": "vide, notes {{notes}}",
+    "given": "{{digit}}, donné",
+    "entered": "{{digit}}",
+    "clash": "{{content}}, en conflit avec un autre {{digit}}"
+  },
+  "pad": {
+    "label": "Chiffres",
+    "digit_one": "{{digit}}, encore {{count}}",
+    "digit_other": "{{digit}}, encore {{count}}",
+    "notes": "Notes",
+    "on": "Oui",
+    "off": "Non",
+    "erase": "Effacer"
+  },
+  "hint": "Choisis une case, puis un chiffre. Chaque rangée, colonne et carré 3×3 doit contenir chaque chiffre de 1 à 9 une seule fois. Au clavier, tape le chiffre, déplace-toi avec les flèches, efface avec Retour arrière et appuie sur N pour les notes.",
+  "full": "Toutes les cases sont remplies, mais certains chiffres sont en conflit.",
+  "solved": "Résolu en {{time}} !",
+  "ended": "Cette partie est finie.",
+  "announce_one": "Encore {{count}} case.",
+  "announce_other": "Encore {{count}} cases.",
+  "announceClash": "Certains chiffres sont en conflit.",
+  "chart": {
+    "solved_one": "Résolu en {{count}} coup",
+    "solved_other": "Résolu en {{count}} coups",
+    "unsolved_one": "{{filled}} case sur {{count}} remplie",
+    "unsolved_other": "{{filled}} cases sur {{count}} remplies"
+  }
+}
