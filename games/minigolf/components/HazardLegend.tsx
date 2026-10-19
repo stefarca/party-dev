@@ -10,7 +10,8 @@ export function HazardLegend({ hole, ids }: { hole: Hole; ids: string }) {
   const { t } = useTranslation("minigolf");
   const ice = hole.ice ?? [];
   const springs = hole.springs ?? [];
-  const hazards = [hole.water, hole.sand, ice, hole.slopes, hole.blocks, springs];
+  const tunnels = hole.tunnels ?? [];
+  const hazards = [hole.water, hole.sand, ice, hole.slopes, hole.blocks, springs, tunnels];
   if (hazards.every((areas) => areas.length === 0)) return null;
   return (
     <div
@@ -23,6 +24,11 @@ export function HazardLegend({ hole, ids }: { hole: Hole; ids: string }) {
       {springs.length > 0 && (
         <Legend fill={`url(#${ids}-spring)`} back="var(--golf-spring)">
           {t("legend.spring")}
+        </Legend>
+      )}
+      {tunnels.length > 0 && (
+        <Legend fill={`url(#${ids}-tunnel)`} back="var(--golf-green)">
+          {t("legend.tunnel")}
         </Legend>
       )}
       {hole.slopes.length > 0 && (

@@ -4,7 +4,9 @@ import type { Player } from "../../e2e/fixtures";
 // Mini golf, played in a browser. Today's round comes from a seed the test
 // cannot know, so these specs never expect a particular hole: they read each
 // hole from the name a screen reader reads, and only ever play shots too soft
-// to reach water or the cup from any tee. Every player here prefers reduced
+// to reach water, a tunnel or the cup from any tee. Every shot strays a hair
+// from its aim, differently for every run, so they never expect two runs'
+// shots to land in the same place either. Every player here prefers reduced
 // motion, so a shot lands the moment its reply does instead of once the ball
 // has rolled. e2e/daily.spec.ts covers starting, ending and the chart.
 
@@ -33,7 +35,13 @@ function power(player: Player) {
 }
 
 function stat(player: Player, name: string) {
-  return player.page.getByRole("definition").filter({ hasText: name });
+  return player.page.getByRole("definition").filter({ hasText: new RegExp(`^${name}`) });
+}
+
+// The round's par, from the scorecard's Par row, whose last cell is its total.
+async function roundPar(player: Player): Promise<number> {
+  const row = await player.page.getByRole("row", { name: /^Par/ }).innerText();
+  return Number(row.trim().split(/\s+/).at(-1));
 }
 
 // Plays a shot at `percent` power, aimed wherever the sliders say, and waits
@@ -52,15 +60,17 @@ test("everyone plays the same round today", async ({ newPlayer }) => {
   const tee = await course(ada).getAttribute("aria-label");
   expect(tee).toMatch(/^Hole 1 of 6, par \d\. The cup is [\d.]+ m away, at \d+°\./);
   await expect(course(bob)).toHaveAttribute("aria-label", tee!);
+  await expect(bob.page.getByRole("row", { name: /^Par/ })).toHaveText(
+    (await ada.page.getByRole("row", { name: /^Par/ }).textContent())!,
+  );
   // Both start aimed at the cup.
   await expect(aim(bob)).toHaveValue((await aim(ada).inputValue()) as string);
 
-  // The same shot from the same tee stops in the same place.
+  // The same shot from the same tee goes about the same way.
   await putt(ada, 25, 1);
   await putt(bob, 25, 1);
-  const lie = await course(ada).getAttribute("aria-label");
-  expect(lie).not.toBe(tee);
-  await expect(course(bob)).toHaveAttribute("aria-label", lie!);
+  await expect(course(ada)).not.toHaveAttribute("aria-label", tee!);
+  await expect(course(bob)).not.toHaveAttribute("aria-label", tee!);
 });
 
 test("a shot is pulled back on the course, or set on the sliders", async ({ newPlayer }) => {
@@ -100,19 +110,38 @@ test("a shot is pulled back on the course, or set on the sliders", async ({ newP
   await expect(
     page.getByRole("status").filter({ hasText: /^Stroke 2: the ball stopped/ }),
   ).toHaveCount(1);
+
+  // The buttons beside each slider move it one step. A ball that has come to
+  // rest is aimed at the cup again, so the aim is set first.
+  await aim(ada).fill("90");
+  await page.getByRole("button", { name: "Harder" }).click();
+  await expect(power(ada)).toHaveAttribute("aria-valuetext", "13%");
+  await page.getByRole("button", { name: "Softer" }).click();
+  await page.getByRole("button", { name: "Softer" }).click();
+  await expect(power(ada)).toHaveAttribute("aria-valuetext", "11%");
+  await page.getByRole("button", { name: "Turn the aim clockwise" }).click();
+  await expect(aim(ada)).toHaveAttribute("aria-valuetext", "91°");
+  await page.getByRole("button", { name: "Turn the aim anticlockwise" }).click();
+  await page.getByRole("button", { name: "Turn the aim anticlockwise" }).click();
+  await expect(aim(ada)).toHaveAttribute("aria-valuetext", "89°");
 });
 
-test("five strokes pick the ball up, and six holes end the round", async ({ newPlayer }) => {
+test("three over par picks the ball up, and six holes end the round", async ({ newPlayer }) => {
   test.slow();
   const ada = await newPlayer("Ada", STILL);
   await startRun(ada);
   const { page } = ada;
+  const par = await roundPar(ada);
 
   for (let hole = 1; hole <= 6; hole++) {
     await expect(stat(ada, "Hole")).toHaveText(new RegExp(`Hole\\s*${hole}/6$`));
-    for (let stroke = 1; stroke <= 5; stroke++) await putt(ada, 5, stroke);
+    const holePar = Number((await stat(ada, "Par").innerText()).replace(/\D/g, ""));
+    // The softest putt the slider has: a few of them never reach anything.
+    for (let stroke = 1; stroke <= holePar + 3; stroke++) await putt(ada, 1, stroke);
     await expect(
-      page.getByText("Picked up after 5 strokes: this hole scores 6.").first(),
+      page
+        .getByText(`Picked up after ${holePar + 3} strokes: this hole scores ${holePar + 4}.`)
+        .first(),
     ).toBeVisible();
     await expect(shoot(ada)).toBeDisabled();
     if (hole < 6) {
@@ -134,8 +163,8 @@ test("five strokes pick the ball up, and six holes end the round", async ({ newP
   }
 
   await expect(page.getByRole("heading", { name: "Today's run is over" })).toBeVisible();
-  await expect(page.getByText("You scored 36.")).toBeVisible();
-  await expect(page.getByRole("row", { name: /^Score/ })).toHaveText(/6\s*6\s*6\s*6\s*6\s*6\s*36/);
+  await expect(page.getByText(`You scored ${par + 24}.`)).toBeVisible();
+  await expect(page.getByRole("row", { name: /^Score/ })).toHaveText(new RegExp(`${par + 24}$`));
   await expect(page.getByRole("button", { name: "Next hole" })).toHaveCount(0);
   await expect(shoot(ada)).toBeDisabled();
 });
@@ -147,8 +176,9 @@ test("a run that is over takes no more shots", async ({ newPlayer }) => {
   await ada.page.getByRole("alertdialog").getByRole("button", { name: "End run" }).click();
   await expect(ada.page.getByText("This run is over.")).toBeVisible();
 
-  // Every hole it never played counts six.
-  await expect(ada.page.getByText("You scored 36.")).toBeVisible();
+  // Every hole it never played counts four over its par.
+  const par = await roundPar(ada);
+  await expect(ada.page.getByText(`You scored ${par + 24}.`)).toBeVisible();
   await expect(shoot(ada)).toBeDisabled();
   await expect(aim(ada)).toBeDisabled();
   await expect(power(ada)).toBeDisabled();

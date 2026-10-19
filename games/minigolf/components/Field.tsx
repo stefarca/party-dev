@@ -1,14 +1,16 @@
 import { useRef, useState } from "react";
 
-import { BALL_R, FIELD_H, FIELD_W, MIN_POWER } from "../game";
+import { BALL_R, FIELD_H, FIELD_W } from "../game";
 import type { Hole, LastShot, Point } from "../game";
 import { bearing } from "../geometry";
+import { powerOf } from "../power";
 import { Aim } from "./Aim";
 import { Ball } from "./Ball";
 import { Course } from "./Course";
 import { Flag } from "./Flag";
 import { Flight } from "./Flight";
 import { Landing } from "./Landing";
+import { Traces } from "./Traces";
 
 // The field, as far as turning a pointer into a point on the course goes.
 // Reached through a narrow type of its own: the Worker's type-check of this
@@ -19,7 +21,8 @@ interface Box {
 }
 
 // How far back, in course units, a drag goes for a full-power shot, and how
-// short a drag is let go without shooting.
+// short a drag is let go without shooting. In between, how far it is pulled
+// is how far the ball will roll.
 const DRAG_FULL = 40;
 const DRAG_MIN = 3;
 
@@ -39,6 +42,7 @@ export function Field({
   angle,
   power,
   flying,
+  traces,
   landing,
   holed,
   onAim,
@@ -58,6 +62,8 @@ export function Field({
   angle: number;
   power: number;
   flying: LastShot | null;
+  // The hole's earlier shots, as their traces.
+  traces: readonly number[][][];
   landing: Point | null;
   holed: boolean;
   onAim: (angle: number, power: number) => void;
@@ -85,7 +91,7 @@ export function Field({
     if (length < DRAG_MIN) return null;
     return {
       angle: bearing([x, y], [start.x, start.y]),
-      power: Math.round(Math.min(1, Math.max(MIN_POWER, length / DRAG_FULL)) * 100) / 100,
+      power: powerOf(length / DRAG_FULL),
     };
   };
 
@@ -149,6 +155,7 @@ export function Field({
       >
         <Course hole={hole} ids={`${ids}-${holeIndex}`} />
       </g>
+      <Traces shots={traces} />
       {/* The drag itself, from where it started to where the pointer is now. */}
       {canShoot && pull && (
         <g stroke="var(--golf-glint)" strokeOpacity="0.55" strokeLinecap="round">
@@ -178,7 +185,13 @@ export function Field({
         />
       )}
       {flying ? (
-        <Flight key={shots} path={flying.path} shine={shine} onDone={onLanded} />
+        <Flight
+          key={shots}
+          path={flying.path}
+          jumps={flying.jumps ?? []}
+          shine={shine}
+          onDone={onLanded}
+        />
       ) : (
         ball && <Ball at={ball} shine={shine} />
       )}

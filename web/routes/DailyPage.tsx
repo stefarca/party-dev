@@ -422,6 +422,15 @@ function beats(order: DailyGameMeta["order"], a: number, b: number): boolean {
   return order === "asc" ? a < b : a > b;
 }
 
+// The run a challenge link names, for the game to set beside this player's
+// own: only a finished one, and only on today's board, which is the one on
+// screen.
+function rivalOf(standing: DailyStanding | null, today: string) {
+  const theirs = standing?.run;
+  if (!standing || !theirs || theirs.status !== "done" || standing.day !== today) return null;
+  return { nickname: theirs.nickname, detail: theirs.detail };
+}
+
 // What a challenge link asks: whose run, what it scored, and, once this
 // player's own run on the same board is over, how the two compare. A
 // challenge from another day is still shown, but can only be admired: today's
@@ -589,7 +598,14 @@ function DailyGame({ meta, practice }: { meta: DailyGameMeta; practice: boolean 
                 </div>
               }
             >
-              {Lazy && <Lazy view={run.view} status={run.status} send={send} />}
+              {Lazy && (
+                <Lazy
+                  view={run.view}
+                  status={run.status}
+                  send={send}
+                  rival={rivalOf(challenge, today.day)}
+                />
+              )}
             </Suspense>
           </GameErrorBoundary>
         </GameSurface>

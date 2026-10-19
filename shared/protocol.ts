@@ -446,6 +446,10 @@ export interface DailyUiProps {
   view: unknown;
   status: DailyRunStatus;
   send: (action: unknown) => void;
+  // A friend's finished run on this same board, when a challenge link opened
+  // the page: their name and the chart's line for their run, which a game
+  // may read to set that run beside this one. Absent otherwise.
+  rival?: { nickname: string; detail: ActionDescription | null } | null;
 }
 
 // Consumed by `MatchPage` / lazily-loaded per-game UI components
