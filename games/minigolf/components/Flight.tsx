@@ -10,13 +10,17 @@ const TRAIL = 10;
 
 // The ball rolling along `path`, played back in real time, with a trail
 // fading out behind it. Calls `onDone` once it has reached the end,
-// straight away when motion is reduced.
+// straight away when motion is reduced. At each of `jumps` a tunnel carried
+// the ball: it waits in the mouth for a moment, then is at the exit, with no
+// trail between the two.
 export function Flight({
   path,
+  jumps,
   shine,
   onDone,
 }: {
   path: number[];
+  jumps: readonly number[];
   shine: string;
   onDone: () => void;
 }) {
@@ -46,13 +50,16 @@ export function Flight({
   const last = path.length / 2 - 1;
   const i = Math.min(Math.floor(along), last);
   const j = Math.min(i + 1, last);
-  const f = along - i;
+  // Through a tunnel, the ball is not between its two ends.
+  const f = jumps.includes(j) ? 0 : along - i;
   const at: Point = [
     path[2 * i] + (path[2 * j] - path[2 * i]) * f,
     path[2 * i + 1] + (path[2 * j + 1] - path[2 * i + 1]) * f,
   ];
+  // The trail reaches back no further than the last tunnel's exit.
+  const first = Math.max(0, i - TRAIL, ...jumps.filter((jump) => jump <= i));
   const trail: Point[] = [];
-  for (let k = Math.max(0, i - TRAIL); k <= i; k++) trail.push([path[2 * k], path[2 * k + 1]]);
+  for (let k = first; k <= i; k++) trail.push([path[2 * k], path[2 * k + 1]]);
   trail.push(at);
 
   return (

@@ -1,17 +1,18 @@
-import { CUP_R } from "../game";
+import { CUP_R, TUNNEL_R } from "../game";
 import type { Hole } from "../game";
 import { SLOPE_TILE, WAVE_ROWS, WAVE_TILE, fallRotation, points, wavesFrom } from "../geometry";
 import { Drift } from "./Drift";
 import { Rim } from "./Rim";
 
 // The hole itself, drawn to scale: the turf inside its edge, and the water,
-// sand, ice, slopes, blocks and springs laid on it. Every fill it defines is named from
+// sand, ice, slopes, blocks, springs and tunnels laid on it. Every fill it defines is named from
 // `ids`, which keeps two courses on one page apart.
 
 export function Course({ hole, ids }: { hole: Hole; ids: string }) {
   const edge = points(hole.edge);
   const ice = hole.ice ?? [];
   const springs = hole.springs ?? [];
+  const tunnels = hole.tunnels ?? [];
   return (
     <>
       <defs>
@@ -116,6 +117,12 @@ export function Course({ hole, ids }: { hole: Hole; ids: string }) {
             />
           </pattern>
         ))}
+        {/* A tunnel's mouth: dark at the bottom, lit at its lip. */}
+        <radialGradient id={`${ids}-tunnel`} r="0.5">
+          <stop offset="0.55" stopColor="var(--board-hole)" />
+          <stop offset="0.8" stopColor="var(--golf-cup-liner)" />
+          <stop offset="1" stopColor="var(--golf-rail-side)" />
+        </radialGradient>
         <radialGradient id={`${ids}-deep`} r="0.7">
           <stop offset="0" stopColor="var(--golf-water-deep)" />
           <stop offset="1" stopColor="var(--golf-water)" />
@@ -328,6 +335,49 @@ export function Course({ hole, ids }: { hole: Hole; ids: string }) {
           />
           <circle cx={x} cy={y} r={r * 0.52} fill={`url(#${ids}-spring)`} />
           <circle cx={x} cy={y} r={r} fill="none" stroke="var(--golf-wall)" strokeWidth="0.6" />
+        </g>
+      ))}
+
+      {/* Tunnels: where each runs, dotted faintly underground, then its mouth, and a ring of
+          the rail's stuff round its exit. */}
+      {tunnels.map(({ from, to }, i) => (
+        <g key={i}>
+          <line
+            x1={from[0]}
+            y1={from[1]}
+            x2={to[0]}
+            y2={to[1]}
+            stroke="var(--golf-wall)"
+            strokeOpacity="0.35"
+            strokeWidth="1.2"
+            strokeDasharray="0.1 2.4"
+            strokeLinecap="round"
+          />
+          <circle cx={from[0]} cy={from[1]} r={TUNNEL_R} fill={`url(#${ids}-tunnel)`} />
+          <circle
+            cx={from[0]}
+            cy={from[1]}
+            r={TUNNEL_R}
+            fill="none"
+            stroke="var(--golf-wall)"
+            strokeWidth="0.5"
+          />
+          <circle
+            cx={to[0]}
+            cy={to[1]}
+            r={TUNNEL_R - 0.4}
+            fill="none"
+            stroke="var(--golf-rail)"
+            strokeWidth="0.9"
+          />
+          <circle
+            cx={to[0]}
+            cy={to[1]}
+            r={TUNNEL_R + 0.1}
+            fill="none"
+            stroke="var(--golf-wall)"
+            strokeWidth="0.4"
+          />
         </g>
       ))}
 

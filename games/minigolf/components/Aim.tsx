@@ -1,22 +1,24 @@
 import { BALL_R } from "../game";
 import type { Point } from "../game";
+import { reachOf } from "../power";
 
 // How long the aiming arrow is at no power and at full power.
 const ARROW_MIN = 6;
 const ARROW_MAX = 30;
 
-// The next shot, drawn from the ball: a line of dots as long as the shot is
-// hard, warming from white to hot as it gets harder, with a ring breathing
-// out from the ball to say it is ready.
+// The next shot, drawn from the ball: a line of dots as long as the shot
+// will roll, warming from white to hot as it gets harder, with a ring
+// breathing out from the ball to say it is ready.
 export function Aim({ ball, angle, power }: { ball: Point; angle: number; power: number }) {
   const radians = (angle * Math.PI) / 180;
   const dx = Math.sin(radians);
   const dy = -Math.cos(radians);
-  const length = ARROW_MIN + (ARROW_MAX - ARROW_MIN) * power;
+  const reach = reachOf(power);
+  const length = ARROW_MIN + (ARROW_MAX - ARROW_MIN) * reach;
   const tip: Point = [ball[0] + dx * length, ball[1] + dy * length];
   const dots: number[] = [];
   for (let d = BALL_R + 2; d < length - 2.5; d += 2.6) dots.push(d);
-  const heat = `color-mix(in oklab, var(--golf-aim-hot) ${Math.round(power * 100)}%, var(--golf-ball))`;
+  const heat = `color-mix(in oklab, var(--golf-aim-hot) ${Math.round(reach * 100)}%, var(--golf-ball))`;
   return (
     <g style={{ color: heat }}>
       <circle

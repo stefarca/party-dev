@@ -10,7 +10,8 @@
     "slope": "a slope",
     "blocks": "obstacles",
     "ice": "ice",
-    "springs": "springs"
+    "springs": "springs",
+    "tunnels": "a tunnel"
   },
   "stats": {
     "label": "Your round",
@@ -25,13 +26,20 @@
   "aim": "Aim",
   "power": "Power",
   "shoot": "Shoot",
+  "nudge": {
+    "anticlockwise": "Turn the aim anticlockwise",
+    "clockwise": "Turn the aim clockwise",
+    "softer": "Softer",
+    "harder": "Harder"
+  },
   "next": "Next hole",
   "legend": {
     "water": "Water: a penalty stroke",
     "sand": "Sand slows the ball",
     "slope": "Slope: rolls the way the arrows point",
     "ice": "Ice: the ball hardly slows",
-    "spring": "Spring: kicks the ball back harder"
+    "spring": "Spring: kicks the ball back harder",
+    "tunnel": "Tunnel: in one end, out the other"
   },
   "cup": {
     "ace": "Hole in one!",
@@ -41,6 +49,7 @@
     "rest": "Stroke {{strokes}}: the ball stopped {{distance}} from the cup."
   },
   "term": {
+    "albatross": "albatross",
     "eagle": "eagle",
     "birdie": "birdie",
     "par": "par",
@@ -56,7 +65,7 @@
     "total": "Total",
     "none": "–"
   },
-  "hint": "Drag back from anywhere on the course and let go to shoot, or set your aim and power below. A ball still out after {{max}} strokes is picked up, and the hole scores {{cap}}.",
+  "hint": "Drag back from anywhere on the course and let go to shoot, or set your aim and power below: power is how far the ball will roll on the flat. Your earlier shots on a hole stay on it, faintly. A ball still out after {{max}} strokes on this hole is picked up, and the hole scores {{cap}}.",
   "over": "Round complete.",
   "ended": "This run is over.",
   "chart": {

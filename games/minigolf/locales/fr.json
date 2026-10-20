@@ -10,7 +10,8 @@
     "slope": "une pente",
     "blocks": "des obstacles",
     "ice": "de la glace",
-    "springs": "des ressorts"
+    "springs": "des ressorts",
+    "tunnels": "un tunnel"
   },
   "stats": {
     "label": "Ton parcours",
@@ -25,13 +26,20 @@
   "aim": "Visée",
   "power": "Puissance",
   "shoot": "Frapper",
+  "nudge": {
+    "anticlockwise": "Tourner la visée dans le sens antihoraire",
+    "clockwise": "Tourner la visée dans le sens horaire",
+    "softer": "Plus doux",
+    "harder": "Plus fort"
+  },
   "next": "Trou suivant",
   "legend": {
     "water": "Eau : un coup de pénalité",
     "sand": "Le sable freine la balle",
     "slope": "Pente : la balle roule dans le sens des flèches",
     "ice": "Glace : la balle ralentit à peine",
-    "spring": "Ressort : renvoie la balle plus fort"
+    "spring": "Ressort : renvoie la balle plus fort",
+    "tunnel": "Tunnel : on entre d'un côté, on sort de l'autre"
   },
   "cup": {
     "ace": "Trou en un !",
@@ -41,6 +49,7 @@
     "rest": "Coup {{strokes}} : la balle s'est arrêtée à {{distance}} du trou."
   },
   "term": {
+    "albatross": "albatros",
     "eagle": "eagle",
     "birdie": "birdie",
     "par": "par",
@@ -56,7 +65,7 @@
     "total": "Total",
     "none": "–"
   },
-  "hint": "Tire vers l'arrière depuis n'importe où sur le parcours et relâche pour frapper, ou règle la visée et la puissance ci-dessous. Une balle encore en jeu après {{max}} coups est ramassée, et le trou compte {{cap}}.",
+  "hint": "Tire vers l'arrière depuis n'importe où sur le parcours et relâche pour frapper, ou règle la visée et la puissance ci-dessous : la puissance, c'est la distance que roule la balle sur le plat. Tes coups précédents sur un trou y restent, en pâle. Une balle encore en jeu après {{max}} coups sur ce trou est ramassée, et le trou compte {{cap}}.",
   "over": "Parcours terminé.",
   "ended": "Cette partie est finie.",
   "chart": {

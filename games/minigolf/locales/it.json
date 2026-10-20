@@ -10,7 +10,8 @@
     "slope": "una pendenza",
     "blocks": "ostacoli",
     "ice": "ghiaccio",
-    "springs": "molle"
+    "springs": "molle",
+    "tunnels": "un tunnel"
   },
   "stats": {
     "label": "Il tuo giro",
@@ -25,13 +26,20 @@
   "aim": "Mira",
   "power": "Forza",
   "shoot": "Tira",
+  "nudge": {
+    "anticlockwise": "Ruota la mira in senso antiorario",
+    "clockwise": "Ruota la mira in senso orario",
+    "softer": "Più piano",
+    "harder": "Più forte"
+  },
   "next": "Buca successiva",
   "legend": {
     "water": "Acqua: un colpo di penalità",
     "sand": "La sabbia rallenta la pallina",
     "slope": "Pendenza: si rotola dove puntano le frecce",
     "ice": "Ghiaccio: la pallina quasi non rallenta",
-    "spring": "Molla: rilancia la pallina più forte"
+    "spring": "Molla: rilancia la pallina più forte",
+    "tunnel": "Tunnel: entra da un lato, esce dall'altro"
   },
   "cup": {
     "ace": "Buca in uno!",
@@ -41,6 +49,7 @@
     "rest": "Colpo {{strokes}}: la pallina si è fermata a {{distance}} dalla buca."
   },
   "term": {
+    "albatross": "albatross",
     "eagle": "eagle",
     "birdie": "birdie",
     "par": "par",
@@ -56,7 +65,7 @@
     "total": "Totale",
     "none": "–"
   },
-  "hint": "Trascina all'indietro da un punto qualsiasi del percorso e rilascia per tirare, oppure imposta mira e forza qui sotto. Una pallina ancora fuori dopo {{max}} colpi viene raccolta, e la buca vale {{cap}}.",
+  "hint": "Trascina all'indietro da un punto qualsiasi del percorso e rilascia per tirare, oppure imposta mira e forza qui sotto: la forza è quanto rotola la pallina in piano. I tuoi tiri precedenti restano sulla buca, appena visibili. Una pallina ancora fuori dopo {{max}} colpi su questa buca viene raccolta, e la buca vale {{cap}}.",
   "over": "Giro completato.",
   "ended": "Questa partita è finita.",
   "chart": {

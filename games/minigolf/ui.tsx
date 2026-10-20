@@ -11,7 +11,7 @@ import { HazardLegend } from "./components/HazardLegend";
 import { Outcome } from "./components/Outcome";
 import { Scorecard } from "./components/Scorecard";
 import { ShotControls } from "./components/ShotControls";
-import { FIELD_H, FIELD_W, HOLE_CAP, MAX_STROKES } from "./game";
+import { FIELD_H, FIELD_W, capOf, limitOf } from "./game";
 import type { LastShot, MinigolfView, Point } from "./game";
 import { bearing, distance } from "./geometry";
 import type strings from "./locales/en.json";
@@ -26,7 +26,8 @@ declare module "i18next" {
 
 // The mini golf course: one hole at a time, drawn to scale, with the aim and
 // power of the next shot set by dragging back from the ball like a
-// slingshot, or on the two sliders below it. A shot goes to the server,
+// slingshot, or on the two sliders below it. The hole's earlier shots stay
+// on it, faintly, to aim the next one by. A shot goes to the server,
 // which alone rolls the ball, and comes back as the path the ball took; the
 // page plays that path back, then shows where the ball came to rest. A hole
 // the shot finished stays on screen, with what it scored, until its player
@@ -47,7 +48,16 @@ declare module "i18next" {
 const outcomeSide = ([x, y]: Point) =>
   y < FIELD_H * 0.6 ? "center" : x > FIELD_W / 2 ? "left" : "right";
 
-export default function MinigolfUi({ view, status, send }: DailyUiProps) {
+// The hole-by-hole cards a friend's run carries on its chart line, or null
+// when it carries none: a run from before the line carried them.
+function cardsOf(rival: DailyUiProps["rival"]): number[] | null {
+  const cards = rival?.detail?.values?.cards;
+  if (typeof cards !== "string") return null;
+  const parsed = cards === "" ? [] : cards.split(" ").map(Number);
+  return parsed.every((card) => Number.isInteger(card) && card > 0) ? parsed : null;
+}
+
+export default function MinigolfUi({ view, status, send, rival }: DailyUiProps) {
   const { t, i18n } = useTranslation("minigolf");
   const language = i18n.resolvedLanguage ?? "en";
   const v = view as MinigolfView | null;
@@ -71,6 +81,10 @@ export default function MinigolfUi({ view, status, send }: DailyUiProps) {
   const holding = flying ?? finished ?? (v.over ? v.last : null);
   const holeIndex = holding ? holding.hole : v.hole;
   const hole = v.course[holeIndex];
+  // The traces of the hole on screen, but for the shot still rolling.
+  const traced = v.traces?.hole === holeIndex ? v.traces.shots : [];
+  const traces = flying ? traced.slice(0, -1) : traced;
+  const rivalCards = cardsOf(rival);
   const strokes = holding ? holding.strokes : v.strokes;
   const lastEnd: Point | null = holding
     ? [holding.path[holding.path.length - 2], holding.path[holding.path.length - 1]]
@@ -134,6 +148,7 @@ export default function MinigolfUi({ view, status, send }: DailyUiProps) {
     hole.slopes.length > 0 && t("hazard.slope"),
     hole.blocks.length > 0 && t("hazard.blocks"),
     (hole.springs ?? []).length > 0 && t("hazard.springs"),
+    (hole.tunnels ?? []).length > 0 && t("hazard.tunnels"),
   ].filter((hazard): hazard is string => typeof hazard === "string");
   const where = {
     hole: holeIndex + 1,
@@ -167,7 +182,10 @@ export default function MinigolfUi({ view, status, send }: DailyUiProps) {
             term: t(`term.${termOf(shot.strokes, v.course[shot.hole].par)}`),
           });
     }
-    if (shot.card !== null) return t("cup.pickedUp", { max: MAX_STROKES, cap: HOLE_CAP });
+    if (shot.card !== null) {
+      const played = v.course[shot.hole];
+      return t("cup.pickedUp", { max: limitOf(played), cap: capOf(played) });
+    }
     if (shot.outcome === "water") return t("cup.splash");
     const end: Point = [shot.path[shot.path.length - 2], shot.path[shot.path.length - 1]];
     return t("cup.rest", { strokes: shot.strokes, distance: away(end) });
@@ -209,6 +227,7 @@ export default function MinigolfUi({ view, status, send }: DailyUiProps) {
           angle={angle}
           power={power}
           flying={flying}
+          traces={traces}
           landing={landing}
           holed={settled?.outcome === "holed"}
           onAim={(shotAngle, shotPower) => {
@@ -248,7 +267,11 @@ export default function MinigolfUi({ view, status, send }: DailyUiProps) {
         }}
       />
       <HazardLegend hole={hole} ids={`${ids}-${holeIndex}`} />
-      <Scorecard view={v} holeIndex={holeIndex} />
+      <Scorecard
+        view={v}
+        holeIndex={holeIndex}
+        rival={rival && rivalCards ? { nickname: rival.nickname, cards: rivalCards } : null}
+      />
       <StatusLine>
         {v.over
           ? t("over")
@@ -257,7 +280,7 @@ export default function MinigolfUi({ view, status, send }: DailyUiProps) {
             : settled?.outcome === "water" && !finished
               ? t("cup.splash")
               : v.shots === 0
-                ? t("hint", { max: MAX_STROKES, cap: HOLE_CAP })
+                ? t("hint", { max: limitOf(hole), cap: capOf(hole) })
                 : null}
       </StatusLine>
       <p role="status" className="sr-only">

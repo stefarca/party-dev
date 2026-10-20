@@ -10,7 +10,8 @@
     "slope": "eine Schräge",
     "blocks": "Hindernisse",
     "ice": "Eis",
-    "springs": "Federn"
+    "springs": "Federn",
+    "tunnels": "ein Tunnel"
   },
   "stats": {
     "label": "Deine Runde",
@@ -25,13 +26,20 @@
   "aim": "Richtung",
   "power": "Kraft",
   "shoot": "Schlagen",
+  "nudge": {
+    "anticlockwise": "Richtung gegen den Uhrzeigersinn drehen",
+    "clockwise": "Richtung im Uhrzeigersinn drehen",
+    "softer": "Sanfter",
+    "harder": "Fester"
+  },
   "next": "Nächste Bahn",
   "legend": {
     "water": "Wasser: ein Strafschlag",
     "sand": "Sand bremst den Ball",
     "slope": "Schräge: Der Ball rollt in Pfeilrichtung",
     "ice": "Eis: Der Ball wird kaum langsamer",
-    "spring": "Feder: Schießt den Ball stärker zurück"
+    "spring": "Feder: Schießt den Ball stärker zurück",
+    "tunnel": "Tunnel: an einem Ende rein, am anderen raus"
   },
   "cup": {
     "ace": "Hole-in-one!",
@@ -41,6 +49,7 @@
     "rest": "Schlag {{strokes}}: Der Ball liegt {{distance}} vom Loch entfernt."
   },
   "term": {
+    "albatross": "Albatross",
     "eagle": "Eagle",
     "birdie": "Birdie",
     "par": "Par",
@@ -56,7 +65,7 @@
     "total": "Gesamt",
     "none": "–"
   },
-  "hint": "Zieh von irgendwo auf der Bahn nach hinten und lass los, um zu schlagen, oder stell Richtung und Kraft unten ein. Ein Ball, der nach {{max}} Schlägen noch draußen ist, wird aufgehoben, und die Bahn zählt {{cap}}.",
+  "hint": "Zieh von irgendwo auf der Bahn nach hinten und lass los, um zu schlagen, oder stell Richtung und Kraft unten ein: Die Kraft ist, wie weit der Ball auf ebener Bahn rollt. Deine bisherigen Schläge auf einer Bahn bleiben blass darauf zu sehen. Ein Ball, der nach {{max}} Schlägen auf dieser Bahn noch draußen ist, wird aufgehoben, und die Bahn zählt {{cap}}.",
   "over": "Runde beendet.",
   "ended": "Dieser Durchgang ist vorbei.",
   "chart": {
