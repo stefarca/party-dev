@@ -256,6 +256,7 @@ export default function MinigolfUi({ view, status, send, rival }: DailyUiProps) 
       </div>
       <ShotControls
         angle={angle}
+        centre={ball ? bearing(ball, hole.cup) : 0}
         power={power}
         playing={playing}
         canShoot={canShoot}
