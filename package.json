@@ -55,7 +55,8 @@
     "wrangler": "^4.131.0"
   },
   "allowScripts": {
-    "esbuild": true,
-    "workerd": true
+    "esbuild@0.28.2": true,
+    "workerd@1.20261012.1": true,
+    "workerd@1.20261019.1": true
   }
 }
