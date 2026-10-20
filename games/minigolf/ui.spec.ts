@@ -90,19 +90,25 @@ test("a shot is pulled back on the course, or set on the sliders", async ({ newP
   await page.mouse.move(x, y);
   await page.mouse.down();
   await page.mouse.move(x, y + box.height / 12, { steps: 5 });
-  await expect(aim(ada)).toHaveValue("0");
   await expect(aim(ada)).toHaveAttribute("aria-valuetext", "0°");
   await page.mouse.up();
   await expect(stat(ada, "Strokes")).toHaveText(/Strokes\s*1$/);
   await expect(course(ada)).not.toHaveAttribute("aria-label", tee!);
 
-  // The aim slider is centred on straight up: left of centre aims left.
-  await aim(ada).fill("-90");
-  await expect(aim(ada)).toHaveAttribute("aria-valuetext", "-90°");
+  // The aim slider is centred on the cup, whichever way it lies, and finer
+  // there: its middle half turns the aim less than 90° either way, and its
+  // ends point straight away from the cup.
+  const cup = Number(/at (\d+)°/.exec((await course(ada).getAttribute("aria-label"))!)![1]);
+  const compass = (bearing: number) => `${(bearing + 360) % 360}°`;
+  await expect(aim(ada)).toHaveValue("0");
+  await expect(aim(ada)).toHaveAttribute("aria-valuetext", compass(cup));
+  await aim(ada).fill("90");
+  await expect(aim(ada)).toHaveAttribute("aria-valuetext", compass(cup + 68));
+  await aim(ada).fill("-180");
+  await expect(aim(ada)).toHaveAttribute("aria-valuetext", compass(cup - 180));
 
   // The sliders play the same shot a drag would.
-  await aim(ada).fill("90");
-  await expect(aim(ada)).toHaveAttribute("aria-valuetext", "90°");
+  await aim(ada).fill("0");
   await power(ada).fill("12");
   await expect(power(ada)).toHaveAttribute("aria-valuetext", "12%");
   await shoot(ada).click();
@@ -111,19 +117,19 @@ test("a shot is pulled back on the course, or set on the sliders", async ({ newP
     page.getByRole("status").filter({ hasText: /^Stroke 2: the ball stopped/ }),
   ).toHaveCount(1);
 
-  // The buttons beside each slider move it one step. A ball that has come to
-  // rest is aimed at the cup again, so the aim is set first.
-  await aim(ada).fill("90");
+  // The buttons beside each slider move it one step, from the cup the ball
+  // that has come to rest is aimed at again.
+  const next = Number(/at (\d+)°/.exec((await course(ada).getAttribute("aria-label"))!)![1]);
   await page.getByRole("button", { name: "Harder" }).click();
   await expect(power(ada)).toHaveAttribute("aria-valuetext", "13%");
   await page.getByRole("button", { name: "Softer" }).click();
   await page.getByRole("button", { name: "Softer" }).click();
   await expect(power(ada)).toHaveAttribute("aria-valuetext", "11%");
   await page.getByRole("button", { name: "Turn the aim clockwise" }).click();
-  await expect(aim(ada)).toHaveAttribute("aria-valuetext", "91°");
+  await expect(aim(ada)).toHaveAttribute("aria-valuetext", compass(next + 1));
   await page.getByRole("button", { name: "Turn the aim anticlockwise" }).click();
   await page.getByRole("button", { name: "Turn the aim anticlockwise" }).click();
-  await expect(aim(ada)).toHaveAttribute("aria-valuetext", "89°");
+  await expect(aim(ada)).toHaveAttribute("aria-valuetext", compass(next - 1));
 });
 
 test("three over par picks the ball up, and six holes end the round", async ({ newPlayer }) => {

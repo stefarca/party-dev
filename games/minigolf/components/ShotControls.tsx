@@ -9,11 +9,30 @@ import { Nudge } from "./Nudge";
 // type-check of this game has no DOM.
 const valueOf = (input: unknown) => (input as { value: string }).value;
 
-// The aim slider is centred on straight up, which is where most shots go:
-// right of centre turns clockwise, left of centre anticlockwise, and both ends
-// point straight down. The shot itself stays a compass bearing, 0 to 359.
-const toSlider = (bearing: number) => (bearing > 180 ? bearing - 360 : bearing);
-const toBearing = (slider: number) => (slider + 360) % 360;
+// The aim slider is centred on the cup, the way every lie starts aimed: right
+// of centre turns clockwise from it, left of centre anticlockwise, and both
+// ends point straight away from it, so the thumb starts in the middle on every
+// lie and only wraps round on a shot hit away from the cup. The track is finer
+// near its centre, where most aiming happens: its middle half turns the aim up
+// to 67.5° either way, the outer quarters the rest. A position is a step of
+// the track, 0 to ±STEPS; the shot itself stays a compass bearing, 0 to 360.
+const STEPS = 180;
+// The turn from the cup at a track position, and the position of a turn.
+const turnAt = (position: number) => {
+  const s = Math.abs(position) / STEPS;
+  return Math.sign(position) * 90 * (s + s * s);
+};
+const positionOf = (turn: number) =>
+  Math.sign(turn) * STEPS * ((Math.sqrt(1 + (8 * Math.abs(turn)) / 180) - 1) / 2);
+// A bearing as a turn from `centre`, in (-180, 180].
+const turnFrom = (centre: number, bearing: number) => {
+  const turn = (((bearing - centre) % 360) + 360) % 360;
+  return turn > 180 ? turn - 360 : turn;
+};
+const toBearing = (degrees: number) => ((degrees % 360) + 360) % 360;
+// A bearing as shown: whole degrees, 0 to 359, the way the course names the
+// cup's, so the two can be compared.
+const shown = (bearing: number) => Math.round(bearing) % 360;
 
 // The shot as two sliders, aim and power, and the button that hits it: the
 // way to play for anyone not dragging on the course. Power is set by reach,
@@ -21,6 +40,7 @@ const toBearing = (slider: number) => (slider + 360) % 360;
 // has a button either side that moves it by one step.
 export function ShotControls({
   angle,
+  centre,
   power,
   playing,
   canShoot,
@@ -30,6 +50,7 @@ export function ShotControls({
   shootRef,
 }: {
   angle: number;
+  centre: number;
   power: number;
   playing: boolean;
   canShoot: boolean;
@@ -47,7 +68,7 @@ export function ShotControls({
     unitDisplay: "narrow",
   });
   const percent = new Intl.NumberFormat(language, { style: "percent" });
-  const turn = toSlider(angle);
+  const position = Math.round(positionOf(turnFrom(centre, angle)));
   const reach = Math.round(reachOf(power) * 100);
   const setReach = (percent: number) =>
     onPower(powerOf(Math.min(100, Math.max(MIN_REACH * 100, percent)) / 100));
@@ -62,28 +83,30 @@ export function ShotControls({
           label={t("nudge.anticlockwise")}
           glyph="↺"
           disabled={!canShoot}
-          onClick={() => onAngle(toBearing(turn - 1))}
+          onClick={() => onAngle(toBearing(angle - 1))}
         />
         <input
           type="range"
-          min={-180}
-          max={180}
+          min={-STEPS}
+          max={STEPS}
           step={1}
-          value={turn}
+          value={position}
           aria-labelledby={`${id}-aim`}
           disabled={!canShoot}
-          aria-valuetext={degrees.format(turn)}
-          onChange={(event) => onAngle(toBearing(Number(valueOf(event.currentTarget))))}
+          aria-valuetext={degrees.format(shown(angle))}
+          onChange={(event) =>
+            onAngle(toBearing(centre + turnAt(Number(valueOf(event.currentTarget)))))
+          }
           className="h-11 min-w-0 flex-1 cursor-pointer accent-[var(--accent)] disabled:cursor-not-allowed"
         />
         <Nudge
           label={t("nudge.clockwise")}
           glyph="↻"
           disabled={!canShoot}
-          onClick={() => onAngle(toBearing(turn + 1))}
+          onClick={() => onAngle(toBearing(angle + 1))}
         />
         <span aria-hidden="true" className="w-12 text-right tabular-nums">
-          {degrees.format(turn)}
+          {degrees.format(shown(angle))}
         </span>
       </div>
       <div className="flex items-center gap-2 text-sm font-bold text-[var(--text-secondary)]">
