@@ -56,7 +56,7 @@ options.
 
 Other useful scripts:
 
-- `npm run typecheck` — `tsc -b --noEmit` across the worker/client/node project references.
+- `npm run typecheck` — TypeScript 7's `tsc -b --noEmit` across the worker/client/node project references.
 - `npm run lint` — runs ESLint over the repo.
 - `npm run format` — formats the repo with Prettier.
 - `npm run format:check` — checks Prettier formatting without writing changes.

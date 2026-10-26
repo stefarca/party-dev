@@ -29,7 +29,11 @@ answers `null`, which is what makes the client hide the notification control. Th
   `.wrangler/e2e`, so it can run beside `npm run dev`. It reads only `SESSION_SECRET` (from
   `.dev.vars`, or from the environment when there is none) — the vite plugin loads only the
   secrets a mode declares — so a test run never sends a Slack nudge and never has VAPID keys. Open it in two browser profiles to play a match against yourself.
-- `npm run typecheck` — `tsc -b --noEmit` across the four project references below.
+- `npm run typecheck` — TypeScript 7's `tsc -b --noEmit` across the four project references below.
+  TS 7 is the native compiler and ships no JavaScript API, which typescript-eslint (and editors'
+  `tsserver`) still need, so `typescript` stays on 6 and TS 7 is installed as the `typescript7`
+  alias. Both packages declare a `tsc` bin, so the script runs `node_modules/typescript7/bin/tsc`
+  by path; a bare `npx tsc` is TS 6.
 - `npm run lint` / `npm run format` / `npm run format:check`.
 - `npm run cf-typegen` — regenerates the committed `worker-configuration.d.ts`; re-run after
   changing bindings in `wrangler.jsonc`. It reads secrets from `.dev.vars.example`, not your own
